@@ -22,11 +22,11 @@ class AbcpApi:
 
     def __init__(
             self,
-            loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
-            connections_limit: int = None,
             host: str = None,
             login: str = None,
             password: str = None,
+            loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
+            connections_limit: int = None,
             validate: bool = True,
             timeout: typing.Optional[typing.Union[int, float, aiohttp.ClientTimeout]] = None,
     ):
@@ -952,7 +952,6 @@ class AbcpApi:
             matrix_price_ups = [matrix_price_ups]
         if type(distributors_price_ups) is dict:
             distributors_price_ups = [distributors_price_ups]
-
 
         payload = generate_payload(**locals())
         return await self.request(api.Methods.GET_PROFILES, payload, True)
