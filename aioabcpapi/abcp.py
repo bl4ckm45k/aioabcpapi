@@ -40,8 +40,6 @@ class AbcpApi:
         :type password: 'str' (md5 hash)
         :param validate: Validate host, login, password
         :type validate: bool
-        :param admin: Can use Api.Admin or not
-        :type admin: bool
         :raise: when host, login or password is invalid
         """
 
