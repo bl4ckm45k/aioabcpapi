@@ -1,5 +1,4 @@
-from aioabcpapi.cp.admin import AdminApi
-from aioabcpapi.cp.client import ClientApi
+from aioabcpapi import ClientApi, AdminApi
 from examples.config import host, login, password, login_user, password_user
 
 api = AdminApi(host, login, password)
