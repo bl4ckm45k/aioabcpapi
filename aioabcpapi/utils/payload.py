@@ -1,4 +1,8 @@
+from aiohttp import FormData
+import logging
+from io import BufferedReader
 DEFAULT_FILTER = ['self', 'cls']
+logger = logging.getLogger(__name__)
 
 
 def generate_payload(exclude=None, order: bool = False, **kwargs):
@@ -10,7 +14,8 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
     :return: dict
     """
     if exclude is None:
-        exclude = ['order_positions', 'order_params', 'online_positions', 'distributors', 'note', 'basket_positions']
+        exclude = ['order_positions', 'order_params', 'distributors', 'note', 'del_note',
+                   'basket_positions']
     data = dict()
     for key, value in kwargs.items():
         if key not in exclude + DEFAULT_FILTER and value is not None and not key.startswith('_'):
@@ -22,7 +27,7 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                     data[''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])])] = value
             else:
                 data[f"order[{''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])])}]"] = value
-        if value is not None:
+        if key in exclude and key not in DEFAULT_FILTER:
             if key == 'order_positions':
                 for z in range(len(value)):
                     for key_z, value_z in value[z].items():
@@ -30,10 +35,6 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
             if key == 'order_params':
                 for key_z, value_z in value[0].items():
                     data[f'orderParams[{key_z}]'] = value_z
-            if key == 'online_positions':
-                for z in range(len(value)):
-                    for key_z, value_z in value[z].items():
-                        data[f'positions[{z}][positionParams][{key_z}]'] = value_z
             if key == 'distributors':
                 for z in range(len(value)):
                     for key_z, value_z in value[z].items():
@@ -47,6 +48,13 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                 for z in range(len(value)):
                     for key_z, value_z in value[z].items():
                         data[f'positions[{z}][{key_z}]'] = value_z
+            if key == 'search':
+                for z in range(len(value)):
+                    for key_z, value_z in value[z].items():
+                        data[f'search[{z}][{key_z}]'] = value_z
+            if key == 'articles':
+                data['articles'] = value
+
     return data
 
 
@@ -72,7 +80,8 @@ def generate_payload_payments(single: bool = True, **kwargs):
                     data['linkPayments'] = value
                 else:
                     data[
-                        f"payments[0][{''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])])}]"] = value
+                        f"payments[0][{''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])])}]"
+                    ] = value
             else:
                 for z in range(len(value)):
                     for key_z, value_z in value[z].items():
@@ -99,4 +108,28 @@ def generate_payload_online_order(**kwargs):
                         data[f'positions[{z}][{key_z}]'] = value_z
                     else:
                         data[f'positions[{z}][positionParams][{key_z}]'] = value_z
+    return data
+
+
+def generate_file_payload(exclude=None, **kwargs):
+    """
+    Generate payload
+    :param exclude:
+    :param kwargs:
+    :return: dict
+    """
+    if exclude is None:
+        exclude = []
+    data = FormData()
+    for key, value in kwargs.items():
+        if key not in exclude + DEFAULT_FILTER and value is not None and not key.startswith('_'):
+            data.add_field(''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])]), str(value))
+        if key in exclude and key != '':
+            file_path = str(value).replace('\\', '/')
+            if isinstance(value, BufferedReader):
+                data.add_field('UploadFile', value, filename=value.name, content_type='multipart/form-data')
+            else:
+                data.add_field('uploadFile',
+                               open(str(value), 'rb'),
+                               filename=file_path.split('/')[-1], content_type='multipart/form-data')
     return data
