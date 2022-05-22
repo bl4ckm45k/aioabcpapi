@@ -26,5 +26,9 @@ class AbcpParameterRequired(Exception):
     pass
 
 
+class AbcpWrongParameterError(Exception):
+    pass
+
+
 class TeaPot(Exception):
     pass
