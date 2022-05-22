@@ -3,11 +3,10 @@ import datetime
 import logging
 # from aiohttp import web
 
-from aioabcpapi import AbcpApi
+from loader import api
 from config import guest_id
 
 logger = logging.getLogger(__name__)
-api = AbcpApi('id3700.public.api.abcp.ru', 'api@id3700', 'aefdc4fd417ef42a9854c4912ece937d')
 
 
 async def test_ur_request(update_start, update_end):
@@ -18,6 +17,7 @@ async def test_ur_request(update_start, update_end):
     for x in data:
         if x['userId'] == guest_id:
             logger.info(x['additional']['phone'], x['additional']['consumer'])
+    await api.close()
 
 
 # async def on_startup():
