@@ -33,3 +33,6 @@ class AbcpWrongParameterError(Exception):
 class TeaPot(Exception):
     pass
 
+
+class AbcpNotFoundError(Exception):
+    pass

@@ -11,13 +11,13 @@ logger = logging.getLogger('Client')
 
 
 class ClientApi(BaseAbcp):
-
     async def search_brands(self, number: Union[str, int],
                             use_online_stocks: Union[str, int] = 0,
                             locale: Optional[str] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83
-        Осуществляет поиск по номеру детали и возвращает массив найденных брендов, имеющих деталь с искомым номером. Аналог этапа выбора бренда на сайте.
+        Осуществляет поиск по номеру детали и возвращает массив найденных брендов, имеющих деталь с искомым номером.
+        Аналог этапа выбора бренда на сайте.
         :param number: Искомый номер детали
         :type number: str or int
         :param use_online_stocks: Флаг "использовать online-склады". Может принимать значения 0 или 1
@@ -335,6 +335,9 @@ class ClientApi(BaseAbcp):
         :return:
         """
         try:
+            if shipment_method_index == 0 and shipment_method_index is not None:
+                raise AbcpParameterRequired('Для выбора самовывоза не надо передавать "shipment_method_index",\n'
+                                            'укажите параметр "shipment_office_index" если он доступен')
             if shipment_address_index != 0 and shipment_office_index is not None:
                 raise AbcpParameterRequired('Для выбора самовывоза необходимо передать "shipment_address_index=0"')
             payment_method = await self.basket_payment_method()  # 0
@@ -342,11 +345,11 @@ class ClientApi(BaseAbcp):
             logger.info(
                 f'Выбран тип оплаты:\nID - {payment_method[payment_method_index]["id"]}\n'
                 f'Name - {payment_method[payment_method_index]["name"]}')
-
-            shipment_address = await self.basket_shipment_address()  # 1
-            logger.info(f'Выбран адрес доставки:\nID - {shipment_address[shipment_address_index]["id"]}\n'
-                        f'Name - {shipment_address[shipment_address_index]["name"]}')
-
+            if shipment_method_index != 0 and shipment_address_index is not None:
+                shipment_address = await self.basket_shipment_address()  # 1
+                logger.info(f'Выбран адрес доставки:\nID - {shipment_address[shipment_address_index]["id"]}\n'
+                            f'Name - {shipment_address[shipment_address_index]["name"]}')
+                self._shipment_address = shipment_address[shipment_address_index]["id"]
             if shipment_office_index is not None and shipment_method_index is None:
                 shipment_office = await self.basket_shipment_offices()
                 self._shipment_office = shipment_office[shipment_office_index]["id"]
@@ -357,8 +360,9 @@ class ClientApi(BaseAbcp):
                 self._shipment_method = shipment_method[shipment_method_index]['id']
                 logger.info(f'Выбран тип доставки:\nid - {shipment_method[shipment_method_index]["id"]}\n'
                             f'Name - {shipment_method[shipment_method_index]["name"]}\n')
-
         except KeyError:
+            raise AbcpAPIError('Неверно передан один из индексов')
+        except IndexError:
             raise AbcpAPIError('Неверно передан один из индексов')
 
     async def basket_order(self,

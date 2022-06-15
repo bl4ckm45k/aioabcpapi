@@ -1,11 +1,12 @@
+import logging
 import re
+from http import HTTPStatus
 from typing import Dict, Union
 
 import aiohttp
-import logging
+
 from .exceptions import UnsupportedHost, PasswordType, UnsupportedLogin, NotEnoughRights, NetworkError, \
-    AbcpAPIError, TeaPot
-from http import HTTPStatus
+    AbcpAPIError, TeaPot, AbcpNotFoundError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('api')
@@ -61,6 +62,8 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
     elif status_code == HTTPStatus.BAD_REQUEST:
         raise AbcpAPIError(f"{body['errorMessage']} {body['errorCode']} [{status_code}]")
     elif status_code == HTTPStatus.NOT_FOUND:
+        if any(method_name == x for x in SEARCH_METHODS):
+            raise AbcpNotFoundError(f"{body['errorMessage']} {body['errorCode']} [{status_code}]")
         raise AbcpAPIError(f"{body['errorMessage']} {body['errorCode']} [{status_code}]")
     elif status_code == HTTPStatus.CONFLICT:
         raise AbcpAPIError(f"{body} [{status_code}]")
@@ -122,71 +125,70 @@ async def make_request(session, host, admin, method,
 
 class Methods:
     class Admin:
-        GET_ORDERS_LIST = 'cp/orders'  # Получение списка заказов (get)
-        GET_ORDER = 'cp/order'  # Получение информации о заказе (get)
-        STATUS_HISTORY = 'cp/order/statusHistory'  # Получение истории изменений статуса позиции заказа (get)
-        SAVE_ORDER = 'cp/order'  # Сохранение заказа (post)
+        GET_ORDERS_LIST = 'cp/orders'
+        GET_ORDER = 'cp/order'
+        STATUS_HISTORY = 'cp/order/statusHistory'
+        SAVE_ORDER = 'cp/order'
 
         # Supplier order
 
-        GET_PARAMS_FOR_ONLINE_ORDER = 'cp/orders/online'  # Получение параметров для отправки online-заказа поставщику (get)
-        SEND_ONLINE_ORDER = 'cp/orders/online'  # Отправка online-заказа поставщику (post)
+        GET_PARAMS_FOR_ONLINE_ORDER = 'cp/orders/online'
+        SEND_ONLINE_ORDER = 'cp/orders/online'
 
         # Finance
-        UPDATE_BALANCE = 'cp/finance/userBalance'  # Обновление баланса клиента (post)
-        UPDATE_CREDIT_LIMIT = 'cp/finance/creditLimit'  # Обновление лимита кредита клиента (post)
-        UPDATE_FINANCE_INFO = 'cp/finance/userInfo'  # Обновление финансовой информации клиента (post)
-        GET_PAYMENTS = 'cp/finance/payments'  # Получение информации об оплатах из финмодуля (get)
-        GET_PAYMENTS_LINKS = 'cp/finance/paymentOrderLinks'  # Получение информации о привязках платежей из модуля Финансы (get)
-        GET_PAYMENTS_ONLINE = 'cp/onlinePayments'  # Получение списка online платежей (get)
-        ADD_PAYMENTS = 'cp/finance/payments'  # Добавление оплат (post)
-        DELETE_PAYMENT_LINK = 'cp/finance/deleteLinkPayments'  # Удаление привязки оплаты (post)
-        LINK_EXISTING_PLAYMENT = 'cp/finance/paymentOrderLink'  # Операция привязки по ранее добавленному платежу (post)
-        REFUND_PAYMENT = 'cp/finance/paymentRefund'  # Операция возврата платежа (post)
-        GET_RECEIPTS = 'komtet/getChecks'  # Получение списка чеков (get)
+        UPDATE_BALANCE = 'cp/finance/userBalance'
+        UPDATE_CREDIT_LIMIT = 'cp/finance/creditLimit'
+        UPDATE_FINANCE_INFO = 'cp/finance/userInfo'
+        GET_PAYMENTS = 'cp/finance/payments'
+        GET_PAYMENTS_LINKS = 'cp/finance/paymentOrderLinks'
+        GET_PAYMENTS_ONLINE = 'cp/onlinePayments'
+        ADD_PAYMENTS = 'cp/finance/payments'
+        DELETE_PAYMENT_LINK = 'cp/finance/deleteLinkPayments'
+        LINK_EXISTING_PLAYMENT = 'cp/finance/paymentOrderLink'
+        REFUND_PAYMENT = 'cp/finance/paymentRefund'
+        GET_RECEIPTS = 'komtet/getChecks'
 
         # Users
-        GET_USERS_LIST = 'cp/users'  # Получение списка пользователей (get)
-        CREATE_USER = 'cp/user/new'  # Создание пользователя (post)
-        GET_PROFILES = 'cp/users/profiles'  # Получение списка профилей (get)
-        EDIT_PROFILE = 'cp/users/profile'  # Обновление профиля (post)
+        GET_USERS_LIST = 'cp/users'
+        CREATE_USER = 'cp/user/new'
+        GET_PROFILES = 'cp/users/profiles'
+        EDIT_PROFILE = 'cp/users/profile'
 
-        EDIT_USER = 'cp/user'  # Обновление данных пользователя (post)
+        EDIT_USER = 'cp/user'
 
-        GET_USER_SHIPMENT_ADDRESS = 'cp/user/shipmentAddresses'  # Получение списка адресов доставки (get)
+        GET_USER_SHIPMENT_ADDRESS = 'cp/user/shipmentAddresses'
 
         # Staff
 
-        GET_STAFF = 'cp/managers'  # Получение списка сотрудников (get)
+        GET_STAFF = 'cp/managers'
 
         # Statuses
 
-        GET_STATUSES = 'cp/statuses'  # Получение списка статусов (get)
+        GET_STATUSES = 'cp/statuses'
 
         # Brand directory
 
-        GET_BRANDS = 'cp/artiles/brands'  # Получение справочника брендов (get)
+        GET_BRANDS = 'cp/artiles/brands'
 
         # Suppliers
 
-        GET_DISTRIBUTORS_LIST = 'cp/distributors'  # Получение списка поставщиков (get)
-        EDIT_DISTRIBUTORS_STATUS = 'cp/distributor/status'  # Изменение статуса поставщика (post)
-        UPLOAD_PRICE = 'cp/distributor/pricelistUpdate'  # Загрузка прайс-листа поставщика (post)
+        GET_DISTRIBUTORS_LIST = 'cp/distributors'
+        EDIT_DISTRIBUTORS_STATUS = 'cp/distributor/status'
+        UPLOAD_PRICE = 'cp/distributor/pricelistUpdate'
 
-        GET_SUPPLIER_ROUTES = 'cp/routes'  # Получение списка маршрутов поставщика (get)
-        UPDATE_ROUTE = 'cp/route'  # Обновление данных маршрута поставщика (post)
-        UPDATE_ROUTE_STATUS = 'cp/routes/status'  # Изменение статуса маршрута поставщика
-        DELETE_ROUTE = 'cp/route/delete'  # Удаление маршрута поставщика (post)
-        EDIT_SUPPLIER_STATUS_FOR_OFFICE = 'cp/offices'  # Подключение поставщиков к офису (post)
-        GET_OFFICE_SUPPLIERS = 'cp/offices'  # Получение поставщиков офиса (get)
-
+        GET_SUPPLIER_ROUTES = 'cp/routes'
+        UPDATE_ROUTE = 'cp/route'
+        UPDATE_ROUTE_STATUS = 'cp/routes/status'
+        DELETE_ROUTE = 'cp/route/delete'
+        EDIT_SUPPLIER_STATUS_FOR_OFFICE = 'cp/offices'
+        GET_OFFICE_SUPPLIERS = 'cp/offices'
         # Garage
 
-        GET_USERS_CARS = 'cp/garage'  # Получение списка обновлённых автомобилей в гараже
+        GET_USERS_CARS = 'cp/garage'
 
         # Payments settings
 
-        GET_PAYMENTS_SETTINGS = 'cp/payments/getPaymentMethodSettings'  # Получение списка настроек платёжных систем
+        GET_PAYMENTS_SETTINGS = 'cp/payments/getPaymentMethodSettings'
 
     class Client:
         # SARCH METHODS
@@ -237,3 +239,22 @@ class Methods:
         FORM_FIELDS = 'form/fields'
         ARTICLES_BRANDS = 'articles/brands'
         ARTICLES_INFO = 'articles/info'
+
+    class TsClient:
+        CREATE_OPERATION = 'ts/goodReceipts/create'
+        OPERATIONS_LIST = 'ts/goodReceipts/get'
+        POSITIONS_LIST = 'ts/goodReceipts/getPositions'
+
+    class TsAdmin:
+        FAST_GET_OUT = '/cp/ts/orderPickings/fastGetOut'
+
+    class Vinqu:
+        pass
+
+    class TecDoc:
+        pass
+
+
+SEARCH_METHODS = [Methods.Client.SEARCH_BRANDS, Methods.Client.SEARCH_ARTICLES, Methods.Client.SEARCH_BATCH,
+                  Methods.Client.SEARCH_HISTORY, Methods.Client.SEARCH_TIPS, Methods.Client.ADVICES,
+                  Methods.Client.ADVICES_BATCH]
