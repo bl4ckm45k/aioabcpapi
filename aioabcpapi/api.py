@@ -90,7 +90,7 @@ async def make_request_json(session, url, method, data: Dict, headers, **kwargs)
 
 
 async def make_request(session, host, admin, method,
-                       data: Union[Dict, aiohttp.FormData()], post,
+                       data: Union[Dict, aiohttp.FormData], post,
                        **kwargs):
     logger.debug('Make request: "%s" with data: "%r"', method, data)
 
@@ -99,9 +99,9 @@ async def make_request(session, host, admin, method,
     headers = {'Content-Type': 'application/x-www-form-urlencoded',
                'Accept': 'application/json'}
     url = f'https://{host}/{method}'
-    if method == Methods.Admin.UPLOAD_PRICE:
+    if method == Methods.Admin.Distributors.UPLOAD_PRICE:
         headers = None
-    elif method == Methods.Client.ADVICES_BATCH:
+    elif method == Methods.Client.Search.ADVICES_BATCH:
         headers['Content-Type'] = 'application/json'
         return await make_request_json(session, url, method, data, headers)
     try:
@@ -125,128 +125,243 @@ async def make_request(session, host, admin, method,
 
 class Methods:
     class Admin:
-        GET_ORDERS_LIST = 'cp/orders'
-        GET_ORDER = 'cp/order'
-        STATUS_HISTORY = 'cp/order/statusHistory'
-        SAVE_ORDER = 'cp/order'
+        class Orders:
+            GET_ORDERS_LIST = 'cp/orders'
+            GET_ORDER = 'cp/order'
+            STATUS_HISTORY = 'cp/order/statusHistory'
+            SAVE_ORDER = 'cp/order'
 
-        # Supplier order
+            # Supplier order
 
-        GET_PARAMS_FOR_ONLINE_ORDER = 'cp/orders/online'
-        SEND_ONLINE_ORDER = 'cp/orders/online'
+            ONLINE_ORDER = 'cp/orders/online'
 
-        # Finance
-        UPDATE_BALANCE = 'cp/finance/userBalance'
-        UPDATE_CREDIT_LIMIT = 'cp/finance/creditLimit'
-        UPDATE_FINANCE_INFO = 'cp/finance/userInfo'
-        GET_PAYMENTS = 'cp/finance/payments'
-        GET_PAYMENTS_LINKS = 'cp/finance/paymentOrderLinks'
-        GET_PAYMENTS_ONLINE = 'cp/onlinePayments'
-        ADD_PAYMENTS = 'cp/finance/payments'
-        DELETE_PAYMENT_LINK = 'cp/finance/deleteLinkPayments'
-        LINK_EXISTING_PLAYMENT = 'cp/finance/paymentOrderLink'
-        REFUND_PAYMENT = 'cp/finance/paymentRefund'
-        GET_RECEIPTS = 'komtet/getChecks'
+        class Finance:
+            UPDATE_BALANCE = 'cp/finance/userBalance'
+            UPDATE_CREDIT_LIMIT = 'cp/finance/creditLimit'
+            UPDATE_FINANCE_INFO = 'cp/finance/userInfo'
+            GET_PAYMENTS = 'cp/finance/payments'
+            GET_PAYMENTS_LINKS = 'cp/finance/paymentOrderLinks'
+            GET_PAYMENTS_ONLINE = 'cp/onlinePayments'
+            ADD_PAYMENTS = 'cp/finance/payments'
+            DELETE_PAYMENT_LINK = 'cp/finance/deleteLinkPayments'
+            LINK_EXISTING_PLAYMENT = 'cp/finance/paymentOrderLink'
+            REFUND_PAYMENT = 'cp/finance/paymentRefund'
+            GET_RECEIPTS = 'komtet/getChecks'
+            GET_PAYMENTS_SETTINGS = 'cp/payments/getPaymentMethodSettings'
 
-        # Users
-        GET_USERS_LIST = 'cp/users'
-        CREATE_USER = 'cp/user/new'
-        GET_PROFILES = 'cp/users/profiles'
-        EDIT_PROFILE = 'cp/users/profile'
+        class Users:
+            GET_USERS_LIST = 'cp/users'
+            CREATE_USER = 'cp/user/new'
+            GET_PROFILES = 'cp/users/profiles'
+            EDIT_PROFILE = 'cp/users/profile'
 
-        EDIT_USER = 'cp/user'
+            EDIT_USER = 'cp/user'
 
-        GET_USER_SHIPMENT_ADDRESS = 'cp/user/shipmentAddresses'
+            GET_USER_SHIPMENT_ADDRESS = 'cp/user/shipmentAddresses'
+            # Garage
+            GET_USERS_CARS = 'cp/garage'
+            SMS_SETTINGS = 'cp/user/smsSettings'
 
-        # Staff
+        class Staff:
+            GET_STAFF = 'cp/managers'
 
-        GET_STAFF = 'cp/managers'
-
-        # Statuses
-
-        GET_STATUSES = 'cp/statuses'
+        class Statuses:
+            GET_STATUSES = 'cp/statuses'
 
         # Brand directory
-
-        GET_BRANDS = 'cp/artiles/brands'
+        class Articles:
+            GET_BRANDS = 'cp/articles/brands'
+            GET_BRANDS_GROUP = 'cp/articles/brandsGroup'
 
         # Suppliers
+        class Distributors:
+            GET_DISTRIBUTORS_LIST = 'cp/distributors'
+            EDIT_DISTRIBUTORS_STATUS = 'cp/distributor/status'
+            UPLOAD_PRICE = 'cp/distributor/pricelistUpdate'
 
-        GET_DISTRIBUTORS_LIST = 'cp/distributors'
-        EDIT_DISTRIBUTORS_STATUS = 'cp/distributor/status'
-        UPLOAD_PRICE = 'cp/distributor/pricelistUpdate'
+            GET_SUPPLIER_ROUTES = 'cp/routes'
+            UPDATE_ROUTE = 'cp/route'
+            UPDATE_ROUTE_STATUS = 'cp/routes/status'
+            DELETE_ROUTE = 'cp/route/delete'
+            EDIT_SUPPLIER_STATUS_FOR_OFFICE = 'cp/offices'
+            GET_OFFICE_SUPPLIERS = 'cp/offices'
 
-        GET_SUPPLIER_ROUTES = 'cp/routes'
-        UPDATE_ROUTE = 'cp/route'
-        UPDATE_ROUTE_STATUS = 'cp/routes/status'
-        DELETE_ROUTE = 'cp/route/delete'
-        EDIT_SUPPLIER_STATUS_FOR_OFFICE = 'cp/offices'
-        GET_OFFICE_SUPPLIERS = 'cp/offices'
-        # Garage
-
-        GET_USERS_CARS = 'cp/garage'
-
-        # Payments settings
-
-        GET_PAYMENTS_SETTINGS = 'cp/payments/getPaymentMethodSettings'
+        class Catalog:
+            INFO = f'cp/catalog/info'
+            SEARCH = f'cp/catalog/search'
+            INFO_BATCH = f'cp/catalog/info/batch'
 
     class Client:
-        # SARCH METHODS
-
-        SEARCH_BRANDS = 'search/brands'
-        SEARCH_ARTICLES = 'search/articles'
-        SEARCH_BATCH = 'search/batch'
-        SEARCH_HISTORY = 'search/history'
-        SEARCH_TIPS = 'search/tips'
-        ADVICES = 'advices'
-        ADVICES_BATCH = 'advices/batch'
+        # SEARCH METHODS
+        class Search:
+            BRANDS = 'search/brands'
+            ARTICLES = 'search/articles'
+            BATCH = 'search/batch'
+            HISTORY = 'search/history'
+            TIPS = 'search/tips'
+            ADVICES = 'advices'
+            ADVICES_BATCH = 'advices/batch'
 
         # BASKET METHODS
+        class Basket:
+            BASKETS_LIST = 'basket/multibasket'
+            BASKET_ADD = 'basket/add'
+            BASKET_CLEAR = 'basket/clear'
+            BASKET_CONTENT = 'basket/content'
+            BASKET_OPTIONS = 'basket/options'
+            PAYMENT_METHODS = 'basket/paymentMethods'
+            SHIPMENT_METHOD = 'basket/shipmentMethods'
+            SHIPMENT_OFFICES = 'basket/shipmentOffices'
+            SHIPMENT_ADDRESS = 'basket/shipmentAddresses'
+            SHIPMENT_DATES = 'basket/shipmentDates'
+            BASKET_ORDER = 'basket/order'
 
-        BASKETS_LIST = 'basket/multibasket'
-        BASKET_ADD = 'basket/add'
-        BASKET_CLEAR = 'basket/clear'
-        BASKET_CONTENT = 'basket/content'
-        BASKET_OPTIONS = 'basket/options'
-        PAYMENT_METHODS = 'basket/paymentMethods'
-        SHIPMENT_METHOD = 'basket/shipmentMethods'
-        SHIPMENT_OFFICES = 'basket/shipmentOffices'
-        SHIPMENT_ADDRESS = 'basket/shipmentAddresses'
-        SHIPMENT_DATES = 'basket/shipmentDates'
-        BASKET_ORDER = 'basket/order'
+        class Orders:
+            ORDERS_INSTANT = 'orders/instant'
+            GET_ORDERS_LIST = 'orders/list'
+            GET_ORDERS = 'orders'
+            CANCEL_POSITION = 'orders/cancelPosition'
 
-        ORDERS_INSTANT = 'orders/instant'
-        GET_ORDERS_LIST = 'orders/list'
-        GET_ORDERS = 'orders'
-        CANCEL_POSITION = 'orders/cancelPosition'
+        class User:
+            REGISTER = 'user/new'
+            ACTIVATION = 'user/activation'
+            USER_INFO = 'user/info'
+            USER_RESTORE = 'user/restore'
 
-        REGISTER = 'user/new'
-        ACTIVATION = 'user/activation'
-        USER_INFO = 'user/info'
-        USER_RESTORE = 'user/restore'
+        class Garage:
+            USER_GARAGE = 'user/garage'
+            GARAGE_CAR = 'user/garage/car'
+            GARAGE_ADD = 'user/garage/add'
+            GARAGE_UPDATE = 'user/garage/update'
+            GARAGE_DELETE = 'user/garage/delete'
 
-        USER_GARAGE = 'user/garage'
-        GARAGE_CAR = 'user/garage/car'
-        GARAGE_ADD = 'user/garage/add'
-        GARAGE_UPDATE = 'user/garage/update'
-        GARAGE_DELETE = 'user/garage/delete'
+        class CarTree:
+            CAR_TREE_YEARS = 'cartree/years'
+            CAR_TREE_MANUFACTURERS = 'cartree/manufacturers'
+            CAR_TREE_MODELS = 'cartree/models'
+            CAR_TREE_MODIFICATIONS = 'cartree/modifications'
 
-        CARTREE_YEARS = 'cartree/years'
-        CARTREE_MANUFACTURERS = 'cartree/manufacturers'
-        CARTREE_MODELS = 'cartree/models'
-        CARTREE_MODIFICATIONS = 'cartree/modifications'
+        class Form:
+            FIELDS = 'form/fields'
 
-        FORM_FIELDS = 'form/fields'
-        ARTICLES_BRANDS = 'articles/brands'
-        ARTICLES_INFO = 'articles/info'
+        class Articles:
+            BRANDS = 'articles/brands'
+            INFO = 'articles/info'
 
     class TsClient:
-        CREATE_OPERATION = 'ts/goodReceipts/create'
-        OPERATIONS_LIST = 'ts/goodReceipts/get'
-        POSITIONS_LIST = 'ts/goodReceipts/getPositions'
+        class GoodReceipts:
+            CREATE = 'ts/goodReceipts/create'
+            GET = 'ts/goodReceipts/get'
+            GET_POSITIONS = 'ts/goodReceipts/getPositions'
+
+        class OrderPickings:
+            GET = 'ts/orderPickings/get'
+            GET_POSITIONS = 'ts/orderPickings/getGoods'
+
+        class CustomerComplaints:
+            GET = 'ts/customerComplaints/get'
+            GET_POSITIONS = 'ts/customerComplaints/getPositions'
+            CREATE = 'ts/customerComplaints/create'
+            UPDATE = 'ts/customerComplaints/updatePosition'
+            CANCEL = 'ts/customerComplaints/cancelPosition'
+
+        class Orders:
+            CREATE = 'ts/orders/createByCart'
+            GET_LIST = 'ts/orders/list'
+            GET = 'ts/orders/get'
+            REFUSE = 'ts/orders/refuse'
+
+        class Cart:
+            CREATE = 'ts/cart/create'
+            UPDATE = 'ts/cart/update'
+            GET_LIST = 'ts/cart/list'
+            EXIST = 'ts/cart/exists'
+            SUMMARY = 'ts/cart/summary'
+            CLEAR = 'ts/cart/clear'
+            DELETE = 'ts/cart/deletePositions'
+
+        class Positions:
+            GET = 'ts/positions/get'
+            GET_LIST = 'ts/positions/list'
+            CANCEL = 'ts/positions/cancel'
+            MASS_CANCEL = 'ts/positions/massCancel'
 
     class TsAdmin:
-        FAST_GET_OUT = '/cp/ts/orderPickings/fastGetOut'
+        class OrderPickings:
+            FAST_GET_OUT = 'cp/ts/orderPickings/fastGetOut'
+            GET = 'cp/ts/orderPickings/get'
+            GET_GOODS = '/cp/ts/orderPickings/getGoods'
+            CREATE_BY_OLD_POS = '/cp/ts/orderPickings/createByOldPos'
+            CHANGE_STATUS = '/cp/ts/orderPickings/changeStatus'
+            UPDATE = '/cp/ts/orderPickings/update'
+            DELETE_POSITION = '/cp/ts/orderPickings/deletePosition'
+
+        class CustomerComplaints:
+            GET = 'cp/ts/customerComplaints/get'
+            GET_POSITIONS = '/cp/ts/customerComplaints/getPositions'
+            CREATE = 'cp/ts/customerComplaints/create'
+            CREATE_POSITION = 'cp/ts/customerComplaints/createPosition'
+            UPDATE_POSITION = 'cp/ts/customerComplaints/updatePosition'
+            CHANGE_STATUS_POSITION = 'cp/ts/customerComplaints/changeStatusPosition'
+            UPDATE = 'cp/ts/customerComplaints/update'
+
+        class DistributorOwners:
+            DISTRIBUTOR_OWNERS = 'cp/ts/distributorOwners'
+
+        class Orders:
+            CREATE = 'cp/ts/orders/create'
+            CREATE_BY_CART = 'cp/ts/orders/createByCart'
+            LIST = 'cp/ts/orders/list'
+            GET = 'cp/ts/orders/get'
+            REFUSE = 'cp/ts/orders/refuse'
+            UPDATE = 'cp/ts/orders/update'
+            MERGE = 'cp/ts/orders/merge'
+            SPLIT = 'cp/ts/orders/split'
+            REPRICE = 'cp/ts/orders/reprice'
+            MESSAGES_CREATE = 'cp/ts/orders/messages/create'
+            MESSAGES_GET_ONE = 'cp/ts/orders/messages/get'
+            MESSAGES_LIST = 'cp/ts/orders/messages/list'
+            MESSAGES_UPDATE = 'cp/ts/orders/messages/update'
+            MESSAGES_DELETE = 'cp/ts/orders/messages/delete'
+
+        class Cart:
+            CREATE = 'cp/ts/cart/create'
+            UPDATE = 'cp/ts/cart/update'
+            GET_LIST = 'cp/ts/cart/list'
+            EXIST = 'cp/ts/cart/exists'
+            SUMMARY = 'cp/ts/cart/summary'
+            CLEAR = 'cp/ts/cart/clear'
+            DELETE = 'cp/ts/cart/delete'
+            TRANSFER = 'cp/ts/cart/transfer'
+
+        class Positions:
+            GET = 'cp/ts/positions/get'
+            GET_LIST = 'cp/ts/positions/list'
+            CREATE = 'cp/ts/positions/create'
+            UPDATE = 'cp/ts/positions/update'
+            CANCEL = 'cp/ts/positions/cancel'
+            MASS_CANCEL = 'cp/ts/positions/massCancel'
+            CHANGE_STATUS = 'cp/ts/positions/changeStatus'
+            SPLIT = 'cp/ts/positions/split'
+            MERGE = 'cp/ts/positions/merge'
+            MESSAGES_LIST = 'cp/ts/positions/message/list'
+            MESSAGES_GET = 'cp/ts/positions/message/get'
+            MESSAGES_CREATE = 'cp/ts/positions/message/create'
+            MESSAGES_UPDATE = 'cp/ts/positions/message/update'
+            MESSAGES_DELETE = 'cp/ts/positions/message/delete'
+
+        class GoodReceipts:
+            CREATE = 'cp/ts/goodReceipts/create'
+            GET = 'cp/ts/goodReceipts/get'
+            GET_POSITIONS = 'cp/ts/goodReceipts/getPositions'
+            UPDATE = 'cp/ts/goodReceipts/update'
+            CHANGE_STATUS = 'cp/ts/goodReceipts/changeStatus'
+            DELETE = 'cp/ts/goodReceipts/delete'
+
+            CREATE_POSITION = 'cp/ts/goodReceipts/createPosition'
+            DELETE_POSITION = 'cp/ts/goodReceipts/deletePosition'
+            GET_POSITION = 'cp/ts/goodReceipts/getPosition'
+            UPDATE_POSITION = 'cp/ts/goodReceipts/updatePosition'
 
     class Vinqu:
         pass
@@ -255,6 +370,6 @@ class Methods:
         pass
 
 
-SEARCH_METHODS = [Methods.Client.SEARCH_BRANDS, Methods.Client.SEARCH_ARTICLES, Methods.Client.SEARCH_BATCH,
-                  Methods.Client.SEARCH_HISTORY, Methods.Client.SEARCH_TIPS, Methods.Client.ADVICES,
-                  Methods.Client.ADVICES_BATCH]
+SEARCH_METHODS = [Methods.Client.Search.BRANDS, Methods.Client.Search.ARTICLES, Methods.Client.Search.BATCH,
+                  Methods.Client.Search.HISTORY, Methods.Client.Search.TIPS, Methods.Client.Search.ADVICES,
+                  Methods.Client.Search.ADVICES_BATCH]
