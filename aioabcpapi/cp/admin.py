@@ -3,27 +3,42 @@
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Union
 from io import BufferedReader
+from types import NoneType
+from typing import Dict, List, Optional, Union
 
 from .. import api
-from ..abcp import BaseAbcp
-from ..exceptions import AbcpAPIError, AbcpParameterRequired
+from ..base import BaseAbcp
+from ..exceptions import AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
 from ..utils.payload import generate_payload, generate_payload_filter, generate_payload_payments, \
     generate_payload_online_order, generate_file_payload
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('Admin')
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('Cp.Admin')
 
 
 class AdminApi(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
+        self.orders = Orders(*args)
+        self.finance = Finance(*args)
+        self.users = Users(*args)
+        self.staff = Staff(*args)
+        self.statuses = Statuses(*args)
+        self.distributors = Distributors(*args)
+        self.catalog = Catalog(*args)
+        self.articles = Articles(*args)
+
+
+class Orders(BaseAbcp):
 
     async def get_orders_list(
             self,
-            date_created_start: str = None,
-            date_created_end: str = None,
-            date_updated_start: str = None,
-            date_updated_end: str = None,
+            date_created_start: Union[str, datetime] = None,
+            date_created_end: Union[str, datetime] = None,
+            date_updated_start: Union[str, datetime] = None,
+            date_updated_end: Union[str, datetime] = None,
             numbers: Union[str, int, List] = None,
             internal_numbers: Optional[List] = None,
             status_code: Union[str, int, List] = None,
@@ -35,7 +50,7 @@ class AdminApi(BaseAbcp):
             format: Optional[str] = None,
             limit: Optional[int] = None,
             skip: Optional[int] = None,
-            desc: str = 'false'
+            desc: Optional[bool] = None
 
     ):
         """Принимает в качестве параметров условия фильтрации заказов. Возвращает список заказов (в т.ч. список позиций заказа).
@@ -43,55 +58,67 @@ class AdminApi(BaseAbcp):
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
 
 
-        :param date_created_start: Начальная дата размещения заказа<br><br>
-        :type date_created_start: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")<br><br>
-        :param date_created_end: Конечная дата размещения заказа<br><br>
-        :type date_created_end: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        :param date_updated_start: Начальная дата последнего обновления заказа в формате<br><br>
-        :type date_updated_start: datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        :param date_updated_end: Конечная дата последнего обновления заказа в формате<br><br>
-        :type date_updated_end:datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        :param numbers: Массив номеров заказов<br><br>
+
+        :param date_created_start: Начальная дата размещения заказа `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_created_start: `str` or `datetime`
+        :param date_created_end: Конечная дата размещения заказа
+        :type date_created_end: `str` or `datetime`
+        :param date_updated_start: Начальная дата последнего обновления заказа в формате `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_start: `str` or `datetime`
+        :param date_updated_end: Конечная дата последнего обновления заказа в формате `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_end: `str` or `datetime`
+        :param numbers: Массив номеров заказов
         :type numbers: list
-        :param internal_numbers: Массив номеров заказов в учетной системе (например, в 1С). Используется только, если в параметрах запроса не задан numbers.<br><br>
+        :param internal_numbers: Массив номеров заказов в учетной системе (например, в 1С). Используется только, если в параметрах запроса не задан numbers.
         :type internal_numbers: list
-        :param status_code: Код статус позиции заказа (один или массив кодов). Будут выбраны заказы содержащие хотя бы одну позицию в данном статусе.<br><br>
+        :param status_code: Код статус позиции заказа (один или массив кодов). Будут выбраны заказы содержащие хотя бы одну позицию в данном статусе.
         :type status_code: Union[str, int, list]
-        :param office_id: Идентификатор офиса (в ответе по параметру могут быть отфильтрованы заказы где этот офис выбран как самовывоз или если это офис клиента или если менеджер клиента, сделавшего заказ, относится к данному офису)<br><br>
+        :param office_id: Идентификатор офиса (в ответе по параметру могут быть отфильтрованы заказы где этот офис выбран как самовывоз или если это офис клиента или если менеджер клиента, сделавшего заказ, относится к данному офису)
         :type office_id: int or str
-        :param distributor_order_id: Идентификатор заказа у поставщика. В результате вернутся все заказы которые были отправлены поставщику под этим номером.<br><br>
+        :param distributor_order_id: Идентификатор заказа у поставщика. В результате вернутся все заказы которые были отправлены поставщику под этим номером.
         :type distributor_order_id: int or str
-        :param is_canceled: Флаг "Запрос на удаление позиции". 0 - запрос не был отправлен, 1 - запрос отправлен, 2 - запрос отклонен менеджером.<br><br>
+        :param is_canceled: Флаг "Запрос на удаление позиции". 0 - запрос не был отправлен, 1 - запрос отправлен, 2 - запрос отклонен менеджером.
         :type is_canceled: int or str
-        :param distributor_id: Идентификатор (один или массив идентификаторов) поставщика. В результате вернутся все заказы, содержащие хотя бы одну позицию от указанного поставщика.<br><br>
+        :param distributor_id: Идентификатор (один или массив идентификаторов) поставщика. В результате вернутся все заказы, содержащие хотя бы одну позицию от указанного поставщика.
         :type distributor_id: Union[str, int, list]
-        :param with_deleted: Признак, возвращать ли в ответе удаленные заказы и позиции <br><br>
+        :param with_deleted: Признак, возвращать ли в ответе удаленные заказы и позиции
         :type with_deleted: str or bool ('true', 'false', True, False)
-        :param format: Формат ответа. Доступные значения <br>
+        :param format: Формат ответа. Доступные значения: <br>
                additional - дописывает к заказу данные клиента при гостевом заказе; к позициям добавляет значение vinQueryIds
-               <br><br>short - сокращенный вариант отображения без содержимого позиций заказов
-               <br><br>count - возвращает только количество заказов по заданным условиям
-               <br><br>status_only - возвращает только номер заказа, а в узле позиций: id, statusCode, brand, number, numberFix, code
-               <br><br>p - заказы содержатся в поле items, данные о количестве содержатся в поле count
+               <br>short - сокращенный вариант отображения без содержимого позиций заказов
+               <br>count - возвращает только количество заказов по заданным условиям
+               <br>status_only - возвращает только номер заказа, а в узле позиций: id, statusCode, brand, number, numberFix, code
+               <br>p - заказы содержатся в поле items, данные о количестве содержатся в поле count
         :type format: str
         :param limit: Ограничение на возвращаемое кол-во
         :type limit: int
         :param skip: Сколько заказов пропустить
         :type skip: int
         :param desc: Обратный порядок
-        :type desc: : str or bool ('true', 'false', True, False)
+        :type desc: : bool
 
 
         """
-        if limit is not None and int(limit) <= 1:
+        if isinstance(date_created_start, datetime):
+            date_created_start = f'{date_created_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_created_end, datetime):
+            date_created_end = f'{date_created_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_updated_start, datetime):
+            date_updated_start = f'{date_updated_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_updated_end, datetime):
+            date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(format, str) and format not in ["additional", "short", "count", "status_only", "p"]:
+            raise AbcpWrongParameterError(
+                f'Параметр "format" должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
+        if not isinstance(limit, NoneType) and not (1 <= int(limit) <= 1000):
             raise AbcpAPIError(f'The limit must be more than {limit}')
-        if type(status_code) is not list and status_code is not None:
+        if isinstance(status_code, int) or isinstance(status_code, str):
             status_code = [status_code]
-        if type(numbers) is not list and numbers is not None:
+        if not isinstance(numbers, list) and numbers is not None:
             numbers = [numbers]
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.GET_ORDERS_LIST, payload)
+        return await self.request(api.Methods.Admin.Orders.GET_ORDERS_LIST, payload)
 
     async def get_order(
             self,
@@ -122,11 +149,11 @@ class AdminApi(BaseAbcp):
         :type format: str
 
         """
-        if number is None and internal_number is None:
-            raise AbcpParameterRequired(f'number and internal_number is None')
+        if isinstance(number, NoneType) and isinstance(internal_number, NoneType):
+            raise AbcpParameterRequired(f'Один из параметров "number" или "internal_number" должен быть указан')
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.GET_ORDER, payload)
+        return await self.request(api.Methods.Admin.Orders.GET_ORDER, payload)
 
     async def status_history(
             self,
@@ -138,48 +165,58 @@ class AdminApi(BaseAbcp):
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D1.81.D1.82.D0.BE.D1.80.D0.B8.D0.B8_.D0.B8.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B9_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
 
 
-        :param position_id: Номер заказа int или str<br><br>
+        :param position_id: Номер заказа int или str
         :type position_id int or str
 
 
         """
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.STATUS_HISTORY, payload)
+        return await self.request(api.Methods.Admin.Orders.STATUS_HISTORY, payload)
 
     async def create_or_edit_order(
             self,
             number: Union[int, str] = None,
             internal_number: Union[int, str] = None,
-            date: str = None,
-            order_positions: Union[List[Dict], Dict] = None,
             user_id: Union[int, str] = None,
+            date: Union[str, datetime] = None,
+            comment: str = None,
+            order_positions: Union[List[Dict], Dict] = None,
             delivery_type_id: Union[int, str] = None,
             delivery_office_id: Union[int, str] = None,
             basket_id: Union[int, str] = None,
             guest_order_name: str = None,
             guest_order_mobile: str = None,
             guest_order_email: str = None,
-            shipment_date: str = None,
+            shipment_date: Union[str, datetime] = None,
             delivery_cost: Union[str, int, float] = None,
             delivery_address_id: Union[int, str] = None,
             delivery_address: str = None,
+            manager_id: Union[int, str] = None,
             client_order_number: str = None,
             note: str = None,
             del_note: Union[str, int] = None
 
     ):
-        """Универсальный метод сохранения. Принимает в качестве параметра объект описывающий заказ. Для создания заказа от имени Гостя, необходимо передавать корректно заполненные параметры: guestOrderName и guestOrderMobile или guestOrderEmail, в зависимости от обязательности полей "Мобильный" или "Email" в форме создания гостевого заказа.
+        """Универсальный метод сохранения. Принимает в качестве параметра объект описывающий заказ. Для создания заказа
+         от имени Гостя, необходимо передавать корректно заполненные параметры: guestOrderName и guestOrderMobile или guestOrderEmail,
+          в зависимости от обязательности полей "Мобильный" или "Email" в форме создания гостевого заказа.
 
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.A1.D0.BE.D1.85.D1.80.D0.B0.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
 
 
-        :param date
+        :param manager_id: id менеджера по заказу
+        :param comment: Комментарий к заказу
+        :param date: Дата заказа `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
         :param number: Онлайн-номер заказа
         :type number: int or str
         :param internal_number: Внутренний номер заказа, обязательный параметр для создания<br><br>
         :type internal_number int or str
-        :param order_positions: Список словарей описывающих позиции, читайте документацию API.ABCP.Admin<br>В случае редактирования заказа, могут быть указаны только позиции и поля, которые требуют изменения. В случае создания заказа, должны быть указаны все позиции со всеми полями (кроме полей comment, supplierCode и itemKey). При редактировании позиций обязательна передача параметра id. Если параметр id не передан, будет добавлена новая позиция. При добавлении позиции все поля (кроме полей comment, supplierCode и itemKey) для нее являются обязательными. Для удаления позиции необходимо указать ей количество 0 или установить параметр delete в значение 1.<br><br>
+        :param order_positions: Список словарей описывающих позиции, читайте документацию API.ABCP.Admin<br>В случае
+         редактирования заказа, могут быть указаны только позиции и поля, которые требуют изменения. В случае создания
+         заказа, должны быть указаны все позиции со всеми полями (кроме полей comment, supplierCode и itemKey).
+         При редактировании позиций обязательна передача параметра id. Если параметр id не передан, будет добавлена новая позиция.
+          При добавлении позиции все поля (кроме полей comment, supplierCode и itemKey) для нее являются обязательными. Для удаления позиции необходимо указать ей количество 0 или установить параметр delete в значение 1.<br><br>
         :type order_positions: list of dictionaries
         :param client_order_number: Номер заказа в системе учета клиента<br><br>
         :type client_order_number: int or str
@@ -191,14 +228,19 @@ class AdminApi(BaseAbcp):
         :type delivery_office_id: int or str
         :param basket_id: 	Необязательный параметр - идентификатор корзины при использовании мультикорзины<br>
         :type basket_id: int or str
-        :param guest_order_name: Необязательный параметр - имя клиента для оформления заказа от имени Гостя. Для корректного оформления заказа под гостем должны быть указаны параметры guestOrderName и guestOrderMobile или guestOrderEmail.
+        :param guest_order_name: Необязательный параметр - имя клиента для оформления заказа от имени Гостя.
+         Для корректного оформления заказа под гостем должны быть указаны параметры guestOrderName и guestOrderMobile или
+          guestOrderEmail.
         :type guest_order_name: str
-        :param guest_order_mobile: Необязательный параметр - контактный телефон клиента для оформления заказа от имени Гостя. (в формате 70000000000). Для корректного оформления заказа под гостем должны быть указаны параметры guestOrderName и guestOrderMobile или guestOrderEmail.
+        :param guest_order_mobile: Необязательный параметр - контактный телефон клиента для оформления заказа от имени
+         Гостя. (в формате 70000000000). Для корректного оформления заказа под гостем должны быть указаны параметры
+          guestOrderName и guestOrderMobile или guestOrderEmail.
         :type guest_order_mobile: str
-        :param guest_order_email: Необязательный параметр - e-mail для оформления заказа от имени Гостя. (в формате user@domain.com). Для корректного оформления заказа под гостем должны быть указаны параметры guestOrderName и guestOrderMobile или guestOrderEmail.
+        :param guest_order_email: Необязательный параметр - e-mail для оформления заказа от имени Гостя.
+        (в формате user@domain.com). Для корректного оформления заказа под гостем должны быть указаны параметры guestOrderName и guestOrderMobile или guestOrderEmail.
         :type guest_order_email: str
-        :param shipment_date: Дата доставки
-        :type shipment_date: datetime.datetime.now().strftime("%Y-%m-%d")
+        :param shipment_date: Дата доставки  `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type shipment_date: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
         :param delivery_cost: Цена доставки
         :type delivery_cost: int or float
         :param delivery_address_id: Число. Идентификатор адреса доставки. Если нужно создать новый адрес, то нужно передать "-1" и в параметре deliveryAddress новый адрес доставки.
@@ -212,22 +254,25 @@ class AdminApi(BaseAbcp):
 
 
         """
-        if type(order_positions) is dict:
+        if isinstance(shipment_date, datetime):
+            shipment_date = f'{shipment_date:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date, datetime):
+            date = f'{date:%Y-%m-%d %H:%M:%S}'
+        if isinstance(order_positions, dict):
             order_positions = [order_positions]
         if number is None and internal_number is None:
             raise AbcpParameterRequired('number and internal_number is None')
-        if delivery_address_id is not None and int(delivery_address_id) == -1 and delivery_address is None:
+        if not isinstance(delivery_address_id, NoneType) and int(
+                delivery_address_id) == -1 and delivery_address is None:
             raise AbcpAPIError(f'Не передан новый адрес доставки')
-        if delivery_cost is not None:
-            logger.debug(f"{type(delivery_cost)} {type(delivery_address_id)}")
-            if delivery_address_id is None:
-                raise AbcpParameterRequired(
-                    'Необходимо указать delivery_address_id если это существующий адрес '
-                    'или delivery_address_id=-1 и новый delivery_address.')
+        if delivery_cost is not None and delivery_address_id is None:
+            raise AbcpParameterRequired(
+                'Необходимо указать delivery_address_id если это существующий адрес '
+                'или delivery_address_id=-1 и новый delivery_address.')
         if delivery_address_id is not None and delivery_type_id is None:
             raise AbcpParameterRequired(
                 'Необходимо передать delivery_type_id чтобы установить адрес доставки')
-        if any([number, internal_number]) is not None and all(
+        if any(x is not None for x in [number, internal_number]) and all(
                 [order_positions, user_id, delivery_type_id, delivery_office_id, basket_id, guest_order_name,
                  guest_order_mobile, guest_order_email, shipment_date, delivery_cost, delivery_address_id,
                  delivery_address, client_order_number]) is None:
@@ -235,9 +280,10 @@ class AdminApi(BaseAbcp):
         if note is not None and del_note is not None:
             raise AbcpAPIError('Заметку можно либо удалить либо добавить')
 
-        payload = generate_payload(**locals(), order=True)
+        payload = generate_payload(exclude=['client_order_number', 'order_positions', 'note', 'del_note'], order=True,
+                                   **locals())
 
-        return await self.request(api.Methods.Admin.SAVE_ORDER, payload, True)
+        return await self.request(api.Methods.Admin.Orders.SAVE_ORDER, payload, True)
 
     async def get_online_order_params(
             self,
@@ -265,11 +311,11 @@ class AdminApi(BaseAbcp):
         :type position_ids: List of ids str or int no matter
 
         """
-        if type(position_ids) is str or type(position_ids) is int:
+        if not isinstance(position_ids, list):
             position_ids = [position_ids]
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.GET_PARAMS_FOR_ONLINE_ORDER, payload)
+        return await self.request(api.Methods.Admin.Orders.ONLINE_ORDER, payload)
 
     async def send_online_order(
             self,
@@ -299,18 +345,21 @@ class AdminApi(BaseAbcp):
         :param order_params: Массив параметров заказа, который нужно сформировать на основе операции "Получение параметров для отправки online-заказа поставщику". Если у поставщика нет параметров заказа, то параметр orderParams необязательный.
         :type order_params: List of dict example: [{'shipmentAddress': 77333, 'comment': 'Мой коментарий', 'deliveryType': 3, 'contactName': 'Иванов Иван'}]
         :param positions: Массив данных с позициями заказов
-        d = await api.get_online_order_params(id=222)
+        d = await api.cp.admin.get_online_order_params(id=222)
         order_params={d['orderParams'][0]['fieldName']: d['orderParams'][0]['enum'][2]['value']}, positions={'id': 263266039, 'comment': 'тест'}
         :type positions: List of ids, str or int
         """
-        if type(positions) is not list:
+        if not isinstance(positions, list):
             positions = [positions]
-        if type(order_params) is dict:
+
+        if isinstance(order_params, dict):
             order_params = [order_params]
         payload = generate_payload_online_order(**locals())
 
-        return await self.request(api.Methods.Admin.SEND_ONLINE_ORDER, payload, True)
+        return await self.request(api.Methods.Admin.Orders.ONLINE_ORDER, payload, True)
 
+
+class Finance(BaseAbcp):
     async def update_balance(
             self,
             user_id: Union[int, str],
@@ -337,7 +386,7 @@ class AdminApi(BaseAbcp):
         :type in_stop_list: str or bool ('true', 'false', True, False)
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.UPDATE_BALANCE, payload, True)
+        return await self.request(api.Methods.Admin.Finance.UPDATE_BALANCE, payload, True)
 
     async def update_credit_limit(
             self,
@@ -359,7 +408,7 @@ class AdminApi(BaseAbcp):
         """
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.UPDATE_CREDIT_LIMIT, payload, True)
+        return await self.request(api.Methods.Admin.Finance.UPDATE_CREDIT_LIMIT, payload, True)
 
     async def update_finance_info(
             self,
@@ -392,14 +441,14 @@ class AdminApi(BaseAbcp):
         """
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.UPDATE_FINANCE_INFO, payload, True)
+        return await self.request(api.Methods.Admin.Finance.UPDATE_FINANCE_INFO, payload, True)
 
     async def get_payments_info(
             self,
             user_id: Union[int, str] = None,
             payment_number: str = None,
-            create_date_time_start: str = None,
-            create_date_time_end: str = None
+            create_date_time_start: Union[str, datetime] = None,
+            create_date_time_end: Union[str, datetime] = None
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D0.B1_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D0.B0.D1.85_.D0.B8.D0.B7_.D1.84.D0.B8.D0.BD.D0.BC.D0.BE.D0.B4.D1.83.D0.BB.D1.8F
@@ -414,27 +463,31 @@ class AdminApi(BaseAbcp):
         :type user_id: int or str
         :param payment_number: 	Номер платежа
         :type payment_number: str
-        :param create_date_time_start: example (datetime.datetime.now() - datetime.timedelta(days=20)).strftime("%Y-%m-%d %H:%M:%S") / datetime.datetime.now().strftime("%Y-%m-%d")
-        :type create_date_time_start: datetime strftime("%Y-%m-%d %H:%M:%S")
-        :param create_date_time_end: example (datetime.datetime.now() - datetime.timedelta(days=20)).strftime("%Y-%m-%d %H:%M:%S") / datetime.datetime.now().strftime("%Y-%m-%d")
-        :type create_date_time_end: datetime strftime("%Y-%m-%d %H:%M:%S")
+        :param create_date_time_start: Начальная дата создания `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type create_date_time_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param create_date_time_end: Конечная дата создания `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type create_date_time_end: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
 
         """
+        if isinstance(create_date_time_start, datetime):
+            create_date_time_start = f'{create_date_time_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(create_date_time_end, datetime):
+            create_date_time_end = f'{create_date_time_end:%Y-%m-%d %H:%M:%S}'
         if all(x is None for x in [user_id, payment_number, create_date_time_start, create_date_time_end]):
             raise AbcpAPIError('Недостаточно параметров')
         if payment_number is None and any(x is None for x in [create_date_time_start, create_date_time_end]):
             raise AbcpAPIError('Недостаточно параметров')
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.GET_PAYMENTS, payload)
+        return await self.request(api.Methods.Admin.Finance.GET_PAYMENTS, payload)
 
     async def get_payment_links(
             self,
             payment_numbers: Union[List, str, int] = None,
             order_ids: Union[List, str, int] = None,
             user_id: Union[int, str] = None,
-            date_time_start: str = None,
-            date_time_end: str = None,
+            date_time_start: Union[str, datetime] = None,
+            date_time_end: Union[str, datetime] = None,
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE_.D0.BF.D1.80.D0.B8.D0.B2.D1.8F.D0.B7.D0.BA.D0.B0.D1.85_.D0.BF.D0.BB.D0.B0.D1.82.D0.B5.D0.B6.D0.B5.D0.B9_.D0.B8.D0.B7_.D0.BC.D0.BE.D0.B4.D1.83.D0.BB.D1.8F_.D0.A4.D0.B8.D0.BD.D0.B0.D0.BD.D1.81.D1.8B
@@ -445,34 +498,39 @@ class AdminApi(BaseAbcp):
         :type user_id: int or str
         :param payment_numbers: массив с номерами платежей [str, str, str]
         :type payment_numbers: List of str or str or int
-        :param order_ids: массив с номерами заказов,если передать orderIds[]=0 и диапазон дат, то можно получить список возвратов за период
+        :param order_ids: массив с номерами заказов,если передать 0 и диапазон дат, то можно получить список возвратов за период
         :type order_ids: List of str or str or int
-        :param date_time_start: example datetime.datetime.now().strftime("%Y-%m-%d")
-        :type date_time_start: datetime strftime("%Y-%m-%d %H:%M:%S")
-        :param date_time_end: example datetime.datetime.now().strftime("%Y-%m-%d")
-        :type date_time_end: datetime strftime("%Y-%m-%d %H:%M:%S")
+        :param date_time_start: Начальная дата `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_time_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_time_end: Конечная дата  `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_time_end: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
 
         """
+
+        if isinstance(date_time_start, datetime):
+            date_time_start = f'{date_time_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_time_end, datetime):
+            date_time_end = f'{date_time_end:%Y-%m-%d %H:%M:%S}'
         if all(x is None for x in [user_id, date_time_start, date_time_end]):
             if any(y is not None for y in [payment_numbers, order_ids]):
                 pass
             else:
                 raise AbcpParameterRequired(
                     f'Недостаточно параметров, укажите user_id, date_time_start, date_time_end')
-        if type(order_ids) is str or type(order_ids) is int:
+        if not isinstance(order_ids, list) and order_ids is not None:
             order_ids = [order_ids]
-        if type(payment_numbers) is str or type(payment_numbers) is int:
+        if not isinstance(payment_numbers, list) and payment_numbers is not None:
             payment_numbers = [payment_numbers]
-        payload = generate_payload(**locals())
+        payload = generate_payload(exclude=['date_time_start', 'date_time_end'], **locals())
 
-        return await self.request(api.Methods.Admin.GET_PAYMENTS_LINKS, payload)
+        return await self.request(api.Methods.Admin.Finance.GET_PAYMENTS_LINKS, payload)
 
     async def get_online_payments(
             self,
-            date_start: str = None,
-            date_end: str = None,
-            customer_ids: Union[List, str, int] = None,
-            payment_method_id: Union[str, int] = None,
+            date_start: Union[str, datetime] = None,
+            date_end: Union[str, datetime] = None,
+            customer_ids: Union[List, int] = None,
+            payment_method_id: Union[int, str] = None,
             status_ids: Union[List, str, int] = None,
             order_ids: Union[List, str, int] = None
     ):
@@ -481,10 +539,10 @@ class AdminApi(BaseAbcp):
         Возвращает список online платежей. Все параметры необязательные и принадлежат к параматерам filter
 
 
-        :param date_start: Дата начало периода для выбора платежей. Формат: ГГГГ-ММ-ДД
-        :type date_start: datetime strftime("%Y-%m-%d")
-        :param date_end: Дата начало периода для выбора платежей. Формат: ГГГГ-ММ-ДД
-        :type date_end: datetime strftime("%Y-%m-%d")
+        :param date_start: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или datetime object
+        :type date_start: `str` в формате %Y-%m-%d или datetime object
+        :param date_end: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или datetime object
+        :type date_end: `str` в формате %Y-%m-%d или datetime object
         :param customer_ids: Массив идентификаторов клиентов. Не более 100 штук в одном запросе.
         :type customer_ids: List or str or int
         :param payment_method_id: Идентификатор платежной системы. Получить можно из cp/users/profiles или в панели управления.
@@ -495,48 +553,55 @@ class AdminApi(BaseAbcp):
         :param order_ids: Массив идентификаторов заказов. Не более 100 штук в одном запросе.
         :type order_ids: List or str or int
         """
-        if type(order_ids) is str or type(order_ids) is int:
+        if isinstance(date_start, datetime):
+            date_start = f'{date_start:%Y-%m-%d}'
+        if isinstance(date_end, datetime):
+            date_end = f'{date_end:%Y-%m-%d}'
+
+        if not isinstance(order_ids, NoneType) and not isinstance(order_ids, list):
             order_ids = [order_ids]
-        if type(status_ids) is str or type(status_ids) is int:
+        if not isinstance(status_ids, NoneType) and not isinstance(status_ids, list):
             status_ids = [status_ids]
-        if type(customer_ids) is str or type(customer_ids) is int:
+        if not isinstance(customer_ids, NoneType) and not isinstance(customer_ids, list):
             customer_ids = [customer_ids]
 
         payload = generate_payload_filter(**locals())
 
-        return await self.request(api.Methods.Admin.GET_PAYMENTS_ONLINE, payload)
+        return await self.request(api.Methods.Admin.Finance.GET_PAYMENTS_ONLINE, payload)
 
     async def add_multiple_payments(
             self,
             payments: Union[List[Dict], Dict] = None,
-            link_payments: Union[str, int] = 0
+            link_payments: Union[bool, int] = 0
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82
         Добавляет платежи клиентам. Возвращает массив добавленных платежей.
 
 
-        :param payments: Массив идентификаторов клиентов. Не более 100 штук в одном запросе.
-        :type payments: List or str or int
+        :param payments: Массив с оплатами
+        :type payments: Union[List[Dict], Dict]
         :param link_payments: Идентификатор платежной системы. Получить можно из cp/users/profiles или в панели управления.
         :type link_payments: str or int
         """
+        if isinstance(link_payments, bool):
+            link_payments = str(link_payments)
         if type(payments) is dict:
             payments = [payments]
         payload = generate_payload_payments(single=False, **locals())
 
-        return await self.request(api.Methods.Admin.ADD_PAYMENTS, payload, True)
+        return await self.request(api.Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
 
     async def add_single_payment(
             self,
-            user_id: Union[str, int],
-            payment_type_id: Union[str, int],
+            user_id: int,
+            payment_type_id: int,
             amount: Union[float, int],
-            create_date_time: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            create_date_time: Union[str, datetime] = None,
             payment_number: Union[str, int] = None,
-            comment: str = None,
-            editor_id: Union[str, int] = None,
-            link_payments: Union[str, int] = 0
+            comment: Optional[str] = None,
+            editor_id: Union[int, str] = None,
+            link_payments: Union[bool, int] = False
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82
@@ -545,8 +610,8 @@ class AdminApi(BaseAbcp):
 
         :param user_id: Идентификатор пользователя на сайте, которому добавляется оплата
         :type user_id: int or str
-        :param create_date_time: Дата и время платежа, в формате ГГГГ-ММ-ДД чч:мм:сс (например 2018-01-01 00:00:00)
-        :type create_date_time: datetime strftime("%Y-%m-%d %H:%M:%S")
+        :param create_date_time: Дата и время платежа, `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type create_date_time: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
         :param payment_type_id: Id типа платежа
         :type payment_type_id: str or int
         :param amount: 	Сумма платежа
@@ -561,14 +626,18 @@ class AdminApi(BaseAbcp):
         :type link_payments: int or str
 
         """
+        if isinstance(link_payments, bool):
+            link_payments = int(link_payments)
+        if isinstance(create_date_time, datetime):
+            create_date_time = f'{create_date_time:%Y-%m-%d %H:%M:%S}'
 
         payload = generate_payload_payments(**locals())
 
-        return await self.request(api.Methods.Admin.ADD_PAYMENTS, payload, True)
+        return await self.request(api.Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
 
     async def delete_link_payment(
             self,
-            payment_link_id: Union[str, int]
+            payment_link_id: int
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D1.80.D0.B8.D0.B2.D1.8F.D0.B7.D0.BA.D0.B8_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D1.8B
@@ -585,7 +654,7 @@ class AdminApi(BaseAbcp):
 
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.DELETE_PAYMENT_LINK, payload, True)
+        return await self.request(api.Methods.Admin.Finance.DELETE_PAYMENT_LINK, payload, True)
 
     async def link_existing_payment(
             self,
@@ -613,7 +682,7 @@ class AdminApi(BaseAbcp):
 
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.LINK_EXISTING_PLAYMENT, payload, True)
+        return await self.request(api.Methods.Admin.Finance.LINK_EXISTING_PLAYMENT, payload, True)
 
     async def refund_payment(
             self,
@@ -630,19 +699,17 @@ class AdminApi(BaseAbcp):
         :param refund_amount: Сумма возврата.
         :type refund_amount: int or str or float
         """
-        if all(x.isdigit() for x in [refund_payment_id, refund_amount] if type(x) is str):
-            pass
-        else:
+        if not all(x.isdigit() for x in [refund_payment_id, refund_amount] if type(x) is str):
             raise AbcpAPIError('Все параметры должны являться цифрами')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.REFUND_PAYMENT, payload, True)
+        return await self.request(api.Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
 
     async def get_receipts(
             self,
-            shop_id: Union[str, int] = None,
-            queue_id: Union[str, int] = None,
-            date_created_start: str = None,
-            date_created_end: str = None,
+            shop_id: Union[int, str] = None,
+            queue_id: Union[int, str] = None,
+            date_created_start: Union[str, datetime] = None,
+            date_created_end: Union[str, datetime] = None,
             calculation_method: Union[str, int] = None,
             print_paper_check: Union[str, int] = None,
             vat: Union[str, int] = None,
@@ -652,8 +719,8 @@ class AdminApi(BaseAbcp):
             tax_system: Union[str, int] = None,
             intent: Union[str, int] = None,
             fiscalization: Union[str, int] = None,
-            employee_id: Union[str, int] = None,
-            client_id: Union[str, int] = None,
+            employee_id: Union[int, str] = None,
+            client_id: Union[int, str] = None,
             start: Union[str, int] = None,
             rows_on_page: Union[str, int] = None,
     ):
@@ -666,10 +733,10 @@ class AdminApi(BaseAbcp):
         :type shop_id: int or str
         :param queue_id: ID очереди
         :type queue_id: int or str
-        :param date_created_start: Начальная дата создания чека в формате ГГГГ-ММ-ДД.
-        :type date_created_start: int or str
-        :param date_created_end: Конечная дата создания чека в формате ГГГГ-ММ-ДД.
-        :type date_created_end: int or str
+        :param date_created_start: Начальная дата создания чека в формате `str` в формате %Y-%m-%d  или datetime object
+        :type date_created_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_created_end: Конечная дата создания чека `str` в формате %Y-%m-%d  или datetime object
+        :type date_created_end: `str` в формате %Y-%m-%d или datetime object
         :param calculation_method: Способ расчета: 0 - Предоплата 100%, 1 - Предоплата, 2 - Полный расчет, 3 - Аванс, 4 - Частичный расчет и кредит, 5 - Оплата кредита, 6 - Передача в кредит.
         :type calculation_method: int or str
         :param print_paper_check: Был ли запрос печати бумажного чека: 0 - Нет, 1 - Да.
@@ -698,15 +765,43 @@ class AdminApi(BaseAbcp):
 
 
         """
+        if isinstance(date_created_start, datetime):
+            date_created_start = f'{date_created_start:%Y-%m-%d}'
+        if isinstance(date_created_end, datetime):
+            date_created_end = f'{date_created_end:%Y-%m-%d}'
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_RECEIPTS, payload)
+        return await self.request(api.Methods.Admin.Finance.GET_RECEIPTS, payload)
 
+    async def get_payments_methods(self, only_enabled: Union[bool, str] = None,
+                                   only_disabled: Union[bool, str] = None,
+                                   payment_method_id: Union[int, str] = None):
+        """
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BD.D0.B0.D1.81.D1.82.D1.80.D0.BE.D0.B5.D0.BA_.D0.BF.D0.BB.D0.B0.D1.82.D1.91.D0.B6.D0.BD.D1.8B.D1.85_.D1.81.D0.B8.D1.81.D1.82.D0.B5.D0.BC
+        Возвращает настройки платёжных систем.
+        Если не указывать доп. параметры,
+        то будут возвращены все существующие настройки для всех платёжных систем (активных и отключенных).
+
+
+        :param only_enabled:если true, то будет возвращён список только включенных настроек ПС
+        :type only_enabled: bool or str
+        :param only_disabled: если true, то будет возвращён список только выключенных настроек ПС
+        :param payment_method_id: id конкретной платёжной системы для которой нужно получить настройки
+        :type payment_method_id: str or int
+        :return:dict
+        """
+        if all(x is not None for x in [only_enabled, only_disabled]):
+            raise AbcpAPIError('Укажите только один параметр должен быть указан only_enabled или only_disabled')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.Admin.Finance.GET_PAYMENTS_SETTINGS, payload)
+
+
+class Users(BaseAbcp):
     async def get_users(
             self,
-            date_registred_start: Optional[str] = None,
-            date_registred_end: Optional[str] = None,
-            date_updated_start: Optional[str] = None,
-            date_updated_end: Optional[str] = None,
+            date_registred_start: Union[str, datetime] = None,
+            date_registred_end: Union[str, datetime] = None,
+            date_updated_start: Union[str, datetime] = None,
+            date_updated_end: Union[str, datetime] = None,
             state: Union[str, int] = None,
             customer_status: Union[str, int] = None,
             customers_ids: Union[List, str, int] = None,
@@ -715,7 +810,7 @@ class AdminApi(BaseAbcp):
             email: str = None,
             safe_mode: Union[str, int] = None,
             format: str = None,
-            limit: int = None,
+            limit: Optional[int] = None,
             skip: Optional[int] = None,
             desc: Union[str] = 'false'
     ):
@@ -724,14 +819,14 @@ class AdminApi(BaseAbcp):
         Принимает в качестве параметров условия фильтрации клиентов. Возвращает список клиентов.
 
 
-        :param date_registred_start: Начальная дата регистрации в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_registred_start: str datetime
-        :param date_registred_end: Конечная дата регистрации в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_registred_end: str datetime
-        :param date_updated_start: Начальная дата последнего обновления в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_updated_start: str datetime
-        :param date_updated_end: Конечная дата последнего обновления в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_updated_end: str datetime
+        :param date_registred_start: Начальная дата регистрации `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_registred_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_registred_end: Конечная дата регистрации `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_registred_end: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_updated_start: Начальная дата последнего обновления `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_updated_end: Конечная дата последнего обновления `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_end: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
         :param state: Состояние клиента. Значения:-1 - отклоненный, 0 - ожидает регистрации, 1 - зарегистрированный,
                        2 - удаленный.
         :type state: int or str
@@ -762,19 +857,31 @@ class AdminApi(BaseAbcp):
 
 
         """
+
+        if isinstance(date_registred_start, datetime):
+            date_registred_start = f'{date_registred_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_registred_end, datetime):
+            date_registred_end = f'{date_registred_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_updated_start, datetime):
+            date_updated_start = f'{date_updated_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_updated_end, datetime):
+            date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
+
+        if isinstance(format, str) and format != 'p':
+            raise AbcpWrongParameterError(f'The parameter "format" can only take the value "p" or None')
         if type(customers_ids) is not list and customers_ids is not None:
             customers_ids = [customers_ids]
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_USERS_LIST, payload)
+        return await self.request(api.Methods.Admin.Users.GET_USERS_LIST, payload)
 
-    async def create_user(
+    async def create(
             self,
             market_type: Union[str, int],
             name: str, password: str,
             mobile: Union[str, int],
-            filial_id: Union[str, int] = None,
+            filial_id: Union[int, str] = None,
             second_name: str = None, surname: str = None,
-            birth_date: str = None,
+            birth_date: Union[str, datetime] = None,
             member_of_club: str = None, office: Union[str, int] = None,
             email: str = None, icq: str = None, skype: str = None,
             region_id: str = None, city: str = None,
@@ -800,7 +907,7 @@ class AdminApi(BaseAbcp):
         :param password: Пароль :type password: str
         :param second_name: Отчество :type second_name: str
         :param surname: Фамилия :type surname: str
-        :param birth_date: Отчество :type birth_date: str datetime strftime("%Y-%m-%d %H:%M:%S")
+        :param birth_date: Дата рождения :type birth_date: str datetime strftime("%Y-%m-%d")
         :param mobile: Отчество :type mobile: str or int forman 79998887766
         :param member_of_club: Название автоклуба :type member_of_club: str
         :param office: Идентификатор офиса :type office: str or int
@@ -834,11 +941,16 @@ class AdminApi(BaseAbcp):
 
 
         """
+        if isinstance(birth_date, datetime):
+            birth_date = f'{birth_date:%Y-%m-%d}'
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.CREATE_USER, payload, True)
+        return await self.request(api.Methods.Admin.Users.CREATE_USER, payload, True)
 
     async def get_profiles(
             self,
+            profile_id: Union[int, str] = None,
+            skip: Optional[int] = None,
+            limit: Optional[int] = None,
             format: str = None
     ):
         """
@@ -846,24 +958,30 @@ class AdminApi(BaseAbcp):
         Возвращает список всех профилей.
 
 
+        :param limit: Кол-во профилей в ответе. Необязательный параметр. Допустимые значения от 1 до 100. По умолчанию возвращаются все профили.
+        :param skip: Кол-во профилей, которые нужно пропустить. Необязательный параметр. По умолчанию: 0.
+        :param profile_id: Идентификатор профиля. Необязательный параметр. По умолчанию возвращаются все профили.
         :param format: Формат ответа. Необязательное значение
         Может принимать значения: "distributors" - выводить информацию по наценкам на поставщиков; "brands" - выводить информацию по наценкам на поставщиков и бренды
         :type format: str 'distributors' or 'brands'
         """
-
+        format_params_check = ('brands', 'distributors')
+        if isinstance(format, str) and format not in format_params_check:
+            raise AbcpWrongParameterError(f'format parameter can take values "brands" or "distributors"')
+        del format_params_check
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_PROFILES, payload)
+        return await self.request(api.Methods.Admin.Users.GET_PROFILES, payload)
 
     async def edit_profile(
             self,
-            profile_id: Union[str, int] = None,
+            profile_id: Union[int, str],
             code: Union[str, int] = None,
             name: str = None,
             comment: str = None,
             price_up: Union[str, int] = None,
             payment_methods: str = None,
             matrix_price_ups: Union[List[Dict], Dict] = None,
-            distributors_price_ups: Union[List[Dict], Dict] = None
+            distributors_price_ups: Union[List[Dict], Dict] = None,
 
     ):
 
@@ -890,37 +1008,41 @@ class AdminApi(BaseAbcp):
         :type price_up: str or int
         :param payment_methods: 	Платежные системы
         :type payment_methods: str or int
-        :param matrix_price_ups: Идентификатор профиля
-        :type matrix_price_ups: str or int
-        :param distributors_price_ups: Идентификатор профиля
+        :param matrix_price_ups: Наценки от стоимости товара
+        :type matrix_price_ups: List of dicts
+        :param distributors_price_ups: Наценки по поставщикам
         :type distributors_price_ups: str or int
         """
+        if all(x is None for x in [code, name, comment,
+                                   price_up, payment_methods,
+                                   matrix_price_ups, distributors_price_ups]):
+            raise AbcpParameterRequired("Один из опциональных параметров должен быть передан")
         if type(matrix_price_ups) is dict:
             matrix_price_ups = [matrix_price_ups]
         if type(distributors_price_ups) is dict:
             distributors_price_ups = [distributors_price_ups]
+        payload = generate_payload(exclude=['matrix_price_ups', 'distributors_price_ups'], **locals())
+        return await self.request(api.Methods.Admin.Users.EDIT_PROFILE, payload, True)
 
-        payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_PROFILES, payload, True)
-
-    async def edit_user(
+    async def edit(
             self,
             user_id: Union[str, int], business: Union[str, int] = None,
-            email: str = None, second_name: str = None,
+            email: str = None, name: str = None, second_name: str = None,
             surname: str = None, password: str = None,
-            birth_date: str = None, city: str = None,
+            birth_date: Union[str, datetime] = None, city: str = None,
             mobile: Union[str, int] = None, icq: str = None,
             skype: str = None, state: Union[str, int] = None,
-            profile_id: Union[str, int] = None, organization_name: str = None,
+            profile_id: Union[int, str] = None, organization_name: str = None,
             organization_form: str = None, organization_official_name: str = None,
+            inn: Union[str, int] = None, kpp: Union[str, int] = None, ogrn: Union[str, int] = None,
             bank_name: str = None, bik: Union[str, int] = None,
             correspondent_account: Union[str, int] = None, organization_account: Union[str, int] = None,
             delivery_address: Union[List[Dict], Dict] = None, baskets: Union[List[Dict], Dict] = None,
             baskets_delivery_address: Union[List[Dict], Dict] = None, comment: str = None,
-            manager_comment: str = None, manager_id: Union[str, int] = None,
-            user_code: Union[str, int] = None, client_service_employee_id: Union[str, int] = None,
-            client_service_employee2_id: Union[str, int] = None, client_service_employee3_id: Union[str, int] = None,
-            client_service_employee4_id: Union[str, int] = None, office: Union[List[Dict], Dict] = None,
+            manager_comment: str = None, manager_id: Union[int, str] = None,
+            user_code: Union[str, int] = None, client_service_employee_id: Union[int, str] = None,
+            client_service_employee2_id: Union[int, str] = None, client_service_employee3_id: Union[int, str] = None,
+            client_service_employee4_id: Union[int, str] = None, office: Union[List[Dict], Dict] = None,
             info: str = None, safe_mode: Union[str, int] = None
 
     ):
@@ -932,47 +1054,52 @@ class AdminApi(BaseAbcp):
         Используйте в запросе только те данные, которые вы собираетесь изменить.
 
 
-        :param user_id:
-        :param business:
-        :param email:
-        :param second_name:
-        :param surname:
-        :param password:
-        :param birth_date:
-        :param city:
-        :param mobile:
-        :param icq:
-        :param skype:
-        :param state:
-        :param profile_id:
-        :param organization_name:
-        :param organization_form:
-        :param organization_official_name:
-        :param bank_name:
-        :param bik:
-        :param correspondent_account:
-        :param organization_account:
-        :param delivery_address:
-        :param baskets:
-        :param baskets_delivery_address:
-        :param comment:
-        :param manager_comment:
-        :param manager_id:
-        :param user_code:
-        :param client_service_employee_id:
-        :param client_service_employee2_id:
-        :param client_service_employee3_id:
-        :param client_service_employee4_id:
-        :param office:
-        :param info:
+        :param ogrn: ОГРН
+        :param kpp: КПП
+        :param inn:ИНН
+        :param name: Имя
+        :param user_id: Идентификатор изменяемого клиента
+        :param business: Тип организации. Значение от 1 до 6:
+        :param email: Адрес электронной почты
+        :param second_name:	Отчество
+        :param surname: Фамилия
+        :param password: Необязательный параметр. Предназначен для изменения пароля пользователя
+        :param birth_date:Дата рождения `str` в формате %Y-%m-%d  или datetime object
+        :param city: Город
+        :param mobile: Номер мобильного телефона
+        :param icq:	ICQ UIN
+        :param skype: Skype
+        :param state: Состояние аккаунта. Значения: от -1 до 2
+        :param profile_id: Идентификатор профиля
+        :param organization_name: Наименование организации
+        :param organization_form: Правовая форма организации.
+        :param organization_official_name: Наименование по регистрации (без правовой формы юр. лица)
+        :param bank_name: Наименование банка
+        :param bik: БИК банка
+        :param correspondent_account: Корреспондентский счет банка
+        :param organization_account: Расчетный счет организации
+        :param delivery_address: Адреса доставки (массив, где ключи - id адресов). Если передать пустой параметр deliveryAddress, то все адреса клиента будут удалены!
+        :param baskets: Корзины клиента (массив, где ключи - id корзин). Если передать пустой параметр baskets, то все корзины клиента будут удалены!
+        :param baskets_delivery_address: Связки корзины и адреса доставки(массив, где ключи - id корзин). Обновятся только переданные связки "корзина - Адрес доставки". Чтобы убрать привязку корзины и адреса нужно передать значение параметра = "0".
+        :param comment: Комментарий пользователя
+        :param manager_comment: Комментарий менеджера
+        :param manager_id: Идентификатор менеджера. Если передать managerId=0, то менеджер в карточке клиента удалится.
+        :param user_code: Внутренний код пользователя
+        :param client_service_employee_id: Идентификатор личного менеджера клиентской службы (дополнительная опция). Если передать clientServiceEmployeeId=0, то менеджер клиентской службы в карточке клиента удалится.
+        :param client_service_employee2_id: Идентификатор личного менеджера клиентской службы (дополнительная опция). Если передать clientServiceEmployeeId=0, то менеджер клиентской службы в карточке клиента удалится.
+        :param client_service_employee3_id: Идентификатор личного менеджера клиентской службы (дополнительная опция). Если передать clientServiceEmployeeId=0, то менеджер клиентской службы в карточке клиента удалится.
+        :param client_service_employee4_id: Идентификатор личного менеджера клиентской службы (дополнительная опция). Если передать clientServiceEmployeeId=0, то менеджер клиентской службы в карточке клиента удалится.
+        :param office: Массив идентификаторов офисов, к которым необходимо подключить клиента. Если идентификатор офиса, к одному из которых подключен клиент, не будет передан, то он будет отключен. Передать пустой параметр office нельзя, т.к. клиент должен быть подключен минимум к одному офису. Параметр актуален только если у вас на сайте включена опция: "Офисы: включить привязку к клиентам".
+        :param info: "Информация" в личном кабинете. В поле допустимо использование html-тегов. max 4000 символов. Закладка появляется только если есть данные в поле info для клиента.
         :param safe_mode:
         :return:
         """
-
+        if isinstance(birth_date, datetime):
+            birth_date = f'{birth_date:%Y-%m-%d}'
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.EDIT_USER, payload, True)
+        return await self.request(api.Methods.Admin.Users.EDIT_USER, payload, True)
 
-    async def get_user_shipment_address(self, user_id: Union[str, int]):
+    async def get_user_shipment_address(self, user_id: Union[int, str]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B0.D0.B4.D1.80.D0.B5.D1.81.D0.BE.D0.B2_.D0.B4.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D0.BA.D0.B8
         Возвращает список доступных адресов доставки. Идентификатор адреса доставки необходим при отправке заказа.
@@ -983,30 +1110,73 @@ class AdminApi(BaseAbcp):
         """
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_USER_SHIPMENT_ADDRESS, payload)
+        return await self.request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS, payload)
 
+    async def get_updated_cars(self, date_updated_start: str = None, date_updated_end: str = None):
+        """
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BE.D1.84.D0.B8.D1.81.D0.B0
+        Возвращает информацию об автомобилях, в которые были внесены изменения за определённый период времени.
+        Если не переданы dateUpdatedStart и dateUpdatedEnd, то будет предоставлена информация за последний месяц.
+
+
+        :param date_updated_start: Начальная дата последнего обновления `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_start: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :param date_updated_end: Конечная дата последнего обновления заказа `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :type date_updated_end: `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
+        :return:dict
+        """
+        if isinstance(date_updated_start, datetime):
+            date_updated_start = f'{date_updated_start:%Y-%m-%d %H:%M:%S}'
+
+        if isinstance(date_updated_end, datetime):
+            date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.Admin.Users.GET_USERS_CARS, payload)
+
+    async def get_sms_settings(self, user_ids: Union[List, int, str]):
+        if not isinstance(user_ids, list):
+            user_ids = [user_ids]
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.Admin.Users.SMS_SETTINGS, payload)
+
+
+class Staff(BaseAbcp):
     async def get_staff(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D1.82.D1.80.D1.83.D0.B4.D0.BD.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список менеджеров.
         """
-        return await self.request(api.Methods.Admin.GET_STAFF)
+        return await self.request(api.Methods.Admin.Staff.GET_STAFF)
 
+
+class Statuses(BaseAbcp):
     async def get_statuses(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.BE.D0.B2
         Возвращает список всех статусов позиций заказов.
         """
-        return await self.request(api.Methods.Admin.GET_STATUSES)
+        return await self.request(api.Methods.Admin.Statuses.GET_STATUSES)
 
+
+class Articles(BaseAbcp):
     async def get_brands(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D1.80.D0.B0.D0.B2.D0.BE.D1.87.D0.BD.D0.B8.D0.BA.D0.B0_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2
         Возвращает список всех брендов зарегистрированных в системе с их синонимами.
         """
-        return await self.request(api.Methods.Admin.GET_BRANDS)
+        return await self.request(api.Methods.Admin.Articles.GET_BRANDS)
 
-    async def get_distributors(self, distributors4mc: Union[str, int] = None):
+    async def get_brand_group(self):
+        """
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D1.80.D0.B0.D0.B2.D0.BE.D1.87.D0.BD.D0.B8.D0.BA.D0.B0_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2
+
+        Возвращает список всех групп брендов зарегистрированных в системе.
+        """
+        return await self.request(api.Methods.Admin.Articles.GET_BRANDS_GROUP)
+
+
+class Distributors(BaseAbcp):
+    async def get(self, distributors4mc: Union[str, int, bool] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список всех поставщиков, подключенных в ПУ/Поставщики.
@@ -1015,10 +1185,12 @@ class AdminApi(BaseAbcp):
         :param distributors4mc: При передаче "1" возвращает дополнительно поставщиков 4mycar"
         :type distributors4mc: str or int
         """
+        if isinstance(distributors4mc, bool):
+            distributors4mc = int(distributors4mc)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_DISTRIBUTORS_LIST, payload)
+        return await self.request(api.Methods.Admin.Distributors.GET_DISTRIBUTORS_LIST, payload)
 
-    async def edit_distributor_status(self, distributor_id: Union[str, int], status: Union[str, int]):
+    async def edit_status(self, distributor_id: Union[int, str], status: Union[int, bool]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Изменение статуса поставщика
@@ -1029,10 +1201,13 @@ class AdminApi(BaseAbcp):
         :param status: 	1 - Вкл. \ 0 - Выкл.
         :type status: str or int
         """
-        payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.EDIT_DISTRIBUTORS_STATUS, payload, True)
+        if isinstance(status, bool):
+            status = int(status)
 
-    async def get_distributor_routes(self, distributor_id: Union[str, int]):
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.Admin.Distributors.EDIT_DISTRIBUTORS_STATUS, payload, True)
+
+    async def get_routes(self, distributor_id: Union[str, int]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.BE.D0.B2_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Возвращает список всех маршрутов поставщика.
@@ -1042,34 +1217,34 @@ class AdminApi(BaseAbcp):
         :type distributor_id: str or int
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_SUPPLIER_ROUTES, payload)
+        return await self.request(api.Methods.Admin.Distributors.GET_SUPPLIER_ROUTES, payload)
 
-    async def edit_distributor_route(self,
-                                     route_id: Union[str, int],
-                                     deadline: Union[str, int] = None, deadline_replace: str = None,
-                                     is_deadline_replace_franch_enabled: Union[str, bool] = None,
-                                     deadline_max: Union[str, int] = None,
-                                     normal_time_start: str = None, normal_time_end: str = None,
-                                     normal_days_of_week: List[str] = None,
-                                     abnormal_deadline: Union[str, int] = None,
-                                     abnormal_deadline_max: Union[str, int] = None,
-                                     p1: Union[str, int] = None, p2: Union[str, int] = None,
-                                     price_per_kg: Union[str, int] = None,
-                                     price_up_added: Union[str, int] = None,
-                                     c1: Union[str, int] = None,
-                                     price_up_min: Union[str, int] = None, price_up_max: Union[str, int] = None,
-                                     primary_price_up_to_contractor: Union[str, int] = None,
-                                     delivery_probability: Union[str, int] = None,
-                                     description: str = None,
-                                     enable_color: Union[str, bool] = None, color: str = None,
-                                     is_abnormal_color_enabled: Union[str, bool] = None, abnormal_color: str = None,
-                                     no_return: Union[bool, str] = None,
-                                     supplier_code_enabled_list: Union[List[str], List[int], str, int] = None,
-                                     supplier_code_disabled_list: Union[List, List[int], str, int] = None,
-                                     normal_time_display_only: Union[int, str] = None,
-                                     disable_order_abnormal_time: Union[int, str] = None,
-                                     not_user_online_supplier_deadline: Union[int, str] = None,
-                                     ):
+    async def edit_route(self,
+                         route_id: Union[str, int],
+                         deadline: Union[str, int] = None, deadline_replace: str = None,
+                         is_deadline_replace_franch_enabled: Union[str, bool] = None,
+                         deadline_max: Union[str, int] = None,
+                         normal_time_start: str = None, normal_time_end: str = None,
+                         normal_days_of_week: List = None,
+                         abnormal_deadline: Union[str, int] = None,
+                         abnormal_deadline_max: Union[str, int] = None,
+                         p1: Union[str, int] = None, p2: Union[str, int] = None,
+                         price_per_kg: Union[str, int] = None,
+                         price_up_added: Union[str, int] = None,
+                         c1: Union[str, int] = None,
+                         price_up_min: Union[str, int] = None, price_up_max: Union[str, int] = None,
+                         primary_price_up_to_contractor: Union[str, int] = None,
+                         delivery_probability: Union[str, int] = None,
+                         description: str = None,
+                         enable_color: Union[str, bool] = None, color: str = None,
+                         is_abnormal_color_enabled: Union[str, bool] = None, abnormal_color: str = None,
+                         no_return: Union[bool, str] = None,
+                         supplier_code_enabled_list: Union[List, List, str, int] = None,
+                         supplier_code_disabled_list: Union[List, List, str, int] = None,
+                         normal_time_display_only: Union[int, str] = None,
+                         disable_order_abnormal_time: Union[int, str] = None,
+                         not_use_online_supplier_deadline: Union[int, str] = None,
+                         ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B4.D0.B0.D0.BD.D0.BD.D1.8B.D1.85_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Осуществляет обновление данных маршрута поставщика, присланных в запросе.
@@ -1134,8 +1309,8 @@ class AdminApi(BaseAbcp):
         :type normal_time_display_only: int or str
         :param disable_order_abnormal_time:Блокировать отправку заказа в нестандартное время (0 - Нет, 1 - Да). "1" сохраняется только при normalTimeDisplayOnly=1.
         :type disable_order_abnormal_time: int or str
-        :param not_user_online_supplier_deadline: Не использовать срок поставки online-поставщика (0 - Нет, 1 - Да)
-        :type not_user_online_supplier_deadline: int or str
+        :param not_use_online_supplier_deadline: Не использовать срок поставки online-поставщика (0 - Нет, 1 - Да)
+        :type not_use_online_supplier_deadline: int or str
         :return: dict
         """
         if supplier_code_enabled_list is not None and type(supplier_code_enabled_list) is not list:
@@ -1144,11 +1319,12 @@ class AdminApi(BaseAbcp):
             supplier_code_disabled_list = [supplier_code_disabled_list]
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Admin.UPDATE_ROUTE, payload, True)
+        return await self.request(api.Methods.Admin.Distributors.UPDATE_ROUTE, payload, True)
 
-    async def edit_route_status(self, route_id: Union[str, int], status: Union[str, int]):
+    async def edit_route_status(self, route_id: Union[str, int], status: Union[int, bool]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
+
         Изменяет статус маршрута поставщика
 
 
@@ -1158,8 +1334,10 @@ class AdminApi(BaseAbcp):
         :type route_id: int or str
         :return: dict
         """
+        if isinstance(status, bool):
+            status = int(status)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.UPDATE_ROUTE_STATUS, payload, True)
+        return await self.request(api.Methods.Admin.Distributors.UPDATE_ROUTE_STATUS, payload, True)
 
     async def delete_route(self, route_id: Union[int, str]):
         """
@@ -1172,12 +1350,13 @@ class AdminApi(BaseAbcp):
         :return: dict
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.DELETE_ROUTE, payload, True)
+        return await self.request(api.Methods.Admin.Distributors.DELETE_ROUTE, payload, True)
 
-    async def edit_distributor_status_office(self, office_id: Union[str, int],
-                                             distributors: Union[List[Dict], Dict] = None):
+    async def connect_to_office(self, office_id: Union[str, int],
+                                distributors: Union[List[Dict], Dict] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.B4.D0.BA.D0.BB.D1.8E.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BA_.D0.BE.D1.84.D0.B8.D1.81.D1.83
+
         Подключение/отключение поставщиков к офисам
         Если параметр distributors не указан или содержит пустой список все поставщики офиса будут отключены
 
@@ -1191,9 +1370,9 @@ class AdminApi(BaseAbcp):
         if type(distributors) is dict:
             distributors = [distributors]
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)
+        return await self.request(api.Methods.Admin.Distributors.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)
 
-    async def get_office_distributors(self, office_id: Union[str, int] = None):
+    async def get_office_distributors(self, office_id: Union[int, str] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BE.D1.84.D0.B8.D1.81.D0.B0
         Возвращает информацию о подключенных к офису поставщиках
@@ -1204,49 +1383,11 @@ class AdminApi(BaseAbcp):
         :return:dict
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_OFFICE_SUPPLIERS, payload)
-
-    async def get_updated_cars(self, date_updated_start: str = None, date_updated_end: str = None):
-        """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BE.D1.84.D0.B8.D1.81.D0.B0
-        Возвращает информацию об автомобилях, в которые были внесены изменения за определённый период времени.
-        Если не переданы dateUpdatedStart и dateUpdatedEnd, то будет предоставлена информация за последний месяц.
-
-
-        :param date_updated_start: Начальная дата последнего обновления в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_updated_start: str lambda datetime strftime("%Y-%m-%d %H:%M:%S")
-        :param date_updated_end: Конечная дата последнего обновления заказа в формате ГГГГ-ММ-ДД ЧЧ:мм:СС
-        :type date_updated_end: str datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        :return:dict
-        """
-        payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_USERS_CARS, payload)
-
-    async def get_payments_methods(self, only_enabled: Union[bool, str] = None,
-                                   only_disabled: Union[bool, str] = None,
-                                   payment_method_id: Union[str, int] = None):
-        """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BD.D0.B0.D1.81.D1.82.D1.80.D0.BE.D0.B5.D0.BA_.D0.BF.D0.BB.D0.B0.D1.82.D1.91.D0.B6.D0.BD.D1.8B.D1.85_.D1.81.D0.B8.D1.81.D1.82.D0.B5.D0.BC
-        Возвращает настройки платёжных систем.
-        Если не указывать доп. параметры,
-        то будут возвращены все существующие настройки для всех платёжных систем (активных и отключенных).
-
-
-        :param only_enabled:если true, то будет возвращён список только включенных настроек ПС
-        :type only_enabled: bool or str
-        :param only_disabled: если true, то будет возвращён список только выключенных настроек ПС
-        :param payment_method_id: id конкретной платёжной системы для которой нужно получить настройки
-        :type payment_method_id: str or int
-        :return:dict
-        """
-        if all(x is not None for x in [only_enabled, only_disabled]):
-            raise AbcpAPIError('Укажите только один параметр или only_enabled или only_disabled')
-        payload = generate_payload(**locals())
-        return await self.request(api.Methods.Admin.GET_PAYMENTS_SETTINGS, payload)
+        return await self.request(api.Methods.Admin.Distributors.GET_OFFICE_SUPPLIERS, payload)
 
     async def pricelist_update(self, distributor_id: Union[str, int],
                                file_path: Union[str, BufferedReader],
-                               file_type_id: int = None):
+                               file_type_id: Union[int, str] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.97.D0.B0.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0_.D0.BF.D1.80.D0.B0.D0.B9.D1.81-.D0.BB.D0.B8.D1.81.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         В ПУ, в разделе "Поставщики"/"Обн."/"Конфигурация прайс-листа" предварительно настраивается конфигурация
@@ -1264,4 +1405,40 @@ class AdminApi(BaseAbcp):
         :return: dict
         """
         payload = generate_file_payload(exclude=['file_path'], **locals())
-        return await self.request(api.Methods.Admin.UPLOAD_PRICE, payload, True)
+        return await self.request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
+
+
+class Catalog(BaseAbcp):
+    async def info(self, goods_group: str, locale: str = 'ru_RU'):
+        """
+
+        :param goods_group:
+        :param locale:
+        :return:
+        """
+        payload = generate_payload(exclude=['goods_group'], **locals())
+        return await self.request(api.Methods.Admin.Catalog.INFO, payload)
+
+    async def search(self, goods_group: str,
+                     properties: Union[List[Dict[str, str]], Dict[str, str]],
+                     skip: Optional[int] = None, limit: Optional[int] = None,
+                     locale: Optional[str] = None):
+        """
+
+        :param goods_group:
+        :param properties:
+        :param skip:
+        :param limit:
+        :param locale:
+        :return:
+        """
+        if isinstance(properties, dict):
+            properties = [properties]
+        payload = generate_payload(exclude=['goods_group', 'properties'], **locals())
+        return await self.request(api.Methods.Admin.Catalog.SEARCH, payload, True)
+
+    async def info_batch(self, articles_catalog: Union[List[Dict[str, str]], Dict[str, str]], locale: str = 'ru_RU'):
+        if isinstance(articles_catalog, dict):
+            articles_catalog = [articles_catalog]
+        payload = generate_payload(exclude=['articles_catalog'], **locals())
+        return await self.request(api.Methods.Admin.Catalog.INFO_BATCH, payload, True)
