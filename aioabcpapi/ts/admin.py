@@ -1,0 +1,1526 @@
+import base64
+import logging
+from datetime import datetime
+from types import NoneType
+from typing import Union, List, Dict
+
+import pytz
+from pyrfc3339 import generate
+
+from .. import api
+from ..base import BaseAbcp
+from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
+from ..utils.fields_checker import check_fields
+from ..utils.payload import generate_payload
+
+logger = logging.getLogger('TS.Admin')
+
+
+class TsAdminApi(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
+        self.order_pickings = OrderPickings(*args)
+        self.customer_complaints = CustomerComplaints(*args)
+        self.distributor_owners = DistributorOwners(*args)
+        self.orders = Orders(*args)
+        self.cart = Cart(*args)
+        self.positions = Positions(*args)
+        self.good_receipts = GoodReceipts(*args)
+
+
+class OrderPickings(BaseAbcp):
+
+    async def fast_get_out(self, client_id: Union[str, int], supplier_id: Union[str, int],
+                           positions: Union[List[Dict], Dict], distributor_id: Union[str, int] = None,
+                           route_id: Union[str, int] = None, location_id: Union[str, int] = None,
+                           order_picking_reseller_data: Dict = None,
+                           number: Union[str, int] = None, date: str = None,
+                           ):
+        """
+        Операция быстрого создания заказа, приёмки, расхода
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D1.8F_.D0.B1.D1.8B.D1.81.D1.82.D1.80.D0.BE.D0.B3.D0.BE_.D1.81.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D1.8F_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0.2C_.D0.BF.D1.80.D0.B8.D1.91.D0.BC.D0.BA.D0.B8.2C_.D1.80.D0.B0.D1.81.D1.85.D0.BE.D0.B4.D0.B0
+
+
+        :param client_id: Идентификатор клиента.
+        :param supplier_id: Идентификатор поставщика.
+        :param positions: Массив объектов позиций отгрузки. :obj:`dict` или :obj:`List[Dict]`
+        :param distributor_id: Идентификатор прайс-листа.
+        :param route_id: Идентификатор маршрута.
+        :param location_id: Идентификатор места хранения.
+        :param order_picking_reseller_data: Дополнительная информация в формате json, которая будет сохранена в операцию отгрузки
+        :param number: Номер отгрузки, если пустой, то будет заполнен автоматически
+        :param date: Дата отгрузки, если пустая, то будет заполнена автоматически. `str` в формате RFC3339 или datetime object
+        :return: None
+        """
+        if isinstance(date, datetime):
+            date = generate(date.replace(tzinfo=pytz.utc))
+        if isinstance(positions, dict):
+            positions = [positions]
+        payload = generate_payload(exclude=['positions'], **locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, True)
+
+    async def get(self, id: Union[int, str] = None, client_id: Union[int, str] = None, limit: int = None,
+                  skip: int = None,
+                  output: str = None, auto: str = None, creator_id: Union[int, str] = None,
+                  worker_id: Union[int, str] = None,
+                  agreement_id: Union[int, str] = None, statuses: Union[List, str, int] = None,
+                  number: int = None, date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
+                  co_old_pos_ids: Union[List, str, int] = None):
+        """
+        Получение списка операций отгрузка (расход)
+
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B9_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0_.28.D1.80.D0.B0.D1.81.D1.85.D0.BE.D0.B4.29
+
+        :param id: Идентификатор операции. При использовании вернётся одна операция, а не список.
+        :param client_id: Идентификатор клиента.
+        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
+        :param skip: количество операций в ответе, которое нужно пропустить
+        :param output: формат вывода, флаг 'e' - загрузка дополнительной информации (договора, места хранения, доставки, упаковки), 't' - загрузка информации о тегах, 's' - суммы по позициям, кол-во позиций
+        :param auto: автоопределяемое поле (поиск по частичному номеру операции или идентификатору, если задано число)
+        :param creator_id: Идентификатор сотрудника-создателя
+        :param worker_id: Идентификатор сотрудника-исполнителя
+        :param agreement_id: Идентификатор договора
+        :param statuses: список статусов (1 - новая, 2 - сборка, 5 - готов к выдаче, 3 - завершена, 4 - аннулирована.)
+        :param number: номер операций
+        :param date_start: начальная дата диапазона поиска `str` в формате RFC3339 или datetime object
+        :param date_end: конечная  дата диапазона поиска `str` в формате RFC3339 или datetime object
+        :param co_old_pos_ids: список идентификаторов позиций старых заказов
+        :return:
+        """
+        # ISSUE: The "d" flag is not described in the documentation
+        if isinstance(output, str) and any(x not in ["e", "t", "s", "d"] for x in output):
+            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "t", "s", "d"')
+        if isinstance(limit, int) and not (1 <= limit <= 1000):
+            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+        if isinstance(limit, str) and not limit.isdigit():
+            raise AbcpWrongParameterError('Параметр "limit" должен быть числом')
+        if not isinstance(statuses, NoneType) and any(not (1 <= int(x) <= 5) for x in statuses):
+            raise AbcpWrongParameterError('Параметр "statuses" принимает значения от 1 до 5')
+        if isinstance(statuses, int) or isinstance(statuses, str):
+            statuses = [statuses]
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        if isinstance(co_old_pos_ids, int) or isinstance(co_old_pos_ids, str):
+            co_old_pos_ids = [co_old_pos_ids]
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.GET, payload, True)
+
+    async def get_goods(self, op_id: Union[str, int], limit: int = None, skip: int = None,
+                        output: str = None, product_id: Union[int, str] = None, item_id: Union[int, str] = None,
+                        ignore_canceled: Union[int, bool] = None):
+        """
+        Получение списка позиций товаров операции отгрузки
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8
+
+
+        :param op_id: Идентификатор операции
+        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
+        :param skip: количество операций в ответе, которое нужно пропустить
+        :param output: формат вывода, 'e' - загрузка дополнительной информации (справочные товары), 'o' - дополнительно вернуть инфу об операции
+        :param product_id: Идентификатор товара справочника
+        :param item_id:  идентификатор партии товара
+        :param ignore_canceled: не возвращать позиции аннулированных операций
+        :return:
+        """
+        if isinstance(op_id, str) and not op_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "op_id" должен быть числом')
+        if isinstance(limit, int) and not (1 <= limit <= 1000):
+            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+        if isinstance(ignore_canceled, int):
+            if ignore_canceled == 0:
+                ignore_canceled = None
+            elif ignore_canceled != 1:
+                raise AbcpWrongParameterError(
+                    'В параметр "ignore_canceled" передеаются значения 1 или True, 0 или False (В данном случае можно не указывать) ')
+        if isinstance(ignore_canceled, bool):
+            if ignore_canceled:
+                ignore_canceled = int(ignore_canceled)
+            else:
+                ignore_canceled = None
+        if isinstance(output, str) and any(x not in ["e", "o"] for x in output):
+            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "o"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.GET_GOODS, payload)
+
+    async def create_by_old_pos(self, agreement_id: Union[str, int], account_details_id: Union[str, int],
+                                loc_id: Union[str, int],
+                                pp_ids: Union[List, str, int], op_id: Union[int, str] = None,
+                                status_id: Union[int, str] = None,
+                                done_right_away: Union[int, bool] = None, output: str = None):
+        """
+        Создание операции отгрузки по клиентскому заказу
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D1.81.D0.BA.D0.BE.D0.BC.D1.83_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D1.83
+
+        :param op_id: Идентификатор операции для добавления позиций. Если не указан - будет создана новая операция отгрузки.
+        :param agreement_id: Идентификатор договора
+        :param account_details_id: Идентификатор реквизитов магазина
+        :param loc_id: Идентификатор места хранения
+        :param pp_ids: список идентификаторов позиций старых заказов для добавления в отгрузку
+        :param status_id: 	[обязательный при указании флага doneRightAway] статус позиции заказа, в который будут переведены указанные позиции в случае успешного добавления в операцию отгрузки. При указании флага doneRightAway статус должен иметь признак списания.
+        :param done_right_away: 1 - сразу завершить операцию после добавления позиций.
+        :param output: расширенный формат вывода. 'e' - загрузка дополнительной информации (договора, реквизиты, клиент), 't' - загрузка информации о тегах, 's' - загрузка суммарной информации о позициях
+        :return:
+        """
+        if isinstance(done_right_away, bool):
+            done_right_away = int(done_right_away)
+        if isinstance(status_id, NoneType) and done_right_away == 1:
+            raise AbcpParameterRequired(
+                'При указании параметра done_right_away, status_id является обязательным и должен иметь признак списания')
+        if isinstance(pp_ids, int) or isinstance(pp_ids, str):
+            pp_ids = [pp_ids]
+        if isinstance(output, str) and any(x not in ["e", "t", "s"] for x in output):
+            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "t", "s"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, True)
+
+    async def change_status(self, id: int, operation_status_id: Union[str, int],
+                            positions_status_id: Union[int, str] = None):
+        """
+        Изменение статуса операции отгрузка
+
+        Source:  https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0
+
+        :param id: [обязательный] идентификатор операции отгрузка.
+        :param operation_status_id: [обязательный] статус в который требуется перевести отгрузку: 1 - новая, 2 - сборка, 5 - готов к выдаче, 3 - завершена, 4 - аннулирована.
+        :param positions_status_id: [обязательный при смене статуса операции с 5 на 3 и с 3 на 5] идентификатор статуса в который требуется перевести связанные с отгрузкой позиции заказов. При переводе из статуса "готов к выдаче" в статус "завершена" требуется указать статус с признаком "списание товара на складе". При переводе из статуса "завершена" в статус "готов к выдаче" требуется указать статус с признаком "бронирование товара".
+        :return:
+        """
+        if operation_status_id > 5 or operation_status_id < 1:
+            raise AbcpWrongParameterError('Параметр "operation_status_id" может принимать значения от 1 до 5')
+        if isinstance(positions_status_id, NoneType) and (operation_status_id == 3 or operation_status_id == 5):
+            raise AbcpWrongParameterError(
+                f'Параметр "positions_status_id" является обязательным при смене статуса операции на {operation_status_id}')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, True)
+
+    async def update(self, id: int, number: Union[str, int] = None, creator_id: Union[int, str] = None,
+                     worker_id: Union[int, str] = None,
+                     client_id: Union[int, str] = None,
+                     agreement_id: Union[int, str] = None, account_details_id: Union[int, str] = None,
+                     loc_id: Union[int, str] = None,
+                     reseller_data: Dict = None):
+        """
+        Изменение операции отгрузка
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0
+
+        :param id: Идентификатор операции отгрузки.
+        :param number: номер операции
+        :param creator_id: Идентификатор сотрудника-создателя
+        :param worker_id: Идентификатор сотрудника-исполнителя
+        :param client_id: Идентификатор клиента
+        :param agreement_id: Идентификатор договора
+        :param account_details_id: Идентификатор реквизитов магазина
+        :param loc_id: Идентификатор места хранения
+        :param reseller_data: Дополнительная информация в формате dict, которая будет сохранена в операцию отгрузки.
+        :return:
+        """
+        payload = generate_payload(exclude=['reseller_data'], **locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.UPDATE, payload, True)
+
+    async def delete(self, id: int):
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.OrderPickings.DELETE_POSITION, payload, True)
+
+
+class CustomerComplaints(BaseAbcp):
+    class FieldsChecker:
+        get_fields = ["orderPicking", "agreement", "tags", "posInfo"]
+        get_positions_fields = ["item", "product", "location", "orderPickingInfo", "tags", "operationInfo",
+                                "supplierReturnPos"]
+        update_fields = ["orderPicking", "agreement", "posInfo"]
+
+    async def get(self, id: int = None, client_id: Union[int, str] = None, creator_id: Union[int, str] = None,
+                  expert_id: Union[int, str] = None,
+                  auto: Union[int, str] = None,
+                  number: int = None, order_picking_id: Union[int, str] = None,
+                  position_statuses: Union[List, int] = None,
+                  position_type: int = None, position_auto: Union[str, int] = None, date_start: str = None,
+                  date_end: str = None,
+                  skip: int = None, limit: int = None, fields: Union[List, str] = None):
+        """
+        Получение списка возвратов покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.BE.D0.B2_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param id: Идентификатор операции. При использовании вернётся одна операция, а не список.
+        :param client_id: Идентификатор клиента для фильтра операций.
+        :param creator_id: Идентификатор сотрудника-создателя.
+        :param expert_id: Идентификатор сотрудника-эксперта.
+        :param auto: Автоопределяемый параметр для поиска по операции.
+        :param number: Номер операции.
+        :param order_picking_id: Идентификатор операции расхода по выдаче клиенту.
+        :param position_statuses: Поиск операций, которые содержат позиции в указанных статусах.
+        :param position_type: поиск операций, которые содержат позиции указанного типа(1-возврат, 2-отказ, 3-брак)
+        :param position_auto: автоопределяемый параметр для поиска по позициям операции.
+        :param date_start:  Начальная дата диапазона поиска. `str` в формате RFC3339 или datetime object
+        :param date_end: Конечная дата диапазона поиска. `str` в формате RFC3339 или datetime object
+        :param skip: Количество операций в ответе, которое нужно пропустить.
+        :param limit: Количество операций, которое нужно получить.
+        :param fields:
+        :return:
+        """
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        if isinstance(position_type, int) and (position_type < 1 or position_type > 3):
+            raise AbcpWrongParameterError('position_type parameter must be between 1 and 3')
+        if isinstance(position_statuses, list):
+            position_statuses = ','.join(map(str, position_statuses))
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.get_fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET, payload)
+
+    async def get_positions(self, op_id: Union[int, str] = None, order_picking_good_id: Union[int, str] = None,
+                            order_picking_good_ids: Union[List, int] = None,
+                            picking_ids: Union[List, int] = None,
+                            old_co_position_ids: Union[List, int] = None,
+                            client_id: Union[str, int] = None, old_item_id: Union[int, str] = None,
+                            item_id: Union[int, str] = None,
+                            tag_ids: Union[List, int] = None,
+                            loc_id: Union[int, str] = None, status: int = None, type: int = None,
+                            date_start: str = None,
+                            date_end: str = None,
+                            skip: int = None, limit: int = None,
+                            sort: str = None, output: str = None,
+                            fields: Union[List, str] = None):
+        """
+        Получение списка позиций операции возврата покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param op_id: Идентификатор операции.
+        :param order_picking_good_id: Идентификатор позиции расхода по выдаче клиенту.
+        :param order_picking_good_ids: Идентификаторы позиций расхода через запятую.
+        :param picking_ids: Идентификаторы операции расхода.
+        :param old_co_position_ids: Идентификаторы позиции заказа через запятую.
+        :param client_id: Идентификатор клиента.
+        :param old_item_id: Идентификатор старой партии.
+        :param item_id: Числовой идентификатор партии.
+        :param tag_ids: Идентификаторы тегов через запятую.
+        :param loc_id: Идентификатор места хранения.
+        :param status: Статус позиции. От 1 до 8
+        :param type: Тип возврата (1-возврат, 2-отказ, 3-брак).
+        :param date_start: Минимальная дата создания операциию. `str` в формате RFC3339 или datetime object
+        :param date_end: Максимальная дата создания операции. `str` в формате RFC3339 или datetime object
+        :param skip: Количество операций в ответе, которое нужно пропустить.
+        :param limit: Максимальное количество позиций, которое дожно быть возвращено в ответе.
+        :param sort: Как сортировать позиции: status - по статусу, createDate - по дате создания операции.
+        :param output:
+        :param fields:
+        :return:
+        """
+        if isinstance(sort, str) and not (sort == 'status' or sort == 'createDate'):
+            raise AbcpWrongParameterError('Параметр "sort" может принимать одно из значений: "status" или "createDate"')
+
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        if isinstance(picking_ids, list):
+            picking_ids = ','.join(map(str, picking_ids))
+        if isinstance(order_picking_good_ids, list):
+            order_picking_good_ids = ','.join(map(str, order_picking_good_ids))
+        if isinstance(old_co_position_ids, list):
+            old_co_position_ids = ','.join(map(str, old_co_position_ids))
+        if isinstance(tag_ids, list):
+            tag_ids = ','.join(map(str, tag_ids))
+        if isinstance(status, int) and not (1 <= status <= 8):
+            raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 8')
+        if isinstance(type, int) and not (1 <= type <= 3):
+            raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
+        payload = generate_payload(exclude=['old_item_id'], **locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
+
+    async def create(self, order_picking_id: Union[str, int], positions: Union[List[Dict], Dict]):
+        """
+        Создание возврата покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param order_picking_id: Идентификатор операции отгрузки из которой возвращается товар
+        :param positions: Список позиций.
+        :return:
+        """
+        # Прощай маржинальность :(
+        if isinstance(positions, dict):
+            positions = [positions]
+        payload = generate_payload(exclude=['positions'], **locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CREATE, payload, True)
+
+    async def create_position(self, op_id: Union[str, int], order_picking_position_id: Union[str, int], quantity: int,
+                              type: int, comment: str):
+        """
+        Создание позиции возврата покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param op_id: Идентификатор операции возврата
+        :param order_picking_position_id: Идентификатор позиции отгрузки
+        :param quantity: количество к возврату
+        :param type: тип возврата(1-возврат, 2-отказ, 3-брак)
+        :param comment:комментарий
+        :return:
+        """
+        if not (1 <= type <= 3):
+            raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload, True)
+
+    async def update_position(self, id: int, quantity: int = None, type: int = None, comment: str = None):
+        """
+        Изменение позиции возврата покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param id: Идентификатор позиции возврата покупателя
+        :param quantity: количество
+        :param type: тип возврата
+        :param comment: комментарий
+        :return:
+        """
+        if all(x is None for x in [quantity, type, comment]):
+            raise AbcpParameterRequired('Один из параметров [quantity, type, comment] должен быть указан')
+        if isinstance(type, int) and not (1 <= type <= 3):
+            raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload, True)
+
+    async def change_position_status(self, id: int, status: int):
+        """
+        Изменение статуса позиции возврата покупателя
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+
+        :param id:
+        :param status:
+        :return:
+        """
+        if not (1 <= status <= 8):
+            raise AbcpWrongParameterError('Параметр "status" может принимать значения от 1 до 8')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload, True)
+
+    async def update(self, id: Union[str, int], number: int = None, expert_id: Union[int, str] = None,
+                     custom_complaint_file: str = None,
+                     fields: Union[List, str] = None):
+        """
+
+        :param id: [обязательный] идентификатор операции возврата покупателя
+        :param number: [обязательный если не задан expert_id] уникальный номер операции
+        :param expert_id: [обязательный если не задан number] идентификатор сотрудника-эксперта
+        :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Для удаления файла - указать пустую строку.
+        :param fields: Расширенный формат вывода. Набор из следующих строк через запятую:
+                        "orderPicking" - операция отгрузки, по которой создан возврат
+                        "agreement" - договор, по которому выполнена отгрузка
+                        "posInfo" - загрузка суммарной информации о позициях
+        :return:
+        """
+        if isinstance(custom_complaint_file, str):
+            with open(custom_complaint_file, "rb") as ccf:
+                encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
+            custom_complaint_file = f"{encoded_string}"
+            del ccf
+            del encoded_string
+        if all(x is None for x in [number, expert_id]):
+            raise AbcpParameterRequired('Один из параметров "number" или "expert_id" должен быть указан')
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.update_fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
+
+
+class DistributorOwners(BaseAbcp):
+    async def distributor_owners(self, distributor_id: Union[str, int]):
+        """
+        Получение привязанного контрагента
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D1.80.D0.B8.D0.B2.D1.8F.D0.B7.D0.B0.D0.BD.D0.BD.D0.BE.D0.B3.D0.BE_.D0.BA.D0.BE.D0.BD.D1.82.D1.80.D0.B0.D0.B3.D0.B5.D0.BD.D1.82.D0.B0
+
+        :param distributor_id: Идентификатор поставщика.
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.DistributorOwners.DISTRIBUTOR_OWNERS, payload)
+
+
+class Orders(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.messages = Messages(*args)
+
+    class FieldsChecker:
+        fields = ["deliveries", "agreement", "tags", "posInfo", "amounts"]
+
+    async def create(self, client_id: Union[str, int], number: Union[int, str] = None,
+                     agreement_id: Union[int, str] = None,
+                     create_time: Union[datetime, str] = None, manager_id: Union[int, str] = None,
+                     fields: Union[List, str] = None):
+        """
+        Создание заказа
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
+
+        :param client_id: Идентификатор клиента
+        :param number: номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
+        :param agreement_id: Идентификатор соглашения (договора)
+        :param create_time: дата и время создания заказа, если не указан, заполняется автоматически, не может быть из будущего. `str` в формате RFC3339 или datetime object
+        :param manager_id: Идентификатор сотрудника, ответственного за заказ
+        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :return:
+        """
+        if isinstance(create_time, datetime):
+            create_time = generate(create_time.replace(tzinfo=pytz.utc))
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.CREATE, payload, True)
+
+    async def create_by_cart(self, client_id: Union[str, int], agreement_id: Union[str, int],
+                             positions: Union[List, int, str],
+                             delivery_address: str, delivery_person: str, delivery_contact: str,
+                             number: Union[int, str] = None,
+                             create_time: str = None, manager_id: Union[int, str] = None,
+                             delivery_method_id: Union[int, str] = None,
+                             delivery_comment: str = None, delivery_employee_person: str = None,
+                             delivery_employee_contact: str = None,
+                             delivery_reseller_comment: str = None, delivery_start_time: str = None,
+                             delivery_end_time: str = None,
+                             locale: str = None, fields: Union[List, str] = None
+                             ):
+        """
+        Создание заказа по позициям корзины
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0_.D0.BF.D0.BE_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D1.8F.D0.BC_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
+
+        :param client_id: Идентификатор клиента
+        :param agreement_id: Идентификатор соглашения (договора)
+        :param positions: список ID позиций корзины
+        :param delivery_address: адрес доставки
+        :param delivery_person: контактное лицо
+        :param delivery_contact: контакт(телефон) получателя
+        :param number: номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
+        :param create_time: дата и время создания заказа, если не указан, заполняется автоматически, не может быть из будущего. `str` в формате RFC3339 или datetime object
+        :param manager_id: Идентификатор сотрудника, ответственного за заказ
+        :param delivery_method_id: 	ID способа доставки
+        :param delivery_comment: комментарий
+        :param delivery_employee_person: контактный сотрудник
+        :param delivery_employee_contact: контакт сотрудника
+        :param delivery_reseller_comment: комментарий от магазина
+        :param delivery_start_time: время начала интервала доставки
+        :param delivery_end_time: время конца интервала доставки
+        :param locale: локаль для сохранения описаний товаров ru_RU
+        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :return:
+        """
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+        if isinstance(create_time, datetime):
+            create_time = generate(create_time.replace(tzinfo=pytz.utc))
+        if isinstance(delivery_start_time, datetime):
+            delivery_start_time = generate(delivery_start_time.replace(tzinfo=pytz.utc))
+        if isinstance(delivery_end_time, datetime):
+            delivery_end_time = generate(delivery_end_time.replace(tzinfo=pytz.utc))
+        if isinstance(positions, int) or isinstance(positions, str):
+            positions = [positions]
+        payload = generate_payload(
+            exclude=['delivery_address', 'delivery_person', 'delivery_contact',
+                     'delivery_comment', 'delivery_method_id', 'delivery_employee_person',
+                     'delivery_employee_contact', 'delivery_reseller_comment', 'delivery_start_time',
+                     'delivery_end_time'],
+            **locals())
+        return await self.request(api.Methods.TsAdmin.Orders.CREATE_BY_CART, payload, True)
+
+    async def orders_list(self, number: int = None,
+                          agreement_id: Union[int, str] = None,
+                          manager_id: Union[int, str] = None,
+                          delivery_id: Union[int, str] = None,
+                          message: str = None,
+                          date_start: str = None, date_end: str = None,
+                          update_date_start: str = None, update_date_end: str = None,
+                          deadline_date_start: str = None, deadline_date_end: str = None,
+                          order_ids: Union[List, int] = None,
+                          product_ids: Union[List, int] = None,
+                          position_statuses: Union[List, int] = None,
+                          skip: int = None,
+                          limit: int = None):
+        """
+        Получение списка заказов
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
+
+        :param number: номер заказа
+        :param agreement_id: Идентификатор соглашения
+        :param manager_id: Идентификатор менеджера
+        :param delivery_id: Идентификатор доставки
+        :param message: комментарий к заказу или позиции заказа
+        :param date_start: начальная дата диапазона поиска по дате создания заказа(обязательное, если задан dateEnd) `str` в формате RFC3339 или datetime object
+        :param date_end: конечная дата диапазона поиска по дате создания заказа(обязательное, если задан dateStart) `str` в формате RFC3339 или datetime object
+        :param update_date_start: начальная дата диапазона поиска по дате обновления заказа `str` в формате RFC3339 или datetime object
+        :param update_date_end: конечная дата диапазона поиска по дате обновления заказа `str` в формате RFC3339 или datetime object
+        :param deadline_date_start: начальная дата диапазона поиска по дате ожидаемой поставки позиций заказа `str` в формате RFC3339 или datetime object
+        :param deadline_date_end: конечная дата диапазона поиска по дате ожидаемой поставки позиций заказа `str` в формате RFC3339 или datetime object
+        :param order_ids: Идентификаторы заказов через запятую
+        :param product_ids: Идентификаторы карточек товаров через запятую
+        :param position_statuses: статусы позиций заказов через запятую
+        :param skip: количество заказов в ответе, которое нужно пропустить
+        :param limit: максимальное количество заказов, которое должно быть возвращено в ответе
+        :return:
+        """
+        if isinstance(position_statuses, list):
+            position_statuses = ','.join(map(str, position_statuses))
+        if isinstance(product_ids, list):
+            product_ids = ','.join(map(str, product_ids))
+        if isinstance(order_ids, list):
+            order_ids = ','.join(map(str, order_ids))
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        if isinstance(update_date_start, datetime):
+            update_date_start = generate(update_date_start.replace(tzinfo=pytz.utc))
+        if isinstance(update_date_end, datetime):
+            update_date_end = generate(update_date_end.replace(tzinfo=pytz.utc))
+        if isinstance(deadline_date_start, datetime):
+            deadline_date_start = generate(deadline_date_start.replace(tzinfo=pytz.utc))
+        if isinstance(deadline_date_end, datetime):
+            deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
+
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.LIST, payload)
+
+    async def get(self, order_id: Union[str, int]):
+        """
+        Получение одного заказа
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.B4.D0.BD.D0.BE.D0.B3.D0.BE_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
+
+        :param order_id: Идентификатор заказа.
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.GET, payload)
+
+    async def refuse(self, order_id: Union[str, int]):
+        """
+        Отказ от заказа
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D1.82.D0.BA.D0.B0.D0.B7_.D0.BE.D1.82_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
+
+        :param order_id: Идентификатор заказа.
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.REFUSE, payload, True)
+
+    async def update(self, order_id: Union[str, int], number: Union[str, int] = None, client_id: Union[int, str] = None,
+                     agreement_id: Union[int, str] = None,
+                     manager_id: Union[int, str] = None, fields: Union[List, str] = None):
+        """
+        Обновление заказа
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
+
+        :param order_id: числовой идентификатор заказа
+        :param number: 	номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
+        :param client_id: Идентификатор клиента
+        :param agreement_id: Идентификатор соглашения (договора)
+        :param manager_id: Идентификатор сотрудника, ответственного за заказ
+        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :return:
+        """
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.UPDATE, payload, True)
+
+    async def merge(self, main_order_id: Union[str, int], merge_orders_ids: Union[List, str, int] = None,
+                    fields: Union[List, str] = None):
+        """
+        Объединение заказов
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D1.8A.D0.B5.D0.B4.D0.B8.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
+
+        :param main_order_id: Идентификатор главного заказа объединения
+        :param merge_orders_ids: массив, идентификаторы остальных заказов объединения
+        :param fields: дополнительная информация
+        :return:
+        """
+        if isinstance(merge_orders_ids, int) or isinstance(merge_orders_ids, str):
+            merge_orders_ids = [merge_orders_ids]
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MERGE, payload, True)
+
+    async def split(self, order_id: Union[str, int], position_ids: Union[List, str, int] = None,
+                    fields: Union[List, str] = None):
+
+        """
+        Разделение заказа (В документации описан как второй метод объединения заказов)
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D1.8A.D0.B5.D0.B4.D0.B8.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2_2
+
+        :param order_id: Идентификатор заказа разделения
+        :param position_ids: массив, идентификаторы отделяемых позиций заказа
+        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :return:
+        """
+        if isinstance(position_ids, int) or isinstance(position_ids, str):
+            position_ids = [position_ids]
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.SPLIT, payload, True)
+
+    async def reprice(self, order_id: Union[str, int], new_sum: Union[float, int],
+                      fields: Union[List, str] = None):
+        """
+        Изменение суммы заказа
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.83.D0.BC.D0.BC.D1.8B_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
+
+        :param order_id: Идентификатор заказа клиента
+        :param new_sum: новая сумма заказа
+        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :return:
+        """
+        if not isinstance(fields, NoneType):
+            fields = check_fields(fields, self.FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.REPRICE, payload, True)
+
+
+class Messages(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    async def create(self, order_id: Union[str, int], message: str, employee_id: Union[int, str] = None):
+        """
+        Создание сообщения
+
+        Source:  https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F
+
+        :param order_id: Идентификатор заказа клиента
+        :param message: текст сообщения
+        :param employee_id: Идентификатор сотрудника (если не указано, то будет использоваться API-администратор)
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_CREATE, payload, True)
+
+    async def get_one(self, message_id: Union[str, int]):
+        """
+        Получение одного сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.B4.D0.BD.D0.BE.D0.B3.D0.BE_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F
+
+        :param message_id: Идентификатор заказа клиента
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_GET_ONE, payload)
+
+    async def get_list(self, order_id: Union[str, int], skip: int = None, limit: int = None):
+        """
+        Получение списка сообщений
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D0.B9
+
+        :param order_id: Идентификатор заказа
+        :param skip: количество сообщений в ответе, которое нужно пропустить
+        :param limit: максимальное количество сообщений в ответе
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_LIST, payload)
+
+    async def update(self, message_id: Union[str, int], message: str):
+        """
+        Редактирование сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A0.D0.B5.D0.B4.D0.B0.D0.BA.D1.82.D0.B8.D1.80.D0.BE.D0.B2.D0.B0.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F
+
+        :param message_id: Идентификатор сообщения
+        :param message: текст сообщения
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_UPDATE, payload, True)
+
+    async def delete(self, message_id: Union[str, int]):
+        """
+        Удаление сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F
+
+        :param message_id: Идентификатор сообщения
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_DELETE, payload, True)
+
+
+class Cart(BaseAbcp):
+    async def create(self, client_id: Union[str, int], brand: str, number: str, number_fix: Union[str, int],
+                     quantity: int,
+                     distributor_route_id: Union[str, int], item_key: str, agreement_id: Union[int, str] = None,
+                     item_id: Union[int, str] = None):
+        """
+        Добавление позиции в корзину
+
+        Source:
+
+        :param client_id: идентификатор клиента
+        :param brand: бренд
+        :param number: артикул по стандарту ABCP
+        :param number_fix: Очищенный артикул по стандарту ABCP
+        :param quantity: количество товара
+        :param distributor_route_id: идентификатор маршрута прайс-листа
+        :param item_key: Код товара, полученный поиском search/articles | await api.cp.client.search.articles(602000600, 'Luk')
+        :param agreement_id:идентификатор договора, если не указан, то используется активный договор с клиентом по умолчанию
+        :param item_id: идентификатор партии на складе
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.CREATE, payload, True)
+
+    async def update(self, position_id: Union[str, int], quantity: int,
+                     client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
+                     sell_price: Union[str, float, int] = None,
+                     cl_to_res_rate: Union[str, float, int] = None, cl_sell_price: Union[str, float, int] = None,
+                     availability: int = None, packing: int = None, deadline: int = None, deadline_max: int = None):
+        """
+        Обновление позиции в корзине
+
+        Source:
+
+        :param position_id: идентификатор позиции в корзине
+        :param quantity: новое количество
+        :param client_id: идентификатор клиента
+        :param guest_id: идентификатор гостя, обязательный, если не задан client_id
+        :param sell_price: цена продаже в валюте магазина
+        :param cl_to_res_rate: курс между валютой договора с клиентом и валютой магазина
+        :param cl_sell_price: цена продаже в валюте договора с клиентом
+        :param availability: новое наличие в прайс-листе
+        :param packing: новая кратность в прайс-листе
+        :param deadline: новый срок поставки
+        :param deadline_max: новый максимальный срок поставки
+        :return:
+        """
+        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
+                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+            raise AbcpWrongParameterError(
+                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.UPDATE, payload, True)
+
+    async def get_list(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
+                       position_ids: Union[List, str] = None,
+                       agreement_id: Union[int, str] = None, skip: int = None, limit: int = None):
+        """
+        Получение списка позиций в корзине
+
+        Source:
+
+        :param client_id: идентификатор клиента
+        :param guest_id: идентификатор гостя
+        :param position_ids: список идентификаторов позиций в корзине
+        :param agreement_id: идентификатор договора, если не указан, то используется активный договор с клиентом по умолчанию
+        :param skip: количество позиций корзины в ответе, которое нужно пропустить
+        :param limit: максимальное количество позиций корзины, которое должно быть возвращено в ответе
+        :return:
+        """
+        if isinstance(position_ids, list):
+            position_ids = ','.join(map(str, position_ids))
+        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
+                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+            raise AbcpWrongParameterError(
+                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.GET_LIST, payload)
+
+    async def exist(self, client_id: Union[str, int], agreement_id: Union[str, int], brand: Union[str, int],
+                    number_fix: Union[str, int]):
+        """
+        Проверка наличия позиции в корзине
+
+        Source:
+
+        :param client_id: идентификатор клиента
+        :param agreement_id: идентификатор договора
+        :param brand: бренд
+        :param number_fix: Очищенный артикул по стандарту ABCP
+        :return: quantity - количество найденных позиций в корзине
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.EXIST, payload)
+
+    async def summary(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
+                      agreement_id: Union[str, int] = None):
+        """
+        Получение суммарной информации по позициям корзины
+
+        Source:
+
+        :param client_id: идентификатор клиента
+        :param guest_id: идентификатор гостя, обязательный, если не задан client_id
+        :param agreement_id: идентификатор договора, если не указан, то используется активный договор с клиентом по умолчанию
+        :return:
+        """
+        if all(x is None for x in [client_id, guest_id]):
+            raise AbcpWrongParameterError(
+                'Один из параметров должен быть определён. "client_id", "guest_id"')
+        if not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType):
+            raise AbcpWrongParameterError(
+                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.SUMMARY, payload)
+
+    async def clear(self, agreement_id: Union[str, int], client_id: Union[int, str] = None,
+                    guest_id: Union[int, str] = None):
+        """
+        Очистка корзины выбранного договора
+
+        Source:
+
+        :param agreement_id: идентификатор договора
+        :param client_id: идентификатор клиента
+        :param guest_id: идентификатор гостя, обязательный, если не задан client_id
+        :return:
+        """
+        if all(x is None for x in [client_id, guest_id]):
+            raise AbcpWrongParameterError(
+                'Один из параметров должен быть определён. "client_id", "guest_id"')
+        if not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType):
+            raise AbcpWrongParameterError(
+                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.CLEAR, payload, True)
+
+    async def delete_positions(self, position_ids: Union[List, str, int],
+                               client_id: Union[int, str] = None, guest_id: Union[int, str] = None):
+        """
+        Удаление позиций корзины
+
+        Source:
+
+        :param position_ids: массив идентификаторов позиций
+        :param client_id: идентификатор клиента
+        :param guest_id: идентификатор гостя, обязательный, если не задан client_id
+        :return:
+        """
+        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
+                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+            raise AbcpWrongParameterError(
+                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+        if not isinstance(position_ids, list):
+            position_ids = [position_ids]
+
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.DELETE, payload, True)
+
+    async def transfer(self, guest_id: Union[str, int], client_id: Union[str, int]):
+        """
+        Передача позиций корзины гостя клиенту
+
+        Source:
+
+        :param guest_id: идентификатор гостя
+        :param client_id: идентификатор клиента
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Cart.TRANSFER, payload, True)
+
+
+class Positions(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.messages = PositionsMessages(*args)
+
+    class FieldsChecker:
+        additional_info = ["reserv", "product", "orderPicking",
+                           "customerComplaintPoses", "supplierOrder", "grPosition",
+                           "order", "delivery", "tags", "unpaidAmount"]
+        statuses = ["prepayment", "canceled", "new",
+                    "supOrder", "supOrderCanceled", "reservation",
+                    "orderPicking", "delivery", "finished"]
+
+    async def get(self, position_id: Union[str, int], additional_info: Union[List, str] = None):
+        """
+        Получение одной позиции
+
+        Source:
+
+        :param position_id: идентификатор позиции заказа
+        :param additional_info: доп. информация позиции ["reserv", "product", "orderPicking",
+                           "customerComplaintPoses", "supplierOrder", "grPosition",
+                           "order", "delivery", "tags", "unpaidAmount"]
+        :return:
+        """
+        if not isinstance(additional_info, NoneType):
+            additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
+
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.GET, payload)
+
+    async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
+                       client_id: Union[int, str] = None,
+                       manager_id: Union[int, str] = None,
+                       no_manager_assigned: bool = False,
+                       delivery_id: Union[int, str] = None,
+                       date_start: str = None, date_end: str = None, update_date_start: str = None,
+                       update_date_end: str = None,
+                       deadline_date_start: str = None, deadline_date_end: str = None,
+                       order_picking_date_start: str = None, order_picking_date_end: str = None,
+                       order_picking_good_ids: Union[List, str, int] = None,
+                       customer_complaint_position_ids: Union[List, str, int] = None,
+                       so_position_ids: Union[List, str, int] = None,
+                       route_ids: Union[List, str, int] = None,
+                       distributor_ids: Union[List, str, int] = None,
+                       ids: Union[List, str, int] = None,
+                       order_ids: Union[List, str, int] = None,
+                       product_ids: Union[List, str, int] = None,
+                       statuses: Union[List, str] = None,
+                       tag_ids: Union[List, str, int] = None,
+                       limit: int = None, skip: int = None):
+        """
+        Получение списка позиций
+
+        Source:
+
+        :param brand: бренд товара, полное совпадение
+        :param message: комментарий к позиции
+        :param agreement_id: идентификатор соглашения
+        :param client_id: идентификатор клиента
+        :param manager_id: идентификатор менеджера
+        :param no_manager_assigned: флаг, добавляющий в выборку позиции без назначенного менеджера; используется с manager_id
+        :param delivery_id: идентификатор операции доставки
+        :param date_start: минимальная дата создания позиций заказов `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param date_end: максимальная дата создания позиций заказов `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param update_date_start: минимальная дата обновления заказов `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param update_date_end: максимальная дата обновления заказов `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param deadline_date_start: минимальная дата ожидаемая дата поставки на склад `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param deadline_date_end: максимальная дата ожидаемая дата поставки на склад `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param order_picking_date_start: минимальная дата связанной отгрузки `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param order_picking_date_end: максимальная дата связанной отгрузки `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :param order_picking_good_ids: идентификаторы позиций отгрузки
+        :param customer_complaint_position_ids: идентификаторы позиций возврата
+        :param so_position_ids: идентификаторы позиций заказов поставщикам
+        :param route_ids: идентификаторы маршрутов
+        :param distributor_ids: идентификаторы прайс-листов
+        :param ids: идентификаторы позиций заказов клиентов
+        :param order_ids: идентификаторы заказов клиентов
+        :param product_ids: идентификаторы карточек товаров
+        :param statuses: список статусов позиций заказов
+        :param tag_ids: id тегов
+        :param limit: ограничение по кол-ву заказов в выдаче
+        :param skip: смещение (по умолчанию 0)
+        :return:
+        """
+        if isinstance(date_start, datetime):
+            date_start = f'{date_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(date_end, datetime):
+            date_end = f'{date_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(update_date_start, datetime):
+            update_date_start = f'{update_date_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(update_date_end, datetime):
+            update_date_end = f'{update_date_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(deadline_date_start, datetime):
+            deadline_date_start = f'{deadline_date_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(deadline_date_end, datetime):
+            deadline_date_end = f'{deadline_date_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(order_picking_date_start, datetime):
+            order_picking_date_start = f'{order_picking_date_start:%Y-%m-%d %H:%M:%S}'
+        if isinstance(order_picking_date_end, datetime):
+            order_picking_date_end = f'{order_picking_date_end:%Y-%m-%d %H:%M:%S}'
+        if isinstance(order_picking_good_ids, int) or isinstance(order_picking_good_ids, str):
+            order_picking_good_ids = [order_picking_good_ids]
+        if isinstance(customer_complaint_position_ids, int) or isinstance(customer_complaint_position_ids, str):
+            customer_complaint_position_ids = [customer_complaint_position_ids]
+        if isinstance(product_ids, int) or isinstance(product_ids, str):
+            product_ids = [product_ids]
+        if isinstance(so_position_ids, int) or isinstance(so_position_ids, str):
+            so_position_ids = [so_position_ids]
+        if isinstance(route_ids, int) or isinstance(route_ids, str):
+            route_ids = [route_ids]
+        if isinstance(distributor_ids, int) or isinstance(distributor_ids, str):
+            distributor_ids = [distributor_ids]
+        if isinstance(ids, int) or isinstance(ids, str):
+            ids = [ids]
+        if isinstance(order_ids, int) or isinstance(order_ids, str):
+            order_ids = [order_ids]
+        if isinstance(statuses, str):
+            statuses = [statuses]
+        if isinstance(tag_ids, list):
+            tag_ids = ','.join(map(str, tag_ids))
+        if not isinstance(statuses, NoneType):
+            statuses = check_fields(statuses, self.FieldsChecker.statuses)
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.GET_LIST, payload)
+
+    async def create(self, order_id: Union[str, int], client_id: Union[str, int], route_id: Union[str, int],
+                     distributor_id: Union[str, int], item_key: str,
+                     quantity: Union[float, int], sell_price: Union[int, float],
+                     brand: Union[str, int], number_fix: str, number: Union[int, str]):
+        """
+        Создание позиции
+
+        Source:
+
+        :param order_id: идентификатор заказа клиента
+        :param client_id: идентификатор клиента
+        :param route_id: идентификатор маршрута прайс-листа
+        :param distributor_id: идентификатор прайс-листа
+        :param item_key: Код товара, полученный поиском search/articles | await api.cp.client.search.articles(602000600, 'Luk')
+        :param quantity: количество
+        :param sell_price: цена продаже в валюте магазина
+        :param brand: бренд
+        :param number_fix: номер очищенный
+        :param number: номер по формату в ответе от поставщика (из результата поиска)
+
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.CREATE, payload, True)
+
+    async def update(self, position_id: Union[str, int], route_id: Union[int, str] = None,
+                     distributor_id: Union[int, str] = None,
+                     quantity: Union[int, float] = None,
+                     sell_price: Union[float, int] = None, cl_to_res_rate: Union[float, int] = None,
+                     cl_sell_price: Union[float, int] = None,
+                     price_data_sell_price: Union[float, int] = None,
+                     prepayment_amount: Union[float, int] = None,
+                     deadline_time: str = None, deadline_time_max: str = None,
+                     client_refusal: bool = None,
+                     delivery_id: Union[int, str] = None,
+                     status: str = None,
+                     ):
+        """
+        Обновление позиции
+
+        Source:
+
+        :param position_id: идентификатор позиции заказа
+        :param route_id: идентификатор маршрута прайс-листа
+        :param distributor_id: идентификатор прайс-листа
+        :param quantity: количество
+        :param sell_price: цена продажи в валюте магазина
+        :param cl_to_res_rate: курс между валютой договора с клиентом и валютой магазина
+        :param cl_sell_price: цена продаже в валюте договора с клиентом
+        :param price_data_sell_price: стоимость товара при проценке
+        :param prepayment_amount: сумма предоплаты, при 0 будет рассчитана автоматически
+        :param deadline_time: срок поставки на склад в формате  `str` в формате RFC3339 или datetime object
+        :param deadline_time_max: максимальный поставки на склад в формате  `str` в формате RFC3339 или datetime object
+        :param client_refusal: признак желания клиента отказаться от покупки товара
+        :param delivery_id: идентификатор операции доставки
+        :param status: string, статус позиции, Новый или Предоплата
+        :return:
+        """
+        if isinstance(deadline_time, datetime):
+            deadline_time = generate(deadline_time.replace(tzinfo=pytz.utc))
+        if isinstance(deadline_time_max, datetime):
+            deadline_time_max = generate(deadline_time_max.replace(tzinfo=pytz.utc))
+        if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
+            raise AbcpWrongParameterError(f'Параметр "status" может принимать значения "new" или "prepayment"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.UPDATE, payload, True)
+
+    async def cancel(self, position_id: Union[str, int]):
+        """
+        Аннулирование позиции
+
+        Source:
+
+        :param position_id: идентификатор позиции заказа
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.CANCEL, payload, True)
+
+    async def mass_cancel(self, position_ids: Union[List, int]):
+        """
+        Массовое аннулирование позиций
+
+        Source:
+
+        :param position_ids: идентификаторы позиций через запятую
+        :return:
+        """
+        if isinstance(position_ids, list):
+            position_ids = ','.join(map(str, position_ids))
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
+
+    async def change_status(self, position_ids: Union[List, int], status: str):
+        """
+        Массовая смена статуса позиций
+
+        Source:
+
+        :param position_ids: идентификатор позиций через запятую
+        :param status: принимает значения: new, prepayment
+        :return:
+        """
+        if all(status != x for x in ['new', 'prepayment']):
+            raise AbcpWrongParameterError(f'Параметр "status" может принимать значения "new" или "prepayment"')
+        if isinstance(position_ids, list):
+            position_ids = ','.join(map(str, position_ids))
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
+
+    async def split(self, position_id: Union[str, int], quantity: Union[int, float]):
+        """
+        Разделение позиции
+
+        Source:
+
+        :param position_id: числовой идентификатор позиции заказа клиента
+        :param quantity: количество, которое требуется отделить
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.SPLIT, payload, True)
+
+    async def merge(self, main_position_id: Union[str, int], merge_positions_ids: Union[List, int]):
+        """
+        Объединение позиций
+
+        Source:
+
+        :param main_position_id:
+        :param merge_positions_ids:
+        :return:
+        """
+        if isinstance(merge_positions_ids, list):
+            merge_positions_ids = ','.join(map(str, merge_positions_ids))
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MERGE, payload, True)
+
+
+class PositionsMessages(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    async def get_list(self, position_id: Union[str, int], skip: int = None, limit: int = None):
+        """
+        Получение списка сообщений
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D0.B9_2
+
+        :param position_id: числовой идентификатор позиции заказа клиента
+        :param skip: количество сообщений в ответе, которое нужно пропустить
+        :param limit: максимальное количество сообщений, которое должно быть возвращено в ответе
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_LIST, payload)
+
+    async def get(self, message_id: Union[str, int]):
+        """
+        Получение одного сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.B4.D0.BD.D0.BE.D0.B3.D0.BE_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F_2
+
+        :param message_id: числовой идентификатор сообщения
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_GET, payload)
+
+    async def create(self, position_id: Union[str, int], message: str, employee_id: Union[int, str] = None,
+                     date: Union[str, datetime] = None):
+        """
+        Создание сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F_2
+
+        :param position_id: идентификатор позиции
+        :param message: текст сообщения
+        :param employee_id: идентификатор сотрудника
+        :param date: дата и время. `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :return:
+        """
+        if isinstance(date, datetime):
+            date = f'{date:%Y-%m-%d %H:%M:%S}'
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_CREATE, payload, True)
+
+    async def update(self, message_id: Union[str, int], message: str, employee_id: Union[int, str] = None):
+        """
+        Редактирование сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A0.D0.B5.D0.B4.D0.B0.D0.BA.D1.82.D0.B8.D1.80.D0.BE.D0.B2.D0.B0.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F_2
+
+        :param message_id: идентификатор сообщения
+        :param message: текст сообщения
+        :param employee_id: идентификатор сотрудника
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_UPDATE, payload, True)
+
+    async def delete(self, message_id: Union[str, int]):
+        """
+        Удаление сообщения
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BE.D0.BE.D0.B1.D1.89.D0.B5.D0.BD.D0.B8.D1.8F_2
+
+        :param message_id: идентификатор сообщения
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_DELETE, payload, True)
+
+
+class GoodReceipts(BaseAbcp):
+    async def create(self,
+                     supplier_id: Union[str, int],
+                     positions: Union[List[Dict[str, str]], Dict[str, str]],
+                     sup_number: str = None, sup_shipment_date: Union[str, datetime] = None):
+        """
+        Создаёт приёмку с позициями. Дата создания устанавливается текущая.
+
+        Место хранения указывается в панели управления в разделе Настройки склада -> общие.
+
+        Source:
+
+        :param supplier_id: Идентификатор поставщика
+        :param positions: список позиций
+        :param sup_number: 	номер отгрузки поставщика
+        :param sup_shipment_date: дата и время отгрузки поставщика. `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :return: id `obj`
+        """
+        if isinstance(sup_shipment_date, datetime):
+            sup_shipment_date = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
+        if isinstance(positions, dict):
+            positions = [positions]
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.CREATE, payload, True)
+
+    async def get(self, limit: int = None, skip: int = None,
+                  output: str = None,
+                  auto: str = None,
+                  creator_id: Union[str, int] = None, worker_id: Union[str, int] = None,
+                  agreement_id: str = None, statuses: Union[List, int] = None,
+                  number: str = None,
+                  date_start: str = None, date_end: str = None,
+                  sup_number: str = None):
+        """
+        Получение списка операций приёмки
+
+        Source:
+
+
+        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
+        :param skip: количество операций в ответе, которое нужно пропустить
+        :param output: формат вывода, флаг 'd' - загрузка удалённых операций, 'e' - загрузка дополнительной информации (договора), 's' - суммы по позициям, кол-во позиций
+        :param auto: автоопределяемое поле (поиск по частичному номеру операции или идентификатору, если задано число)
+        :param creator_id: идентификатор сотрудника-создателя
+        :param worker_id: идентификатор сотрудника-исполнителя
+        :param agreement_id: идентификатор договора
+        :param statuses: статусы (1 - новая, 2 - в работе, 3 - завершена) List[1, 2, 3] or `int` 2
+        :param number: номер операций
+        :param date_start: начальная дата диапазона поиска  `str` в формате RFC3339 или datetime object
+        :param date_end: конечная  дата диапазона поиска  `str` в формате RFC3339 или datetime object
+        :param sup_number: номер отгрузки поставщика
+        :return:
+        """
+        if isinstance(limit, int) and not (1 <= limit <= 1000):
+            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+        if isinstance(output, str) and not all(x in 'des' for x in output):
+            raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["d", "e", "s"]')
+        if isinstance(statuses, int) and not (1 <= statuses <= 3):
+            raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
+        if isinstance(statuses, list):
+            if all(1 <= x <= 3 for x in statuses):
+                statuses = ','.join(map(str, statuses))
+            else:
+                raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET, payload)
+
+    async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None,
+                            output: str = None, product_id: Union[int, str] = None, auto: str = None):
+        """
+        Получение списка позиций приёмки
+
+        Source:
+
+        :param op_id: идентификатор операции
+        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
+        :param skip: количество операций в ответе, которое нужно пропустить
+        :param output: формат вывода, 'e' - загрузка дополнительной информации (справочные товары)
+        :param product_id: идентификатор товара справочника
+        :param auto: автоопределяемое поле
+        :return:
+        """
+
+        if isinstance(limit, int) and not (1 <= limit <= 1000):
+            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+        if isinstance(output, str) and output != 'e':
+            raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET_POSITIONS, payload)
+
+    async def update(self, id: int, sup_number: Union[str, int] = None, sup_shipment_date: Union[str, datetime] = None):
+        """
+        Операция изменения приёмки
+
+        Source:
+
+        :param id: Идентификатор операции приёмки
+        :param sup_number: номер отгрузки поставщика
+        :param sup_shipment_date: дата и время отгрузки поставщика. `str` в формате %Y-%m-%d %H:%M:%S или datetime object
+        :return:
+        """
+
+        if isinstance(sup_shipment_date, datetime):
+            sup_shipment_date = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.UPDATE, payload, True)
+
+    async def change_status(self, id: int, status: int):
+        """
+        Операция изменения статуса приёмки
+
+        Source:
+
+        :param id: Идентификатор операции приёмки
+        :param status: id нового статуса приёмки
+        :return:
+        """
+        if not 1 <= status <= 3:
+            raise AbcpWrongParameterError('Параметр "status" принимает значения от 1 до 3')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.CHANGE_STATUS, payload, True)
+
+    async def delete(self, id: int):
+        """
+        Операция удаления приёмки
+
+        Source:
+
+        :param id: Идентификатор операции приёмки
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.DELETE, payload, True)
+
+    async def create_position(self, op_id: Union[str, int], loc_id: Union[str, int], product_id: Union[str, int],
+                              brand: Union[str, int], number: Union[int, str],
+                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+                              manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
+                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              comment: str = None,
+                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              so_position_id: str = None,
+                              old_order_position_id: Union[int, str] = None):
+        """
+        Операция создания позиции приёмки
+
+        Source:
+
+        :param op_id: идентификатор приёмки
+        :param loc_id: идентификатор места хранения
+        :param product_id: идентификатор товара в справочнике
+        :param brand: Название производителя.
+        :param number: Номер детали (код производителя)
+        :param quantity: Количество
+        :param sup_buy_price: Цена позиции в валюте поставщика
+        :param manufacturer_country: Страна производитель - три английские буквы: RUS - Россия, CNH - Китай, DEU - Германия и т.д.
+        :param gtd: Номер ГТД
+        :param warranty_period: Срок гарантийного обслуживания с момента продажи в днях
+        :param return_period: Срок гарантированного возврата в днях
+        :param barcodes: Штрихкод или Штрихкоды в List
+        :param comment: Комментарий
+        :param descr: Описание будущей партии
+        :param expected_quantity: Ожидаемое кол-во товара
+        :param so_position_id: Идентификатор позиции заказа поставщику, на основании которой была создана позиция приемки
+        :param old_order_position_id: Идентификатор позиции старого заказа, на основании которой была создана позиция приемки
+        :return:
+        """
+        if isinstance(barcodes, list):
+            barcodes = ' '.join(barcodes)
+        if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
+            raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.CREATE_POSITION, payload, True)
+
+    async def delete_position(self, id: int):
+        """
+        Операция удаления позиции приёмки
+
+        Source:
+
+        :param id: Идентификатор позиции приёмки
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.DELETE_POSITION, payload, True)
+
+    async def get_position(self, id: int):
+        """
+        Операция получения позиции приёмки
+
+        Source:
+
+        :param id: Идентификатор позиции приёмки
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET_POSITION, payload)
+
+    async def update_position(self, id: int, brand: str, number: str,
+                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+                              manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
+                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              comment: str = None,
+                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              so_position_id: str = None,
+                              old_order_position_id: Union[int, str] = None):
+        """
+        Операция изменения позиции приёмки
+
+        Source:
+
+        :param id: Идентификатор позиции приёмки
+        :param brand: Название производителя.
+        :param number: Номер детали (код производителя)
+        :param quantity: Номер детали (код производителя)
+        :param sup_buy_price: Цена позиции в валюте поставщика
+        :param manufacturer_country: Страна производитель - три английские буквы: RUS - Россия, CNH - Китай, DEU - Германия и т.д.
+        :param gtd: Номер ГТД
+        :param warranty_period: Срок гарантийного обслуживания с момента продажи в днях
+        :param return_period: Срок гарантированного возврата в днях
+        :param barcodes: Штрихкод или Штрихкоды в List
+        :param comment: Комментарий
+        :param descr: Описание будущей партии
+        :param expected_quantity: Ожидаемое кол-во товара
+        :param so_position_id: Идентификатор позиции заказа поставщику, на основании которой была создана позиция приемки
+        :param old_order_position_id: Идентификатор позиции старого заказа, на основании которой была создана позиция приемки
+        :return:
+        """
+        if isinstance(barcodes, list):
+            barcodes = ' '.join(map(str, barcodes))
+        if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
+            raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
+        payload = generate_payload(**locals())
+        return await self.request(api.Methods.TsAdmin.GoodReceipts.UPDATE_POSITION, payload, True)
