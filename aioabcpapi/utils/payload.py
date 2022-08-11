@@ -201,12 +201,7 @@ def generate_file_payload(exclude=None, **kwargs):
         if key not in exclude + DEFAULT_FILTER and value is not None and not key.startswith('_'):
             data.add_field(get_camel_case_key(key), str(value))
         if key in exclude and key != '' and value is not None:
-            file_path = str(value).replace('\\', '/')
             if isinstance(value, BufferedReader):
                 data.add_field('uploadFile', value, filename=value.name, content_type='multipart/form-data')
-            else:
-                data.add_field('uploadFile',
-                               open(str(value), 'rb'),
-                               filename=file_path.split('/')[-1], content_type='multipart/form-data')
     logger.debug(f'{data}')
     return data
