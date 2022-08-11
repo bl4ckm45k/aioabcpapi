@@ -1404,7 +1404,11 @@ class Distributors(BaseAbcp):
 
         :return: dict
         """
+        if not isinstance(file_path, BufferedReader):
+            file_path = open(file_path, 'rb')
         payload = generate_file_payload(exclude=['file_path'], **locals())
+        if isinstance(file_path, BufferedReader):
+            file_path.close()
         return await self.request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
 
 
