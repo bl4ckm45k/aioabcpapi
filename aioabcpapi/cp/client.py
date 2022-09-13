@@ -356,9 +356,6 @@ class Basket(BaseAbcp):
         :return:
         """
         try:
-            if shipment_method_index == 0 and shipment_method_index is not None:
-                raise AbcpParameterRequired('Для выбора самовывоза не надо передавать "shipment_method_index",\n'
-                                            'укажите параметр "shipment_office_index" если он доступен')
             if shipment_address_index != 0 and shipment_office_index is not None:
                 raise AbcpParameterRequired('Для выбора самовывоза необходимо передать "shipment_address_index=0"')
             payment_method = await self.payment_method()  # 0
@@ -366,7 +363,7 @@ class Basket(BaseAbcp):
             logger.info(
                 f'Выбран тип оплаты:\nID - {payment_method[payment_method_index]["id"]}\n'
                 f'Name - {payment_method[payment_method_index]["name"]}')
-            if shipment_method_index != 0 and shipment_address_index is not None:
+            if shipment_method_index is not None and shipment_address_index is not None:
                 shipment_address = await self.shipment_address()  # 1
                 logger.info(f'Выбран адрес доставки:\nID - {shipment_address[shipment_address_index]["id"]}\n'
                             f'Name - {shipment_address[shipment_address_index]["name"]}')
@@ -555,6 +552,7 @@ class User(BaseAbcp):
                        member_of_club: str = None,
                        birth_date: str = None,
                        filial_id: Union[int, str] = None,
+                       profile_id: Union[int, str] = None,
                        ):
 
         """
@@ -572,7 +570,7 @@ class User(BaseAbcp):
         :param mobile: Номер мобильного телефона
         :param office: Идентификатор офиса
         :param email: Почта
-        :param profile_id: Идентификатор профиля
+        :param profile_id: Идентификатор профиля (Только для API администратора)
         :param icq: ICQ UIN
         :param skype: Skype
         :param region_id: Код региона
