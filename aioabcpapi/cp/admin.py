@@ -4,7 +4,6 @@
 import logging
 from datetime import datetime
 from io import BufferedReader
-from types import NoneType
 from typing import Dict, List, Optional, Union
 
 from .. import api
@@ -46,7 +45,7 @@ class Orders(BaseAbcp):
             distributor_order_id: Union[int, str] = None,
             is_canceled: Union[int, str] = None,
             distributor_id: Union[str, int, List] = None,
-            with_deleted: Optional[str] = None,
+            with_deleted: Union[str, bool] = None,
             format: Optional[str] = None,
             limit: Optional[int] = None,
             skip: Optional[int] = None,
@@ -110,7 +109,7 @@ class Orders(BaseAbcp):
         if isinstance(format, str) and format not in ["additional", "short", "count", "status_only", "p"]:
             raise AbcpWrongParameterError(
                 f'Параметр "format" должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
-        if not isinstance(limit, NoneType) and not (1 <= int(limit) <= 1000):
+        if limit is not None and not (1 <= int(limit) <= 1000):
             raise AbcpAPIError(f'The limit must be more than {limit}')
         if isinstance(status_code, int) or isinstance(status_code, str):
             status_code = [status_code]
@@ -124,7 +123,7 @@ class Orders(BaseAbcp):
             self,
             number: Union[int, str] = None,
             internal_number: Union[int, str] = None,
-            with_deleted: str = None,
+            with_deleted: Union[str, bool] = None,
             format: str = None
 
     ):
@@ -149,7 +148,7 @@ class Orders(BaseAbcp):
         :type format: str
 
         """
-        if isinstance(number, NoneType) and isinstance(internal_number, NoneType):
+        if number is None and internal_number is None:
             raise AbcpParameterRequired(f'Один из параметров "number" или "internal_number" должен быть указан')
         payload = generate_payload(**locals())
 
@@ -262,8 +261,7 @@ class Orders(BaseAbcp):
             order_positions = [order_positions]
         if number is None and internal_number is None:
             raise AbcpParameterRequired('number and internal_number is None')
-        if not isinstance(delivery_address_id, NoneType) and int(
-                delivery_address_id) == -1 and delivery_address is None:
+        if delivery_address_id is not None and int(delivery_address_id) == -1 and delivery_address is None:
             raise AbcpAPIError(f'Не передан новый адрес доставки')
         if delivery_cost is not None and delivery_address_id is None:
             raise AbcpParameterRequired(
@@ -558,11 +556,11 @@ class Finance(BaseAbcp):
         if isinstance(date_end, datetime):
             date_end = f'{date_end:%Y-%m-%d}'
 
-        if not isinstance(order_ids, NoneType) and not isinstance(order_ids, list):
+        if order_ids is not None and not isinstance(order_ids, list):
             order_ids = [order_ids]
-        if not isinstance(status_ids, NoneType) and not isinstance(status_ids, list):
+        if status_ids is not None and not isinstance(status_ids, list):
             status_ids = [status_ids]
-        if not isinstance(customer_ids, NoneType) and not isinstance(customer_ids, list):
+        if customer_ids is not None and not isinstance(customer_ids, list):
             customer_ids = [customer_ids]
 
         payload = generate_payload_filter(**locals())
@@ -812,7 +810,7 @@ class Users(BaseAbcp):
             format: str = None,
             limit: Optional[int] = None,
             skip: Optional[int] = None,
-            desc: Union[str] = 'false'
+            desc: Union[str, bool] = 'false'
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D0.B5.D0.B9
@@ -1141,7 +1139,7 @@ class Users(BaseAbcp):
 
 
 class Staff(BaseAbcp):
-    async def get_staff(self):
+    async def get(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D1.82.D1.80.D1.83.D0.B4.D0.BD.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список менеджеров.
@@ -1150,7 +1148,7 @@ class Staff(BaseAbcp):
 
 
 class Statuses(BaseAbcp):
-    async def get_statuses(self):
+    async def get(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.BE.D0.B2
         Возвращает список всех статусов позиций заказов.
@@ -1405,12 +1403,12 @@ class Distributors(BaseAbcp):
         :return: dict
         """
         if not isinstance(file_path, BufferedReader):
-            file_path = open(file_path, 'rb')
-        payload = generate_file_payload(exclude=['file_path'], **locals())
-        if isinstance(file_path, BufferedReader):
-            file_path.close()
-        return await self.request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
-
+            with open(file_path, 'rb') as file_path:
+                payload = generate_file_payload(exclude=['file_path'], **locals())
+                return await self.request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
+        elif isinstance(file_path, BufferedReader):
+            payload = generate_file_payload(exclude=['file_path'], **locals())
+            return await self.request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
 
 class Catalog(BaseAbcp):
     async def info(self, goods_group: str, locale: str = 'ru_RU'):
