@@ -1,9 +1,5 @@
 import logging
 from datetime import datetime
-try:
-    from types import NoneType
-except ImportError:
-    NoneType = type(None)
 from typing import Union, List, Dict
 
 import pytz
@@ -185,7 +181,7 @@ class OrderPickings(BaseAbcp):
 
         if isinstance(output, str) and (not all(x in 'oe' for x in output) or len(output) > 2):
             raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["o", "e"]')
-        elif not isinstance(output, NoneType):
+        elif output is not None:
             raise AbcpWrongParameterError('output must be a string')
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.OrderPickings.GET_POSITIONS, payload)
@@ -237,7 +233,7 @@ class CustomerComplaints(BaseAbcp):
             tag_ids = [tag_ids]
         if isinstance(position_statuses, list):
             position_statuses = ','.join(map(str, position_statuses))
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.CustomerComplaints.GET, payload)
@@ -296,7 +292,7 @@ class CustomerComplaints(BaseAbcp):
             raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
 
         payload = generate_payload(**locals())
@@ -569,7 +565,7 @@ class Positions(BaseAbcp):
         :param additional_info: доп. информация. Значения `str` или List ["delivery", "unpaidAmount"]
         :return:
         """
-        if not isinstance(additional_info, NoneType):
+        if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.Positions.GET, payload)
@@ -639,9 +635,9 @@ class Positions(BaseAbcp):
             statuses = [statuses]
         if isinstance(tag_ids, list):
             tag_ids = ','.join(map(str, tag_ids))
-        if not isinstance(statuses, NoneType):
+        if statuses is not None:
             statuses = check_fields(statuses, self.FieldsChecker.statuses)
-        if not isinstance(additional_info, NoneType):
+        if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.Positions.GET_LIST, payload)
@@ -653,7 +649,7 @@ class Positions(BaseAbcp):
         :param additional_info: доп. информация. Значения `str` или List ["delivery", "unpaidAmount"]
         :return:
         """
-        if not isinstance(additional_info, NoneType):
+        if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.Positions.CANCEL, payload, True)
