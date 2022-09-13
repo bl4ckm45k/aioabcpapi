@@ -8,6 +8,7 @@ import aiohttp
 import certifi
 import ujson as json
 from aiohttp import FormData
+
 from . import api
 
 logging.basicConfig(level=logging.INFO)
@@ -54,7 +55,6 @@ class BaseAbcp:
         self._connector_class: Type[aiohttp.TCPConnector] = aiohttp.TCPConnector
         self._connector_init = dict(limit=connections_limit, ssl=ssl_context)
 
-        self._timeout = None
         self.timeout = timeout
 
     async def get_new_session(self) -> aiohttp.ClientSession:
@@ -75,9 +75,6 @@ class BaseAbcp:
             await self._session.close()
             self._session = await self.get_new_session()
 
-        return self._session
-
-    def session(self) -> Optional[aiohttp.ClientSession]:
         return self._session
 
     async def close(self):
