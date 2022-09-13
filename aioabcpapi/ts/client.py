@@ -1,6 +1,9 @@
 import logging
 from datetime import datetime
-from types import NoneType
+try:
+    from types import NoneType
+except ImportError:
+    NoneType = type(None)
 from typing import Union, List, Dict
 
 import pytz
@@ -107,7 +110,8 @@ class GoodReceipts(BaseAbcp):
 class OrderPickings(BaseAbcp):
     async def get(self, limit: int = None, skip: int = None,
                   output: str = None, auto: Union[str, int] = None,
-                  creator_id: Union[int, str] = None, worker_id: Union[int, str] = None, agreement_id: Union[int, str] = None,
+                  creator_id: Union[int, str] = None, worker_id: Union[int, str] = None,
+                  agreement_id: Union[int, str] = None,
                   status: Union[List, str, int] = None, number: str = None,
                   date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
                   co_old_pos_ids: Union[List, str, int] = None):
@@ -192,9 +196,10 @@ class CustomerComplaints(BaseAbcp):
         get_fields = ["orderPicking", "agreement", "posInfo"]
         get_positions_fields = ["product", "orderPickingInfo", "operationInfo", "supplierReturnPos"]
 
-    async def get(self, auto: Union[str, int] = None, creator_id: Union[int, str] = None, expert_id: Union[int, str] = None,
+    async def get(self, auto: Union[str, int] = None, creator_id: Union[int, str] = None,
+                  expert_id: Union[int, str] = None,
                   order_picking_id: Union[int, str] = None, position_statuses: Union[List, str, int] = None,
-                  tag_ids: Union[List,str, int] = None, position_auto: str = None,
+                  tag_ids: Union[List, str, int] = None, position_auto: str = None,
                   number: str = None, date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
                   skip: int = None, limit: int = None,
                   output: str = None, fields: Union[List, str] = None):
@@ -348,7 +353,7 @@ class Orders(BaseAbcp):
     async def create_by_cart(self, delivery_address: str, delivery_person: str, delivery_contact: str,
                              delivery_comment: str = None, delivery_method_id: Union[int, str] = None,
                              number: Union[str, int] = None, create_time: Union[str, datetime] = None,
-                             positions: Union[List,str, int] = None):
+                             positions: Union[List, str, int] = None):
         """
 
         :param delivery_address: адрес доставки
@@ -535,7 +540,7 @@ class Cart(BaseAbcp):
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.Cart.CLEAR, payload, True)
 
-    async def delete_positions(self, position_ids: Union[List,str, int]):
+    async def delete_positions(self, position_ids: Union[List, str, int]):
         """
         Удаление позиций корзины
 
@@ -569,13 +574,14 @@ class Positions(BaseAbcp):
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsClient.Positions.GET, payload)
 
-    async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None, manager_id: Union[int, str] = None,
+    async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
+                       manager_id: Union[int, str] = None,
                        no_manager_assigned: bool = False,
                        date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
                        update_date_start: Union[str, datetime] = None, update_date_end: Union[str, datetime] = None,
                        deadline_date_start: Union[str, datetime] = None, deadline_date_end: Union[str, datetime] = None,
                        route_ids: Union[List, str, int] = None,
-                       distributor_ids: Union[List,str, int] = None, ids: Union[List, str, int] = None,
+                       distributor_ids: Union[List, str, int] = None, ids: Union[List, str, int] = None,
                        order_ids: Union[List, str, int] = None, product_ids: Union[List, str, int] = None,
                        statuses: Union[List, str] = None,
                        tag_ids: Union[List, str, int] = None,
