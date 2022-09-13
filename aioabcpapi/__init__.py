@@ -1,4 +1,5 @@
 import sys
+
 if sys.version_info < (3, 7):
     raise RuntimeError('Your Python version {0} is not supported, please install '
                        'Python 3.7+'.format('.'.join(map(str, sys.version_info[:3]))))
@@ -10,5 +11,5 @@ from .exceptions import (NetworkError, UnsupportedHost, UnsupportedLogin, Passwo
                          AbcpParameterRequired, TeaPot)
 
 __author__ = 'bl4ckm45k'
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 __email__ = 'nonpowa@gmail.com'
