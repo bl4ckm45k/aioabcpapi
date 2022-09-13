@@ -1,7 +1,6 @@
 import base64
 import logging
 from datetime import datetime
-from types import NoneType
 from typing import Union, List, Dict
 
 import pytz
@@ -97,7 +96,7 @@ class OrderPickings(BaseAbcp):
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
         if isinstance(limit, str) and not limit.isdigit():
             raise AbcpWrongParameterError('Параметр "limit" должен быть числом')
-        if not isinstance(statuses, NoneType) and any(not (1 <= int(x) <= 5) for x in statuses):
+        if statuses is not None and any(not (1 <= int(x) <= 5) for x in statuses):
             raise AbcpWrongParameterError('Параметр "statuses" принимает значения от 1 до 5')
         if isinstance(statuses, int) or isinstance(statuses, str):
             statuses = [statuses]
@@ -170,7 +169,7 @@ class OrderPickings(BaseAbcp):
         """
         if isinstance(done_right_away, bool):
             done_right_away = int(done_right_away)
-        if isinstance(status_id, NoneType) and done_right_away == 1:
+        if status_id is None and done_right_away == 1:
             raise AbcpParameterRequired(
                 'При указании параметра done_right_away, status_id является обязательным и должен иметь признак списания')
         if isinstance(pp_ids, int) or isinstance(pp_ids, str):
@@ -194,7 +193,7 @@ class OrderPickings(BaseAbcp):
         """
         if operation_status_id > 5 or operation_status_id < 1:
             raise AbcpWrongParameterError('Параметр "operation_status_id" может принимать значения от 1 до 5')
-        if isinstance(positions_status_id, NoneType) and (operation_status_id == 3 or operation_status_id == 5):
+        if positions_status_id is None and (operation_status_id == 3 or operation_status_id == 5):
             raise AbcpWrongParameterError(
                 f'Параметр "positions_status_id" является обязательным при смене статуса операции на {operation_status_id}')
         payload = generate_payload(**locals())
@@ -275,7 +274,7 @@ class CustomerComplaints(BaseAbcp):
             raise AbcpWrongParameterError('position_type parameter must be between 1 and 3')
         if isinstance(position_statuses, list):
             position_statuses = ','.join(map(str, position_statuses))
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET, payload)
@@ -338,7 +337,7 @@ class CustomerComplaints(BaseAbcp):
             raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 8')
         if isinstance(type, int) and not (1 <= type <= 3):
             raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
         payload = generate_payload(exclude=['old_item_id'], **locals())
         return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
@@ -435,7 +434,7 @@ class CustomerComplaints(BaseAbcp):
             del encoded_string
         if all(x is None for x in [number, expert_id]):
             raise AbcpParameterRequired('Один из параметров "number" или "expert_id" должен быть указан')
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.update_fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
@@ -482,7 +481,7 @@ class Orders(BaseAbcp):
         """
         if isinstance(create_time, datetime):
             create_time = generate(create_time.replace(tzinfo=pytz.utc))
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
 
         payload = generate_payload(**locals())
@@ -525,7 +524,7 @@ class Orders(BaseAbcp):
         :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
         :return:
         """
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         if isinstance(create_time, datetime):
             create_time = generate(create_time.replace(tzinfo=pytz.utc))
@@ -641,7 +640,7 @@ class Orders(BaseAbcp):
         :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
         :return:
         """
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.Orders.UPDATE, payload, True)
@@ -660,7 +659,7 @@ class Orders(BaseAbcp):
         """
         if isinstance(merge_orders_ids, int) or isinstance(merge_orders_ids, str):
             merge_orders_ids = [merge_orders_ids]
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.Orders.MERGE, payload, True)
@@ -680,7 +679,7 @@ class Orders(BaseAbcp):
         """
         if isinstance(position_ids, int) or isinstance(position_ids, str):
             position_ids = [position_ids]
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.Orders.SPLIT, payload, True)
@@ -697,7 +696,7 @@ class Orders(BaseAbcp):
         :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
         :return:
         """
-        if not isinstance(fields, NoneType):
+        if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.Orders.REPRICE, payload, True)
@@ -820,8 +819,7 @@ class Cart(BaseAbcp):
         :param deadline_max: новый максимальный срок поставки
         :return:
         """
-        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
-                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+        if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
@@ -845,8 +843,7 @@ class Cart(BaseAbcp):
         """
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
-        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
-                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+        if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
@@ -883,7 +880,7 @@ class Cart(BaseAbcp):
         if all(x is None for x in [client_id, guest_id]):
             raise AbcpWrongParameterError(
                 'Один из параметров должен быть определён. "client_id", "guest_id"')
-        if not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType):
+        if client_id is not None and guest_id is not None:
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
@@ -904,7 +901,7 @@ class Cart(BaseAbcp):
         if all(x is None for x in [client_id, guest_id]):
             raise AbcpWrongParameterError(
                 'Один из параметров должен быть определён. "client_id", "guest_id"')
-        if not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType):
+        if client_id is not None and guest_id is not None:
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
@@ -922,8 +919,7 @@ class Cart(BaseAbcp):
         :param guest_id: идентификатор гостя, обязательный, если не задан client_id
         :return:
         """
-        if (isinstance(client_id, NoneType) and isinstance(guest_id, NoneType)) or (
-                not isinstance(client_id, NoneType) and not isinstance(guest_id, NoneType)):
+        if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         if not isinstance(position_ids, list):
@@ -971,7 +967,7 @@ class Positions(BaseAbcp):
                            "order", "delivery", "tags", "unpaidAmount"]
         :return:
         """
-        if not isinstance(additional_info, NoneType):
+        if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
 
         payload = generate_payload(**locals())
@@ -1067,7 +1063,7 @@ class Positions(BaseAbcp):
             statuses = [statuses]
         if isinstance(tag_ids, list):
             tag_ids = ','.join(map(str, tag_ids))
-        if not isinstance(statuses, NoneType):
+        if statuses is not None:
             statuses = check_fields(statuses, self.FieldsChecker.statuses)
         payload = generate_payload(**locals())
         return await self.request(api.Methods.TsAdmin.Positions.GET_LIST, payload)
