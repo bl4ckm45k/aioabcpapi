@@ -24,7 +24,7 @@ and [aiohttp](https://github.com/aio-libs/aiohttp "aiohttp")
 Разделяются на `cp` и `ts`, они в свою очередь разделяются на `client` и `admin`, далее для поиска нужного вам метода
 отталкивайтесь от документации [API ABCP](https://www.abcp.ru/wiki/ABCP.API).
 
-Для примера из документации **TS.Client** [Обновление позиции в корзине](https://www.abcp.ru/wiki/API.TS.Client#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D0.B5)
+Для примера, из документации **TS.Client**, [Обновление позиции в корзине](https://www.abcp.ru/wiki/API.TS.Client#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D0.B5)
 описание операции следующее:
 >  Операция: POST /ts/cart/update
 
@@ -41,7 +41,7 @@ and [aiohttp](https://github.com/aio-libs/aiohttp "aiohttp")
 
 ------------
 
-Все аргументы времени, такие как `create_time`, `update_time`, `date_start`, `date_end` и прочие принимают `str` или `datetime`. При передаче `datetime` объект будет преобразован в зависимости от требований метода в `RFC3339` или `"%Y-%m-%d %H:%M:%S"`
+Все аргументы времени, такие как `create_time`, `update_time`, `date_start`, `date_end` и прочие, принимают `str` или `datetime`. При передаче `datetime` объект будет преобразован в зависимости от требований метода в `RFC3339` или `"%Y-%m-%d %H:%M:%S"`
 
 ### Пример
 
