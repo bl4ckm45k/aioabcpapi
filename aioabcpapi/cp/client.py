@@ -167,7 +167,15 @@ class Search(BaseAbcp):
         return await self.request(api.Methods.Client.Search.ADVICES_BATCH, payload, True)
 
 
+class OrderParams:
+    shipment_address = None
+    shipment_method = None
+    payment_method = None
+    shipment_office = None
+
+
 class Basket(BaseAbcp):
+
     async def get_baskets_list(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD
@@ -359,23 +367,25 @@ class Basket(BaseAbcp):
             if shipment_address_index != 0 and shipment_office_index is not None:
                 raise AbcpParameterRequired('Для выбора самовывоза необходимо передать "shipment_address_index=0"')
             payment_method = await self.payment_method()  # 0
-            self._payment_method = payment_method[payment_method_index]['id']
+            OrderParams.payment_method = payment_method[payment_method_index]['id']
             logger.info(
                 f'Выбран тип оплаты:\nID - {payment_method[payment_method_index]["id"]}\n'
                 f'Name - {payment_method[payment_method_index]["name"]}')
             if shipment_method_index is not None and shipment_address_index is not None:
                 shipment_address = await self.shipment_address()  # 1
+                OrderParams.shipment_address = shipment_address[shipment_address_index]["id"]
+                logger.info(f'\n\n\n{shipment_address}\n\n\n\n')
                 logger.info(f'Выбран адрес доставки:\nID - {shipment_address[shipment_address_index]["id"]}\n'
                             f'Name - {shipment_address[shipment_address_index]["name"]}')
-                self._shipment_address = shipment_address[shipment_address_index]["id"]
+
             if shipment_office_index is not None and shipment_method_index is None:
                 shipment_office = await self.shipment_offices()
-                self._shipment_office = shipment_office[shipment_office_index]["id"]
+                OrderParams.shipment_office = shipment_office[shipment_office_index]["id"]
                 logger.info(f'Выбран офис самовывоза:\nID - {shipment_office[shipment_office_index]["id"]}\n'
                             f'Name - {shipment_office[shipment_office_index]["name"]}\n')
             elif shipment_method_index is not None and shipment_office_index is None:
                 shipment_method = await self.shipment_method()  # 0
-                self._shipment_method = shipment_method[shipment_method_index]['id']
+                OrderParams.shipment_method = shipment_method[shipment_method_index]['id']
                 logger.info(f'Выбран тип доставки:\nid - {shipment_method[shipment_method_index]["id"]}\n'
                             f'Name - {shipment_method[shipment_method_index]["name"]}\n')
         except KeyError:
@@ -385,6 +395,8 @@ class Basket(BaseAbcp):
 
 
 class Orders(BaseAbcp):
+
+
     async def order_by_basket(self,
                               payment_method: str = None,
                               shipment_method: str = None,
@@ -419,13 +431,13 @@ class Orders(BaseAbcp):
         :return:
         """
         if payment_method is None:
-            payment_method = self._payment_method
+            payment_method = OrderParams.payment_method
         if shipment_method is None:
-            shipment_method = self._shipment_method
+            shipment_method = OrderParams.shipment_method
         if shipment_address is None:
-            shipment_address = self._shipment_address
+            shipment_address = OrderParams.shipment_address
         if shipment_office is None:
-            shipment_office = self._shipment_office
+            shipment_office = OrderParams.shipment_office
         payload = generate_payload(**locals())
         return await self.request(api.Methods.Client.Basket.BASKET_ORDER, payload, True)
 
@@ -441,7 +453,7 @@ class Orders(BaseAbcp):
         в заказ они не попадут и останутся в корзине пользователя. Использование данной операции оптимально при автоматическом перезаказе у клиентов платформы ABCP.
 
 
-        :param positions: Набор добавляемых деталей в формате {'brand': luk, 'number': '602000600', 'itemKey': 'Xqgs...', 'supplierCode': '1234', 'quantity': 1, 'comment': 'Hello, part of world'} supplierCode or code
+        :param positions: Набор добавляемых деталей в формате {'brand': luk, 'number': '602000600', 'itemKey': 'Xqgs...', 'supplierCode': '1234', 'quantity': 1, 'comment': 'Hello, part of world'}
         :param payment_method: 	Идентификатор способа оплаты.
         :type payment_method: str
         :param shipment_method: Идентификатор способа доставки.
