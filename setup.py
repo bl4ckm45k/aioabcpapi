@@ -11,7 +11,7 @@ requirements = ["aiohttp>=3.8.1", "certifi>=2022.6.15", "ujson>=5.3.0", "pytz", 
 
 setup(
     name='aioabcpapi',
-    version='1.0.4',
+    version='1.0.6',
     author='bl4ckm45k',
     author_email='nonpowa@gmail.com',
     description='Async library for ABCP API',
