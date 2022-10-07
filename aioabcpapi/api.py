@@ -71,7 +71,7 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
         raise AbcpAPIError(f"{body} [{status_code}]")
     elif status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
         raise AbcpAPIError(f"{body} [{status_code}]")
-    elif status_code == HTTPStatus.IM_A_TEAPOT:
+    elif status_code == 418:
         raise TeaPot("RFC 2324, секция 2.3.2: 418 I'm a teapot")
 
     raise AbcpAPIError(f"{body} [{status_code}]")
