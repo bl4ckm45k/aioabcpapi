@@ -57,7 +57,7 @@ class BaseAbcp:
 
         self.timeout = timeout
 
-    async def get_new_session(self) -> aiohttp.ClientSession:
+    async def _get_new_session(self) -> aiohttp.ClientSession:
         return aiohttp.ClientSession(
             connector=self._connector_class(**self._connector_init),
             json_serialize=json.dumps
@@ -67,13 +67,13 @@ class BaseAbcp:
     def loop(self) -> Optional[asyncio.AbstractEventLoop]:
         return self._main_loop
 
-    async def get_session(self) -> Optional[aiohttp.ClientSession]:
+    async def _get_session(self) -> Optional[aiohttp.ClientSession]:
         if self._session is None or self._session.closed:
-            self._session = await self.get_new_session()
+            self._session = await self._get_new_session()
 
         if not self._session._loop.is_running():
             await self._session.close()
-            self._session = await self.get_new_session()
+            self._session = await self._get_new_session()
 
         return self._session
 
@@ -109,5 +109,5 @@ class BaseAbcp:
         if data is None:
             data = {'userlogin': self._login, 'userpsw': self._password}
 
-        return await api.make_request(await self.get_session(), self._host, self._admin,
+        return await api.make_request(await self._get_session(), self._host, self._admin,
                                       method, data, post, timeout=self.timeout, **kwargs)

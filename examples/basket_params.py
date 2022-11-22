@@ -20,6 +20,7 @@ async def get_basket_params():
                                                  shipment_office_index=0)
     orders_list = api.cp.client.orders.orders_list(orders=[94233131,
                                                            93745568])
+    await api.cp.admin.distributors
     logger.info(f'{orders_list}')
 
 

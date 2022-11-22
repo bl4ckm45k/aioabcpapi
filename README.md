@@ -1,4 +1,4 @@
-# AioAbcpApi
+## AioAbcpApi
 
 Async library for [API ABCP](https://www.abcp.ru/wiki/ABCP.API "API ABCP")
 with [asyncio](https://docs.python.org/3/library/asyncio.html "asyncio")
@@ -13,9 +13,10 @@ and [aiohttp](https://github.com/aio-libs/aiohttp "aiohttp")
 
 
 Присоединяйтесь к [телеграм чату](https://t.me/aioabcpapi "Телеграм чат")
+### Установка
+`pip install aioabcpapi`
 
-
-## Описание
+### Описание
 
 ------------
 
@@ -30,7 +31,7 @@ and [aiohttp](https://github.com/aio-libs/aiohttp "aiohttp")
 
 Для использования этого метода нам нужно будет обратиться к `await api.ts.client.cart.update()`
 
-#### Доступ к API
+### Доступ к API
 
 ------------
 [Для API Администратора](https://cp.abcp.ru/?page=allsettings&systemsettings&apiInformation)
