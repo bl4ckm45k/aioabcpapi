@@ -202,6 +202,10 @@ def generate_file_payload(exclude=None, **kwargs):
             data.add_field(get_camel_case_key(key), str(value))
         if key in exclude and key != '' and value is not None:
             if isinstance(value, BufferedReader):
-                data.add_field('uploadFile', value, filename=value.name, content_type='multipart/form-data')
+                data.add_field(get_camel_case_key(key), value, filename=value.name, content_type='multipart/form-data')
+            if isinstance(value, str) and not value.isdigit():
+                with open(value, 'rb') as file:
+                    data.add_field(get_camel_case_key(key), file, filename=file.name,
+                                   content_type='multipart/form-data')
     logger.debug(f'{data}')
     return data
