@@ -12,7 +12,6 @@ logger = logging.getLogger('Cp.Client')
 class ClientApi(BaseAbcp):
     def __init__(self, *args):
         super().__init__(*args)
-        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
         self.search = Search(*args)
         self.basket = Basket(*args)
         self.orders = Orders(*args)
@@ -42,7 +41,7 @@ class Search(BaseAbcp):
         if isinstance(use_online_stocks, bool):
             use_online_stocks = int(use_online_stocks)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Search.BRANDS, payload)
+        return await self._request(api.Methods.Client.Search.BRANDS, payload)
 
     async def articles(self,
                        number: Union[str, int],
@@ -80,7 +79,7 @@ class Search(BaseAbcp):
         if isinstance(with_out_analogs, bool):
             with_out_analogs = int(with_out_analogs)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Search.ARTICLES, payload)
+        return await self._request(api.Methods.Client.Search.ARTICLES, payload)
 
     async def batch(self, search: Union[List[Dict], Dict], profile_id: Union[int, str] = None):
         """
@@ -101,7 +100,7 @@ class Search(BaseAbcp):
             search = [search]
         payload = generate_payload(exclude=['search'], **locals())
         # It can work with GET and POST, but the documentation specifies POST
-        return await self.request(api.Methods.Client.Search.BATCH, payload, True)
+        return await self._request(api.Methods.Client.Search.BATCH, payload, True)
 
     async def history(self):
         """
@@ -111,7 +110,7 @@ class Search(BaseAbcp):
 
         :return: dict
         """
-        return await self.request(api.Methods.Client.Search.HISTORY)
+        return await self._request(api.Methods.Client.Search.HISTORY)
 
     async def tips(self, number: Union[str, int], locale: Optional[str]):
         """Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B4.D1.81.D0.BA.D0.B0.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D0.BF.D0.BE.D0.B8.D1.81.D0.BA.D1.83
@@ -125,7 +124,7 @@ class Search(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Search.TIPS, payload)
+        return await self._request(api.Methods.Client.Search.TIPS, payload)
 
     async def advices(self, brand: Union[str, int], number: Union[str, int], limit: Optional[int] = 5):
         """
@@ -147,7 +146,7 @@ class Search(BaseAbcp):
         """
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Search.ADVICES, payload)
+        return await self._request(api.Methods.Client.Search.ADVICES, payload)
 
     async def advices_batch(self, articles: Union[List[Dict], Dict], limit: Optional[int] = 5):
         """
@@ -161,10 +160,10 @@ class Search(BaseAbcp):
         :param limit:
         :return:
         """
-        if type(articles) is dict:
+        if isinstance(articles, dict):
             articles = [articles]
         payload = generate_payload(exclude=['articles'], **locals())
-        return await self.request(api.Methods.Client.Search.ADVICES_BATCH, payload, True)
+        return await self._request(api.Methods.Client.Search.ADVICES_BATCH, payload, True)
 
 
 class OrderParams:
@@ -184,7 +183,7 @@ class Basket(BaseAbcp):
 
         :return: dict
         """
-        return await self.request(api.Methods.Client.Basket.BASKETS_LIST)
+        return await self._request(api.Methods.Client.Basket.BASKETS_LIST)
 
     async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: Union[int, str] = None):
         """
@@ -210,7 +209,7 @@ class Basket(BaseAbcp):
             basket_positions = [basket_positions]
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Client.Basket.BASKET_ADD, payload, True)
+        return await self._request(api.Methods.Client.Basket.BASKET_ADD, payload, True)
 
     async def clear(self, basket_id: Union[int, str] = None):
         """
@@ -224,7 +223,7 @@ class Basket(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.BASKET_CLEAR, payload, True)
+        return await self._request(api.Methods.Client.Basket.BASKET_CLEAR, payload, True)
 
     async def content(self, basket_id: Union[int, str] = None):
 
@@ -242,7 +241,7 @@ class Basket(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.BASKET_CONTENT, payload)
+        return await self._request(api.Methods.Client.Basket.BASKET_CONTENT, payload)
 
     async def options(self):
         """
@@ -253,7 +252,7 @@ class Basket(BaseAbcp):
 
         :return:
         """
-        return await self.request(api.Methods.Client.Basket.BASKET_OPTIONS)
+        return await self._request(api.Methods.Client.Basket.BASKET_OPTIONS)
 
     async def payment_method(self):
         """
@@ -264,7 +263,7 @@ class Basket(BaseAbcp):
         Идентификатор способа оплаты необходим при отправке заказа (при включенной опции "Корзина: показывать тип оплаты").
         :return:
         """
-        return await self.request(api.Methods.Client.Basket.PAYMENT_METHODS)
+        return await self._request(api.Methods.Client.Basket.PAYMENT_METHODS)
 
     async def shipment_method(self):
         """
@@ -274,7 +273,7 @@ class Basket(BaseAbcp):
 
         :return:
         """
-        return await self.request(api.Methods.Client.Basket.SHIPMENT_METHOD)
+        return await self._request(api.Methods.Client.Basket.SHIPMENT_METHOD)
 
     async def shipment_offices(self, offices_type: Optional[str] = None):
         """
@@ -294,7 +293,7 @@ class Basket(BaseAbcp):
         if isinstance(offices_type, str) and (offices_type != 'order' or offices_type != 'registration'):
             raise AbcpParameterRequired("offices_type может принимать значения 'order' или 'registration'")
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.SHIPMENT_OFFICES, payload)
+        return await self._request(api.Methods.Client.Basket.SHIPMENT_OFFICES, payload)
 
     async def shipment_address(self):
         """
@@ -305,7 +304,7 @@ class Basket(BaseAbcp):
 
         :return:
         """
-        return await self.request(api.Methods.Client.Basket.SHIPMENT_ADDRESS)
+        return await self._request(api.Methods.Client.Basket.SHIPMENT_ADDRESS)
 
     async def shipment_dates(self, min_deadline_time: int, max_deadline_time: int,
                              shipment_address: Union[str, int] = None):
@@ -328,7 +327,7 @@ class Basket(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.SHIPMENT_DATES)
+        return await self._request(api.Methods.Client.Basket.SHIPMENT_DATES)
 
     async def add_shipment_address(self, address: str):
         """
@@ -341,7 +340,7 @@ class Basket(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.SHIPMENT_DATES, payload, True)
+        return await self._request(api.Methods.Client.Basket.SHIPMENT_DATES, payload, True)
 
     async def set_client_params(self,
                                 payment_method_index: int,
@@ -439,7 +438,7 @@ class Orders(BaseAbcp):
         if shipment_office is None:
             shipment_office = OrderParams.shipment_office
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Basket.BASKET_ORDER, payload, True)
+        return await self._request(api.Methods.Client.Basket.BASKET_ORDER, payload, True)
 
     async def order_instant(self, positions: Union[List[Dict], Dict],
                             payment_method: str = None, shipment_method: str = None,
@@ -488,7 +487,7 @@ class Orders(BaseAbcp):
         if shipment_office is None:
             shipment_office = self._shipment_office
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Orders.ORDERS_INSTANT, payload, True)
+        return await self._request(api.Methods.Client.Orders.ORDERS_INSTANT, payload, True)
 
     async def orders_list(self, orders: Union[List, str, int]):
         """
@@ -502,7 +501,7 @@ class Orders(BaseAbcp):
         if not isinstance(orders, list):
             orders = [orders]
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Orders.GET_ORDERS_LIST, payload)
+        return await self._request(api.Methods.Client.Orders.GET_ORDERS_LIST, payload)
 
     async def get_orders(self, format: str = None, skip: Optional[int] = None, limit: Optional[int] = None):
         """
@@ -522,7 +521,7 @@ class Orders(BaseAbcp):
             raise AbcpWrongParameterError(f'Параметр limit может быть в диапазоне от 1 до 1000')
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Orders.GET_ORDERS, payload)
+        return await self._request(api.Methods.Client.Orders.GET_ORDERS, payload)
 
     async def cancel_position(self, position_id: int):
         """
@@ -535,7 +534,7 @@ class Orders(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Orders.CANCEL_POSITION, payload, True)
+        return await self._request(api.Methods.Client.Orders.CANCEL_POSITION, payload, True)
 
 
 class User(BaseAbcp):
@@ -607,7 +606,7 @@ class User(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.User.REGISTER, payload, True)
+        return await self._request(api.Methods.Client.User.REGISTER, payload, True)
 
     async def activate(self, user_code: int, activation_code: Union[str, int]):
         """
@@ -619,7 +618,7 @@ class User(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.User.ACTIVATION, payload, True)
+        return await self._request(api.Methods.Client.User.ACTIVATION, payload, True)
 
     async def user_info(self):
         """
@@ -629,7 +628,7 @@ class User(BaseAbcp):
 
         :return:
         """
-        return await self.request(api.Methods.Client.User.USER_INFO)
+        return await self._request(api.Methods.Client.User.USER_INFO)
 
     async def restore(self, email_or_mobile: str = None, password_new: str = None, code: str = None):
         """
@@ -654,7 +653,7 @@ class User(BaseAbcp):
         if email_or_mobile is None and any(x is None for x in [password_new, code]):
             raise AbcpAPIError('Для второго этапа должны быть указаны password_new и code ')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.User.USER_RESTORE, payload, True)
+        return await self._request(api.Methods.Client.User.USER_RESTORE, payload, True)
 
 
 class Garage(BaseAbcp):
@@ -669,7 +668,7 @@ class Garage(BaseAbcp):
         """
         if user_id is not None and not self._admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
-        return await self.request(api.Methods.Client.Garage.USER_GARAGE)
+        return await self._request(api.Methods.Client.Garage.USER_GARAGE)
 
     async def get_car(self, car_id: int, user_id: Union[int, str] = None):
         """
@@ -686,7 +685,7 @@ class Garage(BaseAbcp):
         if user_id is not None and not self._admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Garage.GARAGE_CAR, payload)
+        return await self._request(api.Methods.Client.Garage.GARAGE_CAR, payload)
 
     async def add(self, name: str,
                   comment: str = None, year: str = None, vin: str = None,
@@ -720,7 +719,7 @@ class Garage(BaseAbcp):
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
 
-        return await self.request(api.Methods.Client.Garage.GARAGE_ADD, payload, True)
+        return await self._request(api.Methods.Client.Garage.GARAGE_ADD, payload, True)
 
     async def update(self, car_id: int, name: str = None,
                      comment: str = None, year: str = None, vin: str = None,
@@ -756,7 +755,7 @@ class Garage(BaseAbcp):
         if user_id is not None and not self._admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Garage.GARAGE_UPDATE, payload, True)
+        return await self._request(api.Methods.Client.Garage.GARAGE_UPDATE, payload, True)
 
     async def delete(self, car_id: int, user_id: Union[int, str] = None):
         """
@@ -771,7 +770,7 @@ class Garage(BaseAbcp):
         if user_id is not None and not self._admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Garage.GARAGE_DELETE, payload, True)
+        return await self._request(api.Methods.Client.Garage.GARAGE_DELETE, payload, True)
 
 
 class CarTree(BaseAbcp):
@@ -786,7 +785,7 @@ class CarTree(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.CarTree.CAR_TREE_YEARS, payload)
+        return await self._request(api.Methods.Client.CarTree.CAR_TREE_YEARS, payload)
 
     async def manufacturers(self, year: int = None):
         """
@@ -799,7 +798,7 @@ class CarTree(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.CarTree.CAR_TREE_MANUFACTURERS, payload)
+        return await self._request(api.Methods.Client.CarTree.CAR_TREE_MANUFACTURERS, payload)
 
     async def models(self, manufacturer_id: Union[int, str] = None, year: Union[int, str] = None):
         """
@@ -811,7 +810,7 @@ class CarTree(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.CarTree.CAR_TREE_MODELS, payload)
+        return await self._request(api.Methods.Client.CarTree.CAR_TREE_MODELS, payload)
 
     async def modifications(self, manufacturer_id: Union[int, str] = None, model_id: Union[int, str] = None,
                             year: Union[int, str] = None):
@@ -825,7 +824,7 @@ class CarTree(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.CarTree.CAR_TREE_MODIFICATIONS, payload)
+        return await self._request(api.Methods.Client.CarTree.CAR_TREE_MODIFICATIONS, payload)
 
 
 class Form(BaseAbcp):
@@ -845,7 +844,7 @@ class Form(BaseAbcp):
             raise AbcpWrongParameterError(
                 "Name parameter must be one of: 'registration_wholesale', 'registration_retail'")
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.Client.Form.FIELDS, payload)
+        return await self._request(api.Methods.Client.Form.FIELDS, payload)
 
 
 class Articles(BaseAbcp):
@@ -858,7 +857,7 @@ class Articles(BaseAbcp):
 
         :return:
         """
-        return await self.request(api.Methods.Client.Articles.BRANDS)
+        return await self._request(api.Methods.Client.Articles.BRANDS)
 
     async def info(self, brand: Union[int, str], number: Union[str, int],
                    format: str, source: Union[List, str],
@@ -876,4 +875,4 @@ class Articles(BaseAbcp):
                 f'Параметр "source" может содержать следующие флаги: standard, common, common_cat')
 
         payload = generate_payload(exclude=['cross_image', 'with_original'], **locals())
-        return await self.request(api.Methods.Client.Articles.INFO, payload)
+        return await self._request(api.Methods.Client.Articles.INFO, payload)
