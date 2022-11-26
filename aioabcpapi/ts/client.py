@@ -14,6 +14,17 @@ from ..utils.payload import generate_payload
 logger = logging.getLogger('Ts.Client')
 
 
+class TsClientApi(BaseAbcp):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.good_receipts = GoodReceipts(*args)
+        self.order_pickings = OrderPickings(*args)
+        self.customer_complaints = CustomerComplaints(*args)
+        self.orders = Orders(*args)
+        self.cart = Cart(*args)
+        self.positions = Positions(*args)
+
+
 class GoodReceipts(BaseAbcp):
     async def create(self, code: Union[str, int],
                      positions: Union[List[Dict[str, str]], Dict[str, str]],
@@ -33,7 +44,7 @@ class GoodReceipts(BaseAbcp):
         payload = generate_payload(**locals())
         if isinstance(sup_shipment_date, datetime):
             sup_shipment_date = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
-        return await self.request(api.Methods.TsClient.GoodReceipts.CREATE, payload, True)
+        return await self._request(api.Methods.TsClient.GoodReceipts.CREATE, payload, True)
 
     async def get(self, limit: int = None, skip: int = None,
                   output: str = None,
@@ -76,7 +87,7 @@ class GoodReceipts(BaseAbcp):
             else:
                 raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.GoodReceipts.GET, payload)
+        return await self._request(api.Methods.TsClient.GoodReceipts.GET, payload)
 
     async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None,
                             output: str = None, product_id: Union[int, str] = None, auto: str = None):
@@ -100,7 +111,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(auto, str) and (len(auto) < 3):
             raise AbcpWrongParameterError('Параметр "auto" должен состоять минимум из 3 символов')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.GoodReceipts.GET_POSITIONS, payload)
+        return await self._request(api.Methods.TsClient.GoodReceipts.GET_POSITIONS, payload)
 
 
 class OrderPickings(BaseAbcp):
@@ -146,7 +157,7 @@ class OrderPickings(BaseAbcp):
         if isinstance(output, str) and (not all(x in 'des' for x in output) or len(output) > 3):
             raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["d", "e", "s"]')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.OrderPickings.GET, payload)
+        return await self._request(api.Methods.TsClient.OrderPickings.GET, payload)
 
     async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None, output: str = None,
                             product_id: Union[int, str] = None,
@@ -184,7 +195,7 @@ class OrderPickings(BaseAbcp):
         elif output is not None:
             raise AbcpWrongParameterError('output must be a string')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.OrderPickings.GET_POSITIONS, payload)
+        return await self._request(api.Methods.TsClient.OrderPickings.GET_POSITIONS, payload)
 
 
 class CustomerComplaints(BaseAbcp):
@@ -236,7 +247,7 @@ class CustomerComplaints(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.CustomerComplaints.GET, payload)
+        return await self._request(api.Methods.TsClient.CustomerComplaints.GET, payload)
 
     async def get_positions(self, op_id: Union[str, int],
                             order_picking_good_id: Union[int, str] = None,
@@ -296,7 +307,7 @@ class CustomerComplaints(BaseAbcp):
             fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.CustomerComplaints.GET_POSITIONS, payload)
+        return await self._request(api.Methods.TsClient.CustomerComplaints.GET_POSITIONS, payload)
 
     async def create(self, order_picking_id: Union[str, int], positions: Union[List[Dict], Dict]):
         """
@@ -312,7 +323,7 @@ class CustomerComplaints(BaseAbcp):
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self.request(api.Methods.TsClient.CustomerComplaints.CREATE, payload, True)
+        return await self._request(api.Methods.TsClient.CustomerComplaints.CREATE, payload, True)
 
     async def update_position(self, id: int, quantity: Union[str, int]):
         """
@@ -327,7 +338,7 @@ class CustomerComplaints(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.CustomerComplaints.UPDATE, payload, True)
+        return await self._request(api.Methods.TsClient.CustomerComplaints.UPDATE, payload, True)
 
     async def cancel_position(self, id: int):
         """
@@ -342,7 +353,7 @@ class CustomerComplaints(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.CustomerComplaints.CANCEL, payload, True)
+        return await self._request(api.Methods.TsClient.CustomerComplaints.CANCEL, payload, True)
 
 
 class Orders(BaseAbcp):
@@ -370,7 +381,7 @@ class Orders(BaseAbcp):
             exclude=['delivery_address', 'delivery_person',
                      'delivery_contact', 'delivery_comment', 'delivery_method_id'],
             **locals())
-        return await self.request(api.Methods.TsClient.Orders.CREATE, payload, True)
+        return await self._request(api.Methods.TsClient.Orders.CREATE, payload, True)
 
     async def get_list(self, number: Union[str, int] = None, agreement_id: Union[int, str] = None,
                        manager_id: Union[int, str] = None,
@@ -423,7 +434,7 @@ class Orders(BaseAbcp):
         if isinstance(deadline_date_end, datetime):
             deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Orders.GET_LIST, payload)
+        return await self._request(api.Methods.TsClient.Orders.GET_LIST, payload)
 
     async def get_order(self, order_id: Union[str, int]):
         """
@@ -435,7 +446,7 @@ class Orders(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Orders.GET, payload)
+        return await self._request(api.Methods.TsClient.Orders.GET, payload)
 
     async def refuse(self, order_id: Union[str, int]):
         """
@@ -447,7 +458,7 @@ class Orders(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Orders.REFUSE, payload, True)
+        return await self._request(api.Methods.TsClient.Orders.REFUSE, payload, True)
 
 
 class Cart(BaseAbcp):
@@ -467,7 +478,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.CREATE, payload, True)
+        return await self._request(api.Methods.TsClient.Cart.CREATE, payload, True)
 
     async def update(self, position_id: Union[str, int], quantity: int):
         """
@@ -480,7 +491,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.UPDATE, payload, True)
+        return await self._request(api.Methods.TsClient.Cart.UPDATE, payload, True)
 
     async def get_list(self, position_ids: Union[List, str, int] = None, agreement_id: Union[int, str] = None,
                        limit: int = None,
@@ -498,7 +509,7 @@ class Cart(BaseAbcp):
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.GET_LIST, payload, True)
+        return await self._request(api.Methods.TsClient.Cart.GET_LIST, payload, True)
 
     async def exist(self, agreement_id: Union[str, int], brand: str, number_fix: str):
         """
@@ -512,7 +523,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.EXIST, payload)
+        return await self._request(api.Methods.TsClient.Cart.EXIST, payload)
 
     async def summary(self, agreement_id: Union[int, str] = None):
         """
@@ -523,7 +534,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.SUMMARY, payload)
+        return await self._request(api.Methods.TsClient.Cart.SUMMARY, payload)
 
     async def clear(self, agreement_id: Union[str, int]):
         """
@@ -534,7 +545,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.CLEAR, payload, True)
+        return await self._request(api.Methods.TsClient.Cart.CLEAR, payload, True)
 
     async def delete_positions(self, position_ids: Union[List, str, int]):
         """
@@ -548,7 +559,7 @@ class Cart(BaseAbcp):
             position_ids = [position_ids]
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Cart.DELETE, payload, True)
+        return await self._request(api.Methods.TsClient.Cart.DELETE, payload, True)
 
 
 class Positions(BaseAbcp):
@@ -568,7 +579,7 @@ class Positions(BaseAbcp):
         if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Positions.GET, payload)
+        return await self._request(api.Methods.TsClient.Positions.GET, payload)
 
     async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
                        manager_id: Union[int, str] = None,
@@ -640,7 +651,7 @@ class Positions(BaseAbcp):
         if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Positions.GET_LIST, payload)
+        return await self._request(api.Methods.TsClient.Positions.GET_LIST, payload)
 
     async def cancel(self, position_id: Union[str, int], additional_info: Union[List, str] = None):
         """
@@ -652,20 +663,8 @@ class Positions(BaseAbcp):
         if additional_info is not None:
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Positions.CANCEL, payload, True)
+        return await self._request(api.Methods.TsClient.Positions.CANCEL, payload, True)
 
     async def mass_cancel(self, position_ids: Union[List, str, int], additional_info: Union[List, str] = None):
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsClient.Positions.MASS_CANCEL, payload, True)
-
-
-class TsClientApi(BaseAbcp):
-    def __init__(self, *args):
-        super().__init__(*args)
-        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
-        self.good_receipts = GoodReceipts(*args)
-        self.order_pickings = OrderPickings(*args)
-        self.customer_complaints = CustomerComplaints(*args)
-        self.orders = Orders(*args)
-        self.cart = Cart(*args)
-        self.positions = Positions(*args)
+        return await self._request(api.Methods.TsClient.Positions.MASS_CANCEL, payload, True)
