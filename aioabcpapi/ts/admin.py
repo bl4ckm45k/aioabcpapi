@@ -18,7 +18,6 @@ logger = logging.getLogger('TS.Admin')
 class TsAdminApi(BaseAbcp):
     def __init__(self, *args):
         super().__init__(*args)
-        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
         self.order_pickings = OrderPickings(*args)
         self.customer_complaints = CustomerComplaints(*args)
         self.distributor_owners = DistributorOwners(*args)
@@ -26,6 +25,8 @@ class TsAdminApi(BaseAbcp):
         self.cart = Cart(*args)
         self.positions = Positions(*args)
         self.good_receipts = GoodReceipts(*args)
+        self.tags = Tags(*args)
+        self.tags_relationships = TagsRelationships(*args)
 
 
 class OrderPickings(BaseAbcp):
@@ -58,7 +59,7 @@ class OrderPickings(BaseAbcp):
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, True)
 
     async def get(self, id: Union[int, str] = None, client_id: Union[int, str] = None, limit: int = None,
                   skip: int = None,
@@ -107,7 +108,7 @@ class OrderPickings(BaseAbcp):
         if isinstance(co_old_pos_ids, int) or isinstance(co_old_pos_ids, str):
             co_old_pos_ids = [co_old_pos_ids]
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.GET, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.GET, payload, True)
 
     async def get_goods(self, op_id: Union[str, int], limit: int = None, skip: int = None,
                         output: str = None, product_id: Union[int, str] = None, item_id: Union[int, str] = None,
@@ -145,7 +146,7 @@ class OrderPickings(BaseAbcp):
         if isinstance(output, str) and any(x not in ["e", "o"] for x in output):
             raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "o"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.GET_GOODS, payload)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.GET_GOODS, payload)
 
     async def create_by_old_pos(self, agreement_id: Union[str, int], account_details_id: Union[str, int],
                                 loc_id: Union[str, int],
@@ -177,7 +178,7 @@ class OrderPickings(BaseAbcp):
         if isinstance(output, str) and any(x not in ["e", "t", "s"] for x in output):
             raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "t", "s"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, True)
 
     async def change_status(self, id: int, operation_status_id: Union[str, int],
                             positions_status_id: Union[int, str] = None):
@@ -197,7 +198,7 @@ class OrderPickings(BaseAbcp):
             raise AbcpWrongParameterError(
                 f'Параметр "positions_status_id" является обязательным при смене статуса операции на {operation_status_id}')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, True)
 
     async def update(self, id: int, number: Union[str, int] = None, creator_id: Union[int, str] = None,
                      worker_id: Union[int, str] = None,
@@ -222,11 +223,11 @@ class OrderPickings(BaseAbcp):
         :return:
         """
         payload = generate_payload(exclude=['reseller_data'], **locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.UPDATE, payload, True)
 
     async def delete(self, id: int):
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.OrderPickings.DELETE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.OrderPickings.DELETE_POSITION, payload, True)
 
 
 class CustomerComplaints(BaseAbcp):
@@ -277,7 +278,7 @@ class CustomerComplaints(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET, payload)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.GET, payload)
 
     async def get_positions(self, op_id: Union[int, str] = None, order_picking_good_id: Union[int, str] = None,
                             order_picking_good_ids: Union[List, int] = None,
@@ -340,7 +341,7 @@ class CustomerComplaints(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
         payload = generate_payload(exclude=['old_item_id'], **locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
 
     async def create(self, order_picking_id: Union[str, int], positions: Union[List[Dict], Dict]):
         """
@@ -356,7 +357,7 @@ class CustomerComplaints(BaseAbcp):
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.CREATE, payload, True)
 
     async def create_position(self, op_id: Union[str, int], order_picking_position_id: Union[str, int], quantity: int,
                               type: int, comment: str):
@@ -375,7 +376,7 @@ class CustomerComplaints(BaseAbcp):
         if not (1 <= type <= 3):
             raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload, True)
 
     async def update_position(self, id: int, quantity: int = None, type: int = None, comment: str = None):
         """
@@ -394,7 +395,7 @@ class CustomerComplaints(BaseAbcp):
         if isinstance(type, int) and not (1 <= type <= 3):
             raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload, True)
 
     async def change_position_status(self, id: int, status: int):
         """
@@ -409,7 +410,7 @@ class CustomerComplaints(BaseAbcp):
         if not (1 <= status <= 8):
             raise AbcpWrongParameterError('Параметр "status" может принимать значения от 1 до 8')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload, True)
 
     async def update(self, id: Union[str, int], number: int = None, expert_id: Union[int, str] = None,
                      custom_complaint_file: str = None,
@@ -437,7 +438,7 @@ class CustomerComplaints(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.update_fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
 
 
 class DistributorOwners(BaseAbcp):
@@ -451,7 +452,7 @@ class DistributorOwners(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.DistributorOwners.DISTRIBUTOR_OWNERS, payload)
+        return await self._request(api.Methods.TsAdmin.DistributorOwners.DISTRIBUTOR_OWNERS, payload)
 
 
 class Orders(BaseAbcp):
@@ -485,7 +486,7 @@ class Orders(BaseAbcp):
             fields = check_fields(fields, self.FieldsChecker.fields)
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.CREATE, payload, True)
 
     async def create_by_cart(self, client_id: Union[str, int], agreement_id: Union[str, int],
                              positions: Union[List, int, str],
@@ -540,7 +541,7 @@ class Orders(BaseAbcp):
                      'delivery_employee_contact', 'delivery_reseller_comment', 'delivery_start_time',
                      'delivery_end_time'],
             **locals())
-        return await self.request(api.Methods.TsAdmin.Orders.CREATE_BY_CART, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.CREATE_BY_CART, payload, True)
 
     async def orders_list(self, number: int = None,
                           agreement_id: Union[int, str] = None,
@@ -598,7 +599,7 @@ class Orders(BaseAbcp):
             deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.LIST, payload)
+        return await self._request(api.Methods.TsAdmin.Orders.LIST, payload)
 
     async def get(self, order_id: Union[str, int]):
         """
@@ -610,7 +611,7 @@ class Orders(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.GET, payload)
+        return await self._request(api.Methods.TsAdmin.Orders.GET, payload)
 
     async def refuse(self, order_id: Union[str, int]):
         """
@@ -622,7 +623,7 @@ class Orders(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.REFUSE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.REFUSE, payload, True)
 
     async def update(self, order_id: Union[str, int], number: Union[str, int] = None, client_id: Union[int, str] = None,
                      agreement_id: Union[int, str] = None,
@@ -643,7 +644,7 @@ class Orders(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.UPDATE, payload, True)
 
     async def merge(self, main_order_id: Union[str, int], merge_orders_ids: Union[List, str, int] = None,
                     fields: Union[List, str] = None):
@@ -662,7 +663,7 @@ class Orders(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MERGE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.MERGE, payload, True)
 
     async def split(self, order_id: Union[str, int], position_ids: Union[List, str, int] = None,
                     fields: Union[List, str] = None):
@@ -682,7 +683,7 @@ class Orders(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.SPLIT, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.SPLIT, payload, True)
 
     async def reprice(self, order_id: Union[str, int], new_sum: Union[float, int],
                       fields: Union[List, str] = None):
@@ -699,7 +700,7 @@ class Orders(BaseAbcp):
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.REPRICE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.REPRICE, payload, True)
 
 
 class Messages(BaseAbcp):
@@ -718,7 +719,7 @@ class Messages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.MESSAGES_CREATE, payload, True)
 
     async def get_one(self, message_id: Union[str, int]):
         """
@@ -730,7 +731,7 @@ class Messages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_GET_ONE, payload)
+        return await self._request(api.Methods.TsAdmin.Orders.MESSAGES_GET_ONE, payload)
 
     async def get_list(self, order_id: Union[str, int], skip: int = None, limit: int = None):
         """
@@ -744,7 +745,7 @@ class Messages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_LIST, payload)
+        return await self._request(api.Methods.TsAdmin.Orders.MESSAGES_LIST, payload)
 
     async def update(self, message_id: Union[str, int], message: str):
         """
@@ -757,7 +758,7 @@ class Messages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.MESSAGES_UPDATE, payload, True)
 
     async def delete(self, message_id: Union[str, int]):
         """
@@ -769,7 +770,7 @@ class Messages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Orders.MESSAGES_DELETE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Orders.MESSAGES_DELETE, payload, True)
 
 
 class Cart(BaseAbcp):
@@ -794,7 +795,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Cart.CREATE, payload, True)
 
     async def update(self, position_id: Union[str, int], quantity: int,
                      client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
@@ -823,7 +824,7 @@ class Cart(BaseAbcp):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Cart.UPDATE, payload, True)
 
     async def get_list(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
                        position_ids: Union[List, str] = None,
@@ -847,7 +848,7 @@ class Cart(BaseAbcp):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.GET_LIST, payload)
+        return await self._request(api.Methods.TsAdmin.Cart.GET_LIST, payload)
 
     async def exist(self, client_id: Union[str, int], agreement_id: Union[str, int], brand: Union[str, int],
                     number_fix: Union[str, int]):
@@ -863,7 +864,7 @@ class Cart(BaseAbcp):
         :return: quantity - количество найденных позиций в корзине
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.EXIST, payload)
+        return await self._request(api.Methods.TsAdmin.Cart.EXIST, payload)
 
     async def summary(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
                       agreement_id: Union[str, int] = None):
@@ -884,7 +885,7 @@ class Cart(BaseAbcp):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.SUMMARY, payload)
+        return await self._request(api.Methods.TsAdmin.Cart.SUMMARY, payload)
 
     async def clear(self, agreement_id: Union[str, int], client_id: Union[int, str] = None,
                     guest_id: Union[int, str] = None):
@@ -905,7 +906,7 @@ class Cart(BaseAbcp):
             raise AbcpWrongParameterError(
                 'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.CLEAR, payload, True)
+        return await self._request(api.Methods.TsAdmin.Cart.CLEAR, payload, True)
 
     async def delete_positions(self, position_ids: Union[List, str, int],
                                client_id: Union[int, str] = None, guest_id: Union[int, str] = None):
@@ -926,7 +927,7 @@ class Cart(BaseAbcp):
             position_ids = [position_ids]
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.DELETE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Cart.DELETE, payload, True)
 
     async def transfer(self, guest_id: Union[str, int], client_id: Union[str, int]):
         """
@@ -939,7 +940,7 @@ class Cart(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Cart.TRANSFER, payload, True)
+        return await self._request(api.Methods.TsAdmin.Cart.TRANSFER, payload, True)
 
 
 class Positions(BaseAbcp):
@@ -971,7 +972,7 @@ class Positions(BaseAbcp):
             additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
 
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.GET, payload)
+        return await self._request(api.Methods.TsAdmin.Positions.GET, payload)
 
     async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
                        client_id: Union[int, str] = None,
@@ -1066,7 +1067,7 @@ class Positions(BaseAbcp):
         if statuses is not None:
             statuses = check_fields(statuses, self.FieldsChecker.statuses)
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.GET_LIST, payload)
+        return await self._request(api.Methods.TsAdmin.Positions.GET_LIST, payload)
 
     async def create(self, order_id: Union[str, int], client_id: Union[str, int], route_id: Union[str, int],
                      distributor_id: Union[str, int], item_key: str,
@@ -1091,7 +1092,7 @@ class Positions(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.CREATE, payload, True)
 
     async def update(self, position_id: Union[str, int], route_id: Union[int, str] = None,
                      distributor_id: Union[int, str] = None,
@@ -1133,7 +1134,7 @@ class Positions(BaseAbcp):
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
             raise AbcpWrongParameterError(f'Параметр "status" может принимать значения "new" или "prepayment"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.UPDATE, payload, True)
 
     async def cancel(self, position_id: Union[str, int]):
         """
@@ -1145,7 +1146,7 @@ class Positions(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.CANCEL, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.CANCEL, payload, True)
 
     async def mass_cancel(self, position_ids: Union[List, int]):
         """
@@ -1159,7 +1160,7 @@ class Positions(BaseAbcp):
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
 
     async def change_status(self, position_ids: Union[List, int], status: str):
         """
@@ -1176,7 +1177,7 @@ class Positions(BaseAbcp):
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
 
     async def split(self, position_id: Union[str, int], quantity: Union[int, float]):
         """
@@ -1189,7 +1190,7 @@ class Positions(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.SPLIT, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.SPLIT, payload, True)
 
     async def merge(self, main_position_id: Union[str, int], merge_positions_ids: Union[List, int]):
         """
@@ -1204,7 +1205,7 @@ class Positions(BaseAbcp):
         if isinstance(merge_positions_ids, list):
             merge_positions_ids = ','.join(map(str, merge_positions_ids))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MERGE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.MERGE, payload, True)
 
 
 class PositionsMessages(BaseAbcp):
@@ -1223,7 +1224,7 @@ class PositionsMessages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_LIST, payload)
+        return await self._request(api.Methods.TsAdmin.Positions.MESSAGES_LIST, payload)
 
     async def get(self, message_id: Union[str, int]):
         """
@@ -1235,7 +1236,7 @@ class PositionsMessages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_GET, payload)
+        return await self._request(api.Methods.TsAdmin.Positions.MESSAGES_GET, payload)
 
     async def create(self, position_id: Union[str, int], message: str, employee_id: Union[int, str] = None,
                      date: Union[str, datetime] = None):
@@ -1253,7 +1254,7 @@ class PositionsMessages(BaseAbcp):
         if isinstance(date, datetime):
             date = f'{date:%Y-%m-%d %H:%M:%S}'
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.MESSAGES_CREATE, payload, True)
 
     async def update(self, message_id: Union[str, int], message: str, employee_id: Union[int, str] = None):
         """
@@ -1267,7 +1268,7 @@ class PositionsMessages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.MESSAGES_UPDATE, payload, True)
 
     async def delete(self, message_id: Union[str, int]):
         """
@@ -1279,7 +1280,7 @@ class PositionsMessages(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.Positions.MESSAGES_DELETE, payload, True)
+        return await self._request(api.Methods.TsAdmin.Positions.MESSAGES_DELETE, payload, True)
 
 
 class GoodReceipts(BaseAbcp):
@@ -1305,7 +1306,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.CREATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.CREATE, payload, True)
 
     async def get(self, limit: int = None, skip: int = None,
                   output: str = None,
@@ -1351,7 +1352,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET, payload)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.GET, payload)
 
     async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None,
                             output: str = None, product_id: Union[int, str] = None, auto: str = None):
@@ -1374,7 +1375,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET_POSITIONS, payload)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.GET_POSITIONS, payload)
 
     async def update(self, id: int, sup_number: Union[str, int] = None, sup_shipment_date: Union[str, datetime] = None):
         """
@@ -1391,7 +1392,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(sup_shipment_date, datetime):
             sup_shipment_date = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.UPDATE, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.UPDATE, payload, True)
 
     async def change_status(self, id: int, status: int):
         """
@@ -1406,7 +1407,7 @@ class GoodReceipts(BaseAbcp):
         if not 1 <= status <= 3:
             raise AbcpWrongParameterError('Параметр "status" принимает значения от 1 до 3')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.CHANGE_STATUS, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.CHANGE_STATUS, payload, True)
 
     async def delete(self, id: int):
         """
@@ -1418,7 +1419,7 @@ class GoodReceipts(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.DELETE, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.DELETE, payload, True)
 
     async def create_position(self, op_id: Union[str, int], loc_id: Union[str, int], product_id: Union[str, int],
                               brand: Union[str, int], number: Union[int, str],
@@ -1458,7 +1459,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
             raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.CREATE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.CREATE_POSITION, payload, True)
 
     async def delete_position(self, id: int):
         """
@@ -1470,7 +1471,7 @@ class GoodReceipts(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.DELETE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.DELETE_POSITION, payload, True)
 
     async def get_position(self, id: int):
         """
@@ -1482,7 +1483,7 @@ class GoodReceipts(BaseAbcp):
         :return:
         """
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.GET_POSITION, payload)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.GET_POSITION, payload)
 
     async def update_position(self, id: int, brand: str, number: str,
                               quantity: Union[float, int], sup_buy_price: Union[float, int],
@@ -1512,11 +1513,150 @@ class GoodReceipts(BaseAbcp):
         :param expected_quantity: Ожидаемое кол-во товара
         :param so_position_id: Идентификатор позиции заказа поставщику, на основании которой была создана позиция приемки
         :param old_order_position_id: Идентификатор позиции старого заказа, на основании которой была создана позиция приемки
-        :return:
+        :return: dict
         """
         if isinstance(barcodes, list):
             barcodes = ' '.join(map(str, barcodes))
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
             raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
         payload = generate_payload(**locals())
-        return await self.request(api.Methods.TsAdmin.GoodReceipts.UPDATE_POSITION, payload, True)
+        return await self._request(api.Methods.TsAdmin.GoodReceipts.UPDATE_POSITION, payload, True)
+
+
+class Tags(BaseAbcp):
+
+    async def list(self, ids: Union[str, List[str], List[int]] = None):
+        """
+        Операция получения списка тегов
+
+        :param ids: Идентификаторы тегов через запятую
+        :return: dict
+        """
+        if isinstance(ids, list):
+            ids = ','.join(map(str, ids))
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.Tags.LIST, payload)
+
+    async def create(self, name: str, color: str):
+        """
+        Операция создания тега
+
+        :param name: Имя тега
+        :param color: Цвет тега
+        :return:
+        """
+        if not color.startswith('#'):
+            try:
+                check_hex = int(color, base=16)
+                del check_hex
+                color = f'#{color}'
+            except ValueError:
+                raise AbcpWrongParameterError(
+                    'The "color" must be a hexadecimal string. It is possible to specify both with and without "#"')
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.Tags.CREATE, payload, True)
+
+    async def delete(self, id: Union[str, int]):
+        """
+        Операция удаления тега
+
+
+        :param id: Идентификатор удаляемого тега
+        :return:
+        """
+        if isinstance(id, str) and not id.isdigit():
+            raise AbcpWrongParameterError('Параметр "id" должен быть числом')
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.Tags.DELETE, payload, True)
+
+
+class TagsRelationships(BaseAbcp):
+
+    async def list(self, object_ids: Union[str, List[str], List[int]] = None,
+                   object_type: Union[str, int] = None,
+                   group_by_object_id: Union[bool, int] = None,
+                   with_all_tags: Union[bool, int] = None,
+                   tags_ids: Union[str, List[str], List[int]] = None):
+
+        """
+
+        :param object_ids: Необязателен. Идентификаторы объектов через запятую
+        :param object_type: Необязателен. Тип объекта
+        :param group_by_object_id: Необязателен. Группировать теги по id объекта
+        :param with_all_tags: Необязателен. оставит только объекты, на которых есть все теги из tagIds
+        :param tags_ids: Необязателен. Идентификаторы тегов через запятую
+        :return:
+        """
+        if isinstance(object_ids, list):
+            object_ids = ','.join(map(str, object_ids))
+
+        if isinstance(object_type, str) and object_type.isdigit():
+            if not 1 <= int(object_type) <= 13:
+                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+        if isinstance(object_type, int) and not 1 <= object_type <= 13:
+            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+        if isinstance(group_by_object_id, bool):
+            group_by_object_id = int(group_by_object_id)
+        if isinstance(group_by_object_id, int) and not (0 <= group_by_object_id <= 1):
+            raise AbcpWrongParameterError('"group_by_object_id" must be in range 0-1 or use a Boolean value')
+
+        if isinstance(with_all_tags, bool):
+            with_all_tags = int(with_all_tags)
+        if isinstance(with_all_tags, int) and not (0 <= with_all_tags <= 1):
+            raise AbcpWrongParameterError('"with_all_tags" must be in range 0-1 or use a Boolean value')
+        if with_all_tags is not None and tags_ids is None:
+            raise AbcpParameterRequired('The "with_all_tags" parameter must be used with the "tags_ids" parameter')
+
+        if isinstance(tags_ids, list):
+            tags_ids = ','.join(map(str, tags_ids))
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.TagsRelationships.LIST, payload)
+
+    async def create(self, tag_id: Union[str, int], object_id: Union[str, int], object_type: Union[str, int]):
+        """
+        Операция создания связи тега
+
+        :param tag_id: 	Идентификатор тега
+        :param object_id: Идентификатор объекта
+        :param object_type: Тип объекта
+        :return:
+        """
+        if isinstance(tag_id, str) and not tag_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "tag_id" должен быть числом')
+
+        if isinstance(object_id, str) and not object_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "object_id" должен быть числом')
+
+        if isinstance(object_type, str) and object_type.isdigit():
+            if not 1 <= int(object_type) <= 13:
+                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+        if isinstance(object_type, int) and not 1 <= object_type <= 13:
+            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.TagsRelationships.CREATE, payload, True)
+
+    async def delete(self, tag_id: Union[str, int], object_id: Union[str, int], object_type: Union[str, int]):
+        """
+        Операция удаления связи тега
+
+        :param tag_id: 	Идентификатор тега
+        :param object_id: Идентификатор объекта
+        :param object_type: Тип объекта
+        :return:
+        """
+
+        if isinstance(tag_id, str) and not tag_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "tag_id" должен быть числом')
+
+        if isinstance(object_id, str) and not object_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "object_id" должен быть числом')
+
+        if isinstance(object_type, str) and object_type.isdigit():
+            if not 1 <= int(object_type) <= 13:
+                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+        if isinstance(object_type, int) and not 1 <= object_type <= 13:
+            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.TagsRelationships.DELETE, payload, True)
