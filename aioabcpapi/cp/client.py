@@ -866,10 +866,12 @@ class Articles(BaseAbcp):
                    locale: str = None):
         if not self._admin:
             raise AbcpAPIError('Операция доступна только администратору API')
-        if isinstance(format, str) and not all(True for x in format if x in 'bnpchmti'):
-            raise AbcpWrongParameterError(f'Параметр "format" может содержать только символы: b, n, p, c, h, m, t')
+        if isinstance(format, str) and format not in 'bnpchmti':
+            raise AbcpWrongParameterError(f'Параметр "format" может содержать только символы: b, n, p, c, h, m, t, i')
         if isinstance(source, str):
             source = [source]
+        if isinstance(cross_image, int) and 'i' not in format:
+            raise AbcpWrongParameterError('')
         if isinstance(source, list) and not all(x in ['standard', 'common', 'common_cat'] for x in source):
             raise AbcpWrongParameterError(
                 f'Параметр "source" может содержать следующие флаги: standard, common, common_cat')
