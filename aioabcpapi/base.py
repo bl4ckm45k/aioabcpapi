@@ -10,6 +10,8 @@ import ujson as json
 from aiohttp import FormData
 
 from . import api
+from .exceptions import NotEnoughRights
+from .api import Headers, Methods
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('base')
@@ -49,11 +51,12 @@ class BaseAbcp:
         self._shipment_method = None
         self._payment_method = None
         self._shipment_office = None
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        self._ssl_context = ssl.create_default_context(cafile=certifi.where())
 
         self._session: Optional[aiohttp.ClientSession] = None
         self._connector_class: Type[aiohttp.TCPConnector] = aiohttp.TCPConnector
-        self._connector_init = dict(limit=connections_limit, ssl=ssl_context)
+        self._connector_init = dict(limit=connections_limit, ssl=self._ssl_context)
+        self._headers = Headers()
 
         self.timeout = timeout
 
@@ -84,30 +87,42 @@ class BaseAbcp:
         if self._session:
             await self._session.close()
 
-    async def request(self, method: str,
-                      data: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
+    def __payload_check(self, payload):
+        if isinstance(payload, dict):
+            payload['userlogin'] = self._login
+            payload['userpsw'] = self._password
+        elif isinstance(payload, FormData):
+            payload.add_field('userlogin', self._login)
+            payload.add_field('userpsw', self._password)
+        if payload is None:
+            payload = {'userlogin': self._login, 'userpsw': self._password}
+        return payload
+
+    async def _request(self, method: str,
+                       payload: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
         """
-        Make an request to ABCP API
+        Make an _request to ABCP API
 
         https://www.abcp.ru/wiki/API:Docs
 
         :param method: API method
         :type method: :obj:`str`
-        :param data: request parameters
+        :param payload: _request parameters
+        :type payload: :obj:`dict`
         :param post:
-        :type data: :obj:`dict`
         :return: result
         :rtype: Union[List, Dict]
         :raise: :obj:`utils.exceptions`
         """
-        if isinstance(data, dict):
-            data['userlogin'] = self._login
-            data['userpsw'] = self._password
-        elif isinstance(data, FormData):
-            data.add_field('userlogin', self._login)
-            data.add_field('userpsw', self._password)
-        if data is None:
-            data = {'userlogin': self._login, 'userpsw': self._password}
-
-        return await api.make_request(await self._get_session(), self._host, self._admin,
-                                      method, data, post, timeout=self.timeout, **kwargs)
+        if not self._admin and (isinstance(method, Methods.Admin) or isinstance(method, Methods.TsAdmin)):
+            raise NotEnoughRights('Недостаточно прав для использования API администратора')
+        payload = self.__payload_check(payload)
+        if isinstance(payload, FormData):
+            headers = self._headers.multipart_header()
+        elif method is Methods.Client.Search.ADVICES_BATCH:
+            headers = self._headers.json_header()
+            return await api.make_request_json(await self._get_session(), self._host, method, payload, headers)
+        else:
+            headers = self._headers.url_encoded_header()
+        return await api.make_request(await self._get_session(), self._host,
+                                      method, payload, headers, post, timeout=self.timeout, **kwargs)
