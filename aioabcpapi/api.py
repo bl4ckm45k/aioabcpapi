@@ -1,11 +1,12 @@
 import logging
 import re
+from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Dict, Union
 
 import aiohttp
 
-from .exceptions import UnsupportedHost, PasswordType, UnsupportedLogin, NotEnoughRights, NetworkError, \
+from .exceptions import UnsupportedHost, PasswordType, UnsupportedLogin, NetworkError, \
     AbcpAPIError, TeaPot, AbcpNotFoundError
 
 logging.basicConfig(level=logging.INFO)
@@ -77,7 +78,10 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
     raise AbcpAPIError(f"{body} [{status_code}]")
 
 
-async def make_request_json(session, url, method, data: Dict, headers, **kwargs):
+async def make_request_json(session, host, method,
+                            data: Dict, headers,
+                            **kwargs):
+    url = f'https://{host}/{method}'
     try:
         async with session.post(url, json=data, headers=headers, **kwargs) as response:
             try:
@@ -89,21 +93,13 @@ async def make_request_json(session, url, method, data: Dict, headers, **kwargs)
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
 
 
-async def make_request(session, host, admin, method,
-                       data: Union[Dict, aiohttp.FormData], post,
+async def make_request(session, host, method,
+                       data: Union[Dict, aiohttp.FormData],
+                       headers, post,
                        **kwargs):
-    logger.debug('Make request: "%s" with data: "%r"', method, data)
+    logger.debug('Make _request: "%s" with data: "%r"', method, data)
 
-    if not admin and method[0:2] == 'cp':
-        raise NotEnoughRights('Недостаточно прав для использования API администратора')
-    headers = {'Content-Type': 'application/x-www-form-urlencoded',
-               'Accept': 'application/json'}
     url = f'https://{host}/{method}'
-    if method == Methods.Admin.Distributors.UPLOAD_PRICE:
-        headers = None
-    elif method == Methods.Client.Search.ADVICES_BATCH:
-        headers['Content-Type'] = 'application/json'
-        return await make_request_json(session, url, method, data, headers)
     try:
         if post:
             async with session.post(url, data=data, headers=headers, **kwargs) as response:
@@ -123,245 +119,308 @@ async def make_request(session, host, admin, method,
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
 
 
+class Headers:
+    __json_header = {'Content-Type': 'application/json',
+                     'Accept': 'application/json'}
+    __url_encoded_header = {'Content-Type': 'application/x-www-form-urlencoded',
+                            'Accept': 'application/json'}
+    __multipart_header = None
+
+    def __init__(self):
+        pass
+
+    def json_header(self):
+        return self.__json_header
+
+    def url_encoded_header(self):
+        return self.__url_encoded_header
+
+    def multipart_header(self):
+        return self.__multipart_header
+
+
 class Methods:
     class Admin:
+        @dataclass(frozen=True)
         class Orders:
-            GET_ORDERS_LIST = 'cp/orders'
-            GET_ORDER = 'cp/order'
-            STATUS_HISTORY = 'cp/order/statusHistory'
-            SAVE_ORDER = 'cp/order'
+            GET_ORDERS_LIST: str = 'cp/orders'
+            GET_ORDER: str = 'cp/order'
+            STATUS_HISTORY: str = 'cp/order/statusHistory'
+            SAVE_ORDER: str = 'cp/order'
+            ONLINE_ORDER: str = 'cp/orders/online'
 
-            # Supplier order
-
-            ONLINE_ORDER = 'cp/orders/online'
-
+        @dataclass(frozen=True)
         class Finance:
-            UPDATE_BALANCE = 'cp/finance/userBalance'
-            UPDATE_CREDIT_LIMIT = 'cp/finance/creditLimit'
-            UPDATE_FINANCE_INFO = 'cp/finance/userInfo'
-            GET_PAYMENTS = 'cp/finance/payments'
-            GET_PAYMENTS_LINKS = 'cp/finance/paymentOrderLinks'
-            GET_PAYMENTS_ONLINE = 'cp/onlinePayments'
-            ADD_PAYMENTS = 'cp/finance/payments'
-            DELETE_PAYMENT_LINK = 'cp/finance/deleteLinkPayments'
-            LINK_EXISTING_PLAYMENT = 'cp/finance/paymentOrderLink'
-            REFUND_PAYMENT = 'cp/finance/paymentRefund'
-            GET_RECEIPTS = 'komtet/getChecks'
-            GET_PAYMENTS_SETTINGS = 'cp/payments/getPaymentMethodSettings'
+            UPDATE_BALANCE: str = 'cp/finance/userBalance'
+            UPDATE_CREDIT_LIMIT: str = 'cp/finance/creditLimit'
+            UPDATE_FINANCE_INFO: str = 'cp/finance/userInfo'
+            GET_PAYMENTS: str = 'cp/finance/payments'
+            GET_PAYMENTS_LINKS: str = 'cp/finance/paymentOrderLinks'
+            GET_PAYMENTS_ONLINE: str = 'cp/onlinePayments'
+            ADD_PAYMENTS: str = 'cp/finance/payments'
+            DELETE_PAYMENT_LINK: str = 'cp/finance/deleteLinkPayments'
+            LINK_EXISTING_PLAYMENT: str = 'cp/finance/paymentOrderLink'
+            REFUND_PAYMENT: str = 'cp/finance/paymentRefund'
+            GET_RECEIPTS: str = 'komtet/getChecks'
+            GET_PAYMENTS_SETTINGS: str = 'cp/payments/getPaymentMethodSettings'
 
+        @dataclass(frozen=True)
         class Users:
-            GET_USERS_LIST = 'cp/users'
-            CREATE_USER = 'cp/user/new'
-            GET_PROFILES = 'cp/users/profiles'
-            EDIT_PROFILE = 'cp/users/profile'
+            GET_USERS_LIST: str = 'cp/users'
+            CREATE_USER: str = 'cp/user/new'
+            GET_PROFILES: str = 'cp/users/profiles'
+            EDIT_PROFILE: str = 'cp/users/profile'
 
-            EDIT_USER = 'cp/user'
+            EDIT_USER: str = 'cp/user'
 
-            GET_USER_SHIPMENT_ADDRESS = 'cp/user/shipmentAddresses'
+            GET_USER_SHIPMENT_ADDRESS: str = 'cp/user/shipmentAddresses'
             # Garage
-            GET_USERS_CARS = 'cp/garage'
-            SMS_SETTINGS = 'cp/user/smsSettings'
+            GET_USERS_CARS: str = 'cp/garage'
+            SMS_SETTINGS: str = 'cp/user/smsSettings'
 
+        @dataclass(frozen=True)
         class Staff:
-            GET_STAFF = 'cp/managers'
+            GET_STAFF: str = 'cp/managers'
 
+        @dataclass(frozen=True)
         class Statuses:
-            GET_STATUSES = 'cp/statuses'
+            GET_STATUSES: str = 'cp/statuses'
 
-        # Brand directory
+        @dataclass(frozen=True)
         class Articles:
-            GET_BRANDS = 'cp/articles/brands'
-            GET_BRANDS_GROUP = 'cp/articles/brandsGroup'
+            GET_BRANDS: str = 'cp/articles/brands'
+            GET_BRANDS_GROUP: str = 'cp/articles/brandsGroup'
 
-        # Suppliers
+        @dataclass(frozen=True)
         class Distributors:
-            GET_DISTRIBUTORS_LIST = 'cp/distributors'
-            EDIT_DISTRIBUTORS_STATUS = 'cp/distributor/status'
-            UPLOAD_PRICE = 'cp/distributor/pricelistUpdate'
+            GET_DISTRIBUTORS_LIST: str = 'cp/distributors'
+            EDIT_DISTRIBUTORS_STATUS: str = 'cp/distributor/status'
+            UPLOAD_PRICE: str = 'cp/distributor/pricelistUpdate'
 
-            GET_SUPPLIER_ROUTES = 'cp/routes'
-            UPDATE_ROUTE = 'cp/route'
-            UPDATE_ROUTE_STATUS = 'cp/routes/status'
-            DELETE_ROUTE = 'cp/route/delete'
-            EDIT_SUPPLIER_STATUS_FOR_OFFICE = 'cp/offices'
-            GET_OFFICE_SUPPLIERS = 'cp/offices'
+            GET_SUPPLIER_ROUTES: str = 'cp/routes'
+            UPDATE_ROUTE: str = 'cp/route'
+            UPDATE_ROUTE_STATUS: str = 'cp/routes/status'
+            DELETE_ROUTE: str = 'cp/route/delete'
+            EDIT_SUPPLIER_STATUS_FOR_OFFICE: str = 'cp/offices'
+            GET_OFFICE_SUPPLIERS: str = 'cp/offices'
 
+        @dataclass(frozen=True)
         class Catalog:
             INFO = f'cp/catalog/info'
             SEARCH = f'cp/catalog/search'
             INFO_BATCH = f'cp/catalog/info/batch'
 
+
+        @dataclass(frozen=True)
+        class UsersCatalog:
+            UPLOAD: str = 'cp/usercatalogs/{}/upload'
+
     class Client:
         # SEARCH METHODS
+        @dataclass(frozen=True)
         class Search:
-            BRANDS = 'search/brands'
-            ARTICLES = 'search/articles'
-            BATCH = 'search/batch'
-            HISTORY = 'search/history'
-            TIPS = 'search/tips'
-            ADVICES = 'advices'
-            ADVICES_BATCH = 'advices/batch'
+            BRANDS: str = 'search/brands'
+            ARTICLES: str = 'search/articles'
+            BATCH: str = 'search/batch'
+            HISTORY: str = 'search/history'
+            TIPS: str = 'search/tips'
+            ADVICES: str = 'advices'
+            ADVICES_BATCH: str = 'advices/batch'
 
         # BASKET METHODS
+        @dataclass(frozen=True)
         class Basket:
-            BASKETS_LIST = 'basket/multibasket'
-            BASKET_ADD = 'basket/add'
-            BASKET_CLEAR = 'basket/clear'
-            BASKET_CONTENT = 'basket/content'
-            BASKET_OPTIONS = 'basket/options'
-            PAYMENT_METHODS = 'basket/paymentMethods'
-            SHIPMENT_METHOD = 'basket/shipmentMethods'
-            SHIPMENT_OFFICES = 'basket/shipmentOffices'
-            SHIPMENT_ADDRESS = 'basket/shipmentAddresses'
-            SHIPMENT_DATES = 'basket/shipmentDates'
-            BASKET_ORDER = 'basket/order'
+            BASKETS_LIST: str = 'basket/multibasket'
+            BASKET_ADD: str = 'basket/add'
+            BASKET_CLEAR: str = 'basket/clear'
+            BASKET_CONTENT: str = 'basket/content'
+            BASKET_OPTIONS: str = 'basket/options'
+            PAYMENT_METHODS: str = 'basket/paymentMethods'
+            SHIPMENT_METHOD: str = 'basket/shipmentMethods'
+            SHIPMENT_OFFICES: str = 'basket/shipmentOffices'
+            SHIPMENT_ADDRESS: str = 'basket/shipmentAddresses'
+            SHIPMENT_DATES: str = 'basket/shipmentDates'
+            BASKET_ORDER: str = 'basket/order'
 
+        @dataclass(frozen=True)
         class Orders:
-            ORDERS_INSTANT = 'orders/instant'
-            GET_ORDERS_LIST = 'orders/list'
-            GET_ORDERS = 'orders'
-            CANCEL_POSITION = 'orders/cancelPosition'
+            ORDERS_INSTANT: str = 'orders/instant'
+            GET_ORDERS_LIST: str = 'orders/list'
+            GET_ORDERS: str = 'orders'
+            CANCEL_POSITION: str = 'orders/cancelPosition'
 
+        @dataclass(frozen=True)
         class User:
-            REGISTER = 'user/new'
-            ACTIVATION = 'user/activation'
-            USER_INFO = 'user/info'
-            USER_RESTORE = 'user/restore'
+            REGISTER: str = 'user/new'
+            ACTIVATION: str = 'user/activation'
+            USER_INFO: str = 'user/info'
+            USER_RESTORE: str = 'user/restore'
 
+        @dataclass(frozen=True)
         class Garage:
-            USER_GARAGE = 'user/garage'
-            GARAGE_CAR = 'user/garage/car'
-            GARAGE_ADD = 'user/garage/add'
-            GARAGE_UPDATE = 'user/garage/update'
-            GARAGE_DELETE = 'user/garage/delete'
+            USER_GARAGE: str = 'user/garage'
+            GARAGE_CAR: str = 'user/garage/car'
+            GARAGE_ADD: str = 'user/garage/add'
+            GARAGE_UPDATE: str = 'user/garage/update'
+            GARAGE_DELETE: str = 'user/garage/delete'
 
+        @dataclass(frozen=True)
         class CarTree:
-            CAR_TREE_YEARS = 'cartree/years'
-            CAR_TREE_MANUFACTURERS = 'cartree/manufacturers'
-            CAR_TREE_MODELS = 'cartree/models'
-            CAR_TREE_MODIFICATIONS = 'cartree/modifications'
+            CAR_TREE_YEARS: str = 'cartree/years'
+            CAR_TREE_MANUFACTURERS: str = 'cartree/manufacturers'
+            CAR_TREE_MODELS: str = 'cartree/models'
+            CAR_TREE_MODIFICATIONS: str = 'cartree/modifications'
 
+        @dataclass(frozen=True)
         class Form:
-            FIELDS = 'form/fields'
+            FIELDS: str = 'form/fields'
 
+        @dataclass(frozen=True)
         class Articles:
-            BRANDS = 'articles/brands'
-            INFO = 'articles/info'
+            BRANDS: str = 'articles/brands'
+            INFO: str = 'articles/info'
+
 
     class TsClient:
+        @dataclass(frozen=True)
         class GoodReceipts:
-            CREATE = 'ts/goodReceipts/create'
-            GET = 'ts/goodReceipts/get'
-            GET_POSITIONS = 'ts/goodReceipts/getPositions'
+            CREATE: str = 'ts/goodReceipts/create'
+            GET: str = 'ts/goodReceipts/get'
+            GET_POSITIONS: str = 'ts/goodReceipts/getPositions'
 
+        @dataclass(frozen=True)
         class OrderPickings:
-            GET = 'ts/orderPickings/get'
-            GET_POSITIONS = 'ts/orderPickings/getGoods'
+            GET: str = 'ts/orderPickings/get'
+            GET_POSITIONS: str = 'ts/orderPickings/getGoods'
 
+        @dataclass(frozen=True)
         class CustomerComplaints:
-            GET = 'ts/customerComplaints/get'
-            GET_POSITIONS = 'ts/customerComplaints/getPositions'
-            CREATE = 'ts/customerComplaints/create'
-            UPDATE = 'ts/customerComplaints/updatePosition'
-            CANCEL = 'ts/customerComplaints/cancelPosition'
+            GET: str = 'ts/customerComplaints/get'
+            GET_POSITIONS: str = 'ts/customerComplaints/getPositions'
+            CREATE: str = 'ts/customerComplaints/create'
+            UPDATE: str = 'ts/customerComplaints/updatePosition'
+            CANCEL: str = 'ts/customerComplaints/cancelPosition'
 
+        @dataclass(frozen=True)
         class Orders:
-            CREATE = 'ts/orders/createByCart'
-            GET_LIST = 'ts/orders/list'
-            GET = 'ts/orders/get'
-            REFUSE = 'ts/orders/refuse'
+            CREATE: str = 'ts/orders/createByCart'
+            GET_LIST: str = 'ts/orders/list'
+            GET: str = 'ts/orders/get'
+            REFUSE: str = 'ts/orders/refuse'
 
+        @dataclass(frozen=True)
         class Cart:
-            CREATE = 'ts/cart/create'
-            UPDATE = 'ts/cart/update'
-            GET_LIST = 'ts/cart/list'
-            EXIST = 'ts/cart/exists'
-            SUMMARY = 'ts/cart/summary'
-            CLEAR = 'ts/cart/clear'
-            DELETE = 'ts/cart/deletePositions'
+            CREATE: str = 'ts/cart/create'
+            UPDATE: str = 'ts/cart/update'
+            GET_LIST: str = 'ts/cart/list'
+            EXIST: str = 'ts/cart/exists'
+            SUMMARY: str = 'ts/cart/summary'
+            CLEAR: str = 'ts/cart/clear'
+            DELETE: str = 'ts/cart/deletePositions'
 
+        @dataclass(frozen=True)
         class Positions:
-            GET = 'ts/positions/get'
-            GET_LIST = 'ts/positions/list'
-            CANCEL = 'ts/positions/cancel'
-            MASS_CANCEL = 'ts/positions/massCancel'
+            GET: str = 'ts/positions/get'
+            GET_LIST: str = 'ts/positions/list'
+            CANCEL: str = 'ts/positions/cancel'
+            MASS_CANCEL: str = 'ts/positions/massCancel'
 
     class TsAdmin:
+        @dataclass(frozen=True)
         class OrderPickings:
-            FAST_GET_OUT = 'cp/ts/orderPickings/fastGetOut'
-            GET = 'cp/ts/orderPickings/get'
-            GET_GOODS = '/cp/ts/orderPickings/getGoods'
-            CREATE_BY_OLD_POS = '/cp/ts/orderPickings/createByOldPos'
-            CHANGE_STATUS = '/cp/ts/orderPickings/changeStatus'
-            UPDATE = '/cp/ts/orderPickings/update'
-            DELETE_POSITION = '/cp/ts/orderPickings/deletePosition'
+            FAST_GET_OUT: str = 'cp/ts/orderPickings/fastGetOut'
+            GET: str = 'cp/ts/orderPickings/get'
+            GET_GOODS: str = '/cp/ts/orderPickings/getGoods'
+            CREATE_BY_OLD_POS: str = '/cp/ts/orderPickings/createByOldPos'
+            CHANGE_STATUS: str = '/cp/ts/orderPickings/changeStatus'
+            UPDATE: str = '/cp/ts/orderPickings/update'
+            DELETE_POSITION: str = '/cp/ts/orderPickings/deletePosition'
 
+        @dataclass(frozen=True)
         class CustomerComplaints:
-            GET = 'cp/ts/customerComplaints/get'
-            GET_POSITIONS = '/cp/ts/customerComplaints/getPositions'
-            CREATE = 'cp/ts/customerComplaints/create'
-            CREATE_POSITION = 'cp/ts/customerComplaints/createPosition'
-            UPDATE_POSITION = 'cp/ts/customerComplaints/updatePosition'
-            CHANGE_STATUS_POSITION = 'cp/ts/customerComplaints/changeStatusPosition'
-            UPDATE = 'cp/ts/customerComplaints/update'
+            GET: str = 'cp/ts/customerComplaints/get'
+            GET_POSITIONS: str = '/cp/ts/customerComplaints/getPositions'
+            CREATE: str = 'cp/ts/customerComplaints/create'
+            CREATE_POSITION: str = 'cp/ts/customerComplaints/createPosition'
+            UPDATE_POSITION: str = 'cp/ts/customerComplaints/updatePosition'
+            CHANGE_STATUS_POSITION: str = 'cp/ts/customerComplaints/changeStatusPosition'
+            UPDATE: str = 'cp/ts/customerComplaints/update'
 
+        @dataclass(frozen=True)
         class DistributorOwners:
-            DISTRIBUTOR_OWNERS = 'cp/ts/distributorOwners'
+            DISTRIBUTOR_OWNERS: str = 'cp/ts/distributorOwners'
 
+        @dataclass(frozen=True)
         class Orders:
-            CREATE = 'cp/ts/orders/create'
-            CREATE_BY_CART = 'cp/ts/orders/createByCart'
-            LIST = 'cp/ts/orders/list'
-            GET = 'cp/ts/orders/get'
-            REFUSE = 'cp/ts/orders/refuse'
-            UPDATE = 'cp/ts/orders/update'
-            MERGE = 'cp/ts/orders/merge'
-            SPLIT = 'cp/ts/orders/split'
-            REPRICE = 'cp/ts/orders/reprice'
-            MESSAGES_CREATE = 'cp/ts/orders/messages/create'
-            MESSAGES_GET_ONE = 'cp/ts/orders/messages/get'
-            MESSAGES_LIST = 'cp/ts/orders/messages/list'
-            MESSAGES_UPDATE = 'cp/ts/orders/messages/update'
-            MESSAGES_DELETE = 'cp/ts/orders/messages/delete'
+            CREATE: str = 'cp/ts/orders/create'
+            CREATE_BY_CART: str = 'cp/ts/orders/createByCart'
+            LIST: str = 'cp/ts/orders/list'
+            GET: str = 'cp/ts/orders/get'
+            REFUSE: str = 'cp/ts/orders/refuse'
+            UPDATE: str = 'cp/ts/orders/update'
+            MERGE: str = 'cp/ts/orders/merge'
+            SPLIT: str = 'cp/ts/orders/split'
+            REPRICE: str = 'cp/ts/orders/reprice'
+            MESSAGES_CREATE: str = 'cp/ts/orders/messages/create'
+            MESSAGES_GET_ONE: str = 'cp/ts/orders/messages/get'
+            MESSAGES_LIST: str = 'cp/ts/orders/messages/list'
+            MESSAGES_UPDATE: str = 'cp/ts/orders/messages/update'
+            MESSAGES_DELETE: str = 'cp/ts/orders/messages/delete'
 
+        @dataclass(frozen=True)
         class Cart:
-            CREATE = 'cp/ts/cart/create'
-            UPDATE = 'cp/ts/cart/update'
-            GET_LIST = 'cp/ts/cart/list'
-            EXIST = 'cp/ts/cart/exists'
-            SUMMARY = 'cp/ts/cart/summary'
-            CLEAR = 'cp/ts/cart/clear'
-            DELETE = 'cp/ts/cart/delete'
-            TRANSFER = 'cp/ts/cart/transfer'
+            CREATE: str = 'cp/ts/cart/create'
+            UPDATE: str = 'cp/ts/cart/update'
+            GET_LIST: str = 'cp/ts/cart/list'
+            EXIST: str = 'cp/ts/cart/exists'
+            SUMMARY: str = 'cp/ts/cart/summary'
+            CLEAR: str = 'cp/ts/cart/clear'
+            DELETE: str = 'cp/ts/cart/delete'
+            TRANSFER: str = 'cp/ts/cart/transfer'
 
+        @dataclass(frozen=True)
         class Positions:
-            GET = 'cp/ts/positions/get'
-            GET_LIST = 'cp/ts/positions/list'
-            CREATE = 'cp/ts/positions/create'
-            UPDATE = 'cp/ts/positions/update'
-            CANCEL = 'cp/ts/positions/cancel'
-            MASS_CANCEL = 'cp/ts/positions/massCancel'
-            CHANGE_STATUS = 'cp/ts/positions/changeStatus'
-            SPLIT = 'cp/ts/positions/split'
-            MERGE = 'cp/ts/positions/merge'
-            MESSAGES_LIST = 'cp/ts/positions/message/list'
-            MESSAGES_GET = 'cp/ts/positions/message/get'
-            MESSAGES_CREATE = 'cp/ts/positions/message/create'
-            MESSAGES_UPDATE = 'cp/ts/positions/message/update'
-            MESSAGES_DELETE = 'cp/ts/positions/message/delete'
+            GET: str = 'cp/ts/positions/get'
+            GET_LIST: str = 'cp/ts/positions/list'
+            CREATE: str = 'cp/ts/positions/create'
+            UPDATE: str = 'cp/ts/positions/update'
+            CANCEL: str = 'cp/ts/positions/cancel'
+            MASS_CANCEL: str = 'cp/ts/positions/massCancel'
+            CHANGE_STATUS: str = 'cp/ts/positions/changeStatus'
+            SPLIT: str = 'cp/ts/positions/split'
+            MERGE: str = 'cp/ts/positions/merge'
+            MESSAGES_LIST: str = 'cp/ts/positions/message/list'
+            MESSAGES_GET: str = 'cp/ts/positions/message/get'
+            MESSAGES_CREATE: str = 'cp/ts/positions/message/create'
+            MESSAGES_UPDATE: str = 'cp/ts/positions/message/update'
+            MESSAGES_DELETE: str = 'cp/ts/positions/message/delete'
 
+        @dataclass(frozen=True)
         class GoodReceipts:
-            CREATE = 'cp/ts/goodReceipts/create'
-            GET = 'cp/ts/goodReceipts/get'
-            GET_POSITIONS = 'cp/ts/goodReceipts/getPositions'
-            UPDATE = 'cp/ts/goodReceipts/update'
-            CHANGE_STATUS = 'cp/ts/goodReceipts/changeStatus'
-            DELETE = 'cp/ts/goodReceipts/delete'
+            CREATE: str = 'cp/ts/goodReceipts/create'
+            GET: str = 'cp/ts/goodReceipts/get'
+            GET_POSITIONS: str = 'cp/ts/goodReceipts/getPositions'
+            UPDATE: str = 'cp/ts/goodReceipts/update'
+            CHANGE_STATUS: str = 'cp/ts/goodReceipts/changeStatus'
+            DELETE: str = 'cp/ts/goodReceipts/delete'
 
-            CREATE_POSITION = 'cp/ts/goodReceipts/createPosition'
-            DELETE_POSITION = 'cp/ts/goodReceipts/deletePosition'
-            GET_POSITION = 'cp/ts/goodReceipts/getPosition'
-            UPDATE_POSITION = 'cp/ts/goodReceipts/updatePosition'
+            CREATE_POSITION: str = 'cp/ts/goodReceipts/createPosition'
+            DELETE_POSITION: str = 'cp/ts/goodReceipts/deletePosition'
+            GET_POSITION: str = 'cp/ts/goodReceipts/getPosition'
+            UPDATE_POSITION: str = 'cp/ts/goodReceipts/updatePosition'
+
+        @dataclass(frozen=True)
+        class Tags:
+            LIST: str = 'cp/ts/tags/list'
+            CREATE: str = 'cp/ts/tags/create'
+            DELETE: str = 'cp/ts/tags/delete'
+
+        @dataclass(frozen=True)
+        class TagsRelationships:
+            LIST: str = 'cp/ts/tagsRelationships/list'
+            CREATE: str = 'cp/ts/tagsRelationships/create'
+            DELETE: str = 'cp/ts/tagsRelationships/delete'
+
 
     class Vinqu:
         pass
@@ -370,6 +429,6 @@ class Methods:
         pass
 
 
-SEARCH_METHODS = [Methods.Client.Search.BRANDS, Methods.Client.Search.ARTICLES, Methods.Client.Search.BATCH,
+SEARCH_METHODS = (Methods.Client.Search.BRANDS, Methods.Client.Search.ARTICLES, Methods.Client.Search.BATCH,
                   Methods.Client.Search.HISTORY, Methods.Client.Search.TIPS, Methods.Client.Search.ADVICES,
-                  Methods.Client.Search.ADVICES_BATCH]
+                  Methods.Client.Search.ADVICES_BATCH)
