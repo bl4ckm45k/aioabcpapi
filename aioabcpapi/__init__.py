@@ -11,5 +11,5 @@ from .exceptions import (NetworkError, UnsupportedHost, UnsupportedLogin, Passwo
                          AbcpParameterRequired, TeaPot)
 
 __author__ = 'bl4ckm45k'
-__version__ = '1.0.6v'
+__version__ = '1.1.1'
 __email__ = 'nonpowa@gmail.com'
