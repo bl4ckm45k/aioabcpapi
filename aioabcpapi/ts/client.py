@@ -1,3 +1,4 @@
+import base64
 import logging
 from datetime import datetime
 from typing import Union, List, Dict
@@ -324,6 +325,20 @@ class CustomerComplaints(BaseAbcp):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
         return await self._request(api.Methods.TsClient.CustomerComplaints.CREATE, payload, True)
+
+    async def create_position_multiple(self, positions: Union[List[Dict], Dict],
+                                       customer_complaint_id: int,
+                                       customer_complaint: str,
+                                       custom_complaint_file: str = None):
+        with open(custom_complaint_file, "rb") as ccf:
+            encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
+        custom_complaint_file = f"{encoded_string}"
+        del ccf
+        del encoded_string
+        if isinstance(positions, dict):
+            positions = [positions]
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsClient.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload, True)
 
     async def update_position(self, id: int, quantity: Union[str, int]):
         """
