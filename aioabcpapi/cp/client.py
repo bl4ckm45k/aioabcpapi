@@ -163,7 +163,7 @@ class Search(BaseAbcp):
         if isinstance(articles, dict):
             articles = [articles]
         payload = generate_payload(exclude=['articles'], **locals())
-        return await self._request(api.Methods.Client.Search.ADVICES_BATCH, payload, True)
+        return await self._request(api.Methods.Client.Search.ADVICES_BATCH, payload, True, json=True)
 
 
 class OrderParams:
