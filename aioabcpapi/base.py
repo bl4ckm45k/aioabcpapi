@@ -10,8 +10,8 @@ import ujson as json
 from aiohttp import FormData
 
 from . import api
-from .exceptions import NotEnoughRights
 from .api import Headers, Methods
+from .exceptions import NotEnoughRights
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('base')
@@ -119,7 +119,7 @@ class BaseAbcp:
         payload = self.__payload_check(payload)
         if isinstance(payload, FormData):
             headers = self._headers.multipart_header()
-        elif method is Methods.Client.Search.ADVICES_BATCH:
+        elif kwargs is not None and 'json' in kwargs.keys():
             headers = self._headers.json_header()
             return await api.make_request_json(await self._get_session(), self._host, method, payload, headers)
         else:
