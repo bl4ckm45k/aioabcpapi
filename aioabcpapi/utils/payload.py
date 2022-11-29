@@ -3,7 +3,7 @@ from io import BufferedReader
 
 from aiohttp import FormData
 
-DEFAULT_FILTER = ['self', 'cls']
+DEFAULT_FILTER = ['self', 'cls', 'kwargs']
 logger = logging.getLogger('utils/payload')
 
 
@@ -91,6 +91,9 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                     data[f'order[notes][0][id]'] = value
                 else:
                     data[get_excluded_keys(key)] = value
+        if key == 'kwargs':
+            for k, v, in value.items():
+                data[get_camel_case_key(k)] = v
     logger.debug(f'{data}')
     return data
 
