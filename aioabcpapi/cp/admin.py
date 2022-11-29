@@ -537,9 +537,9 @@ class Finance(BaseAbcp):
         Возвращает список online платежей. Все параметры необязательные и принадлежат к параматерам filter
 
 
-        :param date_start: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или datetime object
-        :type date_start: `str` в формате %Y-%m-%d или datetime object
-        :param date_end: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или datetime object
+        :param date_start: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или %Y-%m-%d %H:%M:%S или datetime object(%Y-%m-%d)
+        :type date_start: `str` в формате %Y-%m-%d или datetime object. Для
+        :param date_end: Дата начало периода для выбора платежей. `str` в формате %Y-%m-%d или %Y-%m-%d %H:%M:%S или datetime object(%Y-%m-%d)
         :type date_end: `str` в формате %Y-%m-%d или datetime object
         :param customer_ids: Массив идентификаторов клиентов. Не более 100 штук в одном запросе.
         :type customer_ids: List or str or int
@@ -889,18 +889,17 @@ class Users(BaseAbcp):
             ogrn: Union[str, int] = None, organization_official_address: str = None,
             bank_name: str = None, bik: Union[str, int] = None,
             correspondent_account: Union[str, int] = None, organization_account: Union[str, int] = None,
-            delivery_address: str = None, comment: str = None, profile_id: str = None
+            delivery_address: str = None, comment: str = None, profile_id: str = None,
+            pickup_state: Union[int, bool] = None
     ):
         """Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
         Принимает параметры для регистрации пользователя. Осуществляет регистрацию нового пользователя в системе.
         Возвращает статус выполнения операции регистрации, учетные данные нового пользователя, а так же сообщение об ошибке в случае возникновения таковой.
 
-
         :param market_type: Тип регистрации: 1 - Розница, 2 - Опт
         :type market_type: str or int
         :param filial_id: Код филиала (если имеются)
         :type filial_id: int or str
-
         :param name: Имя :type name: str
         :param password: Пароль :type password: str
         :param second_name: Отчество :type second_name: str
@@ -935,12 +934,13 @@ class Users(BaseAbcp):
         :param profile_id: Идентификатор профиля.
         Если не указан, будет выставлен профиль по умолчанию для соответствующего типа регистрации (опт или розница).
         :type profile_id: str
-
-
-
+        :param pickup_state: Запрет самовывоза для клиента. 0 - запретить самовывоз, 1- разрешить самовывоз. Параметр актуален только если у вас на сайте включена опция: "Корзина: запрет самовывоза определенным клиентам".
         """
+
         if isinstance(birth_date, datetime):
             birth_date = f'{birth_date:%Y-%m-%d}'
+        if isinstance(pickup_state, bool):
+            pickup_state = int(pickup_state)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.CREATE_USER, payload, True)
 
@@ -1041,7 +1041,8 @@ class Users(BaseAbcp):
             user_code: Union[str, int] = None, client_service_employee_id: Union[int, str] = None,
             client_service_employee2_id: Union[int, str] = None, client_service_employee3_id: Union[int, str] = None,
             client_service_employee4_id: Union[int, str] = None, office: Union[List[Dict], Dict] = None,
-            info: str = None, safe_mode: Union[str, int] = None
+            info: str = None, safe_mode: Union[str, int] = None,
+            pickup_state: Union[int, bool] = None,
 
     ):
 
@@ -1090,18 +1091,21 @@ class Users(BaseAbcp):
         :param office: Массив идентификаторов офисов, к которым необходимо подключить клиента. Если идентификатор офиса, к одному из которых подключен клиент, не будет передан, то он будет отключен. Передать пустой параметр office нельзя, т.к. клиент должен быть подключен минимум к одному офису. Параметр актуален только если у вас на сайте включена опция: "Офисы: включить привязку к клиентам".
         :param info: "Информация" в личном кабинете. В поле допустимо использование html-тегов. max 4000 символов. Закладка появляется только если есть данные в поле info для клиента.
         :param safe_mode:
+        :param pickup_state: Запрет самовывоза для клиента. 0 - запретить самовывоз, 1- разрешить самовывоз. Параметр актуален только если у вас на сайте включена опция: "Корзина: запрет самовывоза определенным клиентам".
         :return:
         """
         if isinstance(birth_date, datetime):
             birth_date = f'{birth_date:%Y-%m-%d}'
+        if isinstance(pickup_state, bool):
+            pickup_state = int(pickup_state)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.EDIT_USER, payload, True)
 
     async def get_user_shipment_address(self, user_id: Union[int, str]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B0.D0.B4.D1.80.D0.B5.D1.81.D0.BE.D0.B2_.D0.B4.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D0.BA.D0.B8
-        Возвращает список доступных адресов доставки. Идентификатор адреса доставки необходим при отправке заказа.
 
+        Возвращает список доступных адресов доставки. Идентификатор адреса доставки необходим при отправке заказа.
 
         :param user_id: Идентификатор клиента
         :type user_id: str or int
@@ -1109,6 +1113,70 @@ class Users(BaseAbcp):
 
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS, payload)
+
+    async def get_shipment_address_zones(self):
+        """
+        Получение списка зон адресов доставки
+
+        :return: Возвращает список зон адресов доставки.
+        """
+        return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONES)
+
+    async def get_shipment_address_zone(self, id: int):
+        """
+        Получение одной зоны адресов доставки
+
+        :param id: Уникальный идентификатор зоны адресов доставки
+        :return: Возвращает одну зону адресов доставки по указанному уникальному идентификатору.
+        """
+        return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE.format(id))
+
+    async def update_shipment_zones(self, zones: Union[List[Dict], Dict]):
+        """
+        Сохранение зон адресов доставки. Универсальный метод добавления и обновления зон адресов доставки.
+
+        :param zones: Массив объектов зон адресов доставки
+        :return:
+        """
+        if isinstance(zones, dict):
+            zones = [zones]
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.Admin.Users.UPDATE_SHIPMENT_ZONES, payload, True)
+
+    async def create_shipment_zone(self, name: str, **kwargs):
+        """
+        Создание новой зоны адресов доставки. Метод создания одной зоны адресов доставки.
+
+        :param name: Название зоны
+        :param kwargs: Аргументы isOnDay{day}: int и stopTimeDay{day}: int
+        :return:
+        """
+        if kwargs is None:
+            raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
+                                        'Например: isOnDay1=1, stopTimeDay1="15:30"')
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, True, json=True)
+
+    async def update_shipment_zone(self, id: int, name: str, **kwargs):
+        """
+        Метод обновления данных одной зоны адресов доставки.
+
+        :param id: Идентификатор обновляемой зоны
+        :param name: Название зоны
+        :param kwargs: Аргументы isOnDay{day}: int и stopTimeDay{day}: int
+        :return:
+        """
+        if kwargs is None:
+            raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
+                                        'Например: isOnDay1=1, stopTimeDay1="15:30"')
+        _method = api.Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id)
+        del id
+        payload = generate_payload(**locals())
+        return await self._request(_method, payload, True, json=True)
+
+    async def delete_shipment_zone(self, id: int):
+        return await self._request(api.Methods.Admin.Users.DELETE_SHIPMENT_ZONE.format(id), None, True)
 
     async def get_updated_cars(self, date_updated_start: str = None, date_updated_end: str = None):
         """
