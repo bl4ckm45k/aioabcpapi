@@ -174,6 +174,12 @@ class Methods:
             EDIT_USER: str = 'cp/user'
 
             GET_USER_SHIPMENT_ADDRESS: str = 'cp/user/shipmentAddresses'
+            GET_USER_SHIPMENT_ADDRESS_ZONES: str = '/cp/user/shipmentAddressZones'
+            GET_USER_SHIPMENT_ADDRESS_ZONE: str = '/cp/user/shipmentAddressZones/{}'
+            UPDATE_SHIPMENT_ZONES: str = '/cp/user/shipmentAddressZones'
+            CREATE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddressZones/new'
+            UPDATE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddressZones/{}/update'
+            DELETE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddress/{}/delete'
             # Garage
             GET_USERS_CARS: str = 'cp/garage'
             SMS_SETTINGS: str = 'cp/user/smsSettings'
@@ -209,7 +215,6 @@ class Methods:
             INFO = f'cp/catalog/info'
             SEARCH = f'cp/catalog/search'
             INFO_BATCH = f'cp/catalog/info/batch'
-
 
         @dataclass(frozen=True)
         class UsersCatalog:
@@ -280,7 +285,6 @@ class Methods:
             BRANDS: str = 'articles/brands'
             INFO: str = 'articles/info'
 
-
     class TsClient:
         @dataclass(frozen=True)
         class GoodReceipts:
@@ -298,6 +302,7 @@ class Methods:
             GET: str = 'ts/customerComplaints/get'
             GET_POSITIONS: str = 'ts/customerComplaints/getPositions'
             CREATE: str = 'ts/customerComplaints/create'
+            CREATE_POSITION_MULTIPLE: str = 'ts/customerComplaints/createPositionMultiple'
             UPDATE: str = 'ts/customerComplaints/updatePosition'
             CANCEL: str = 'ts/customerComplaints/cancelPosition'
 
@@ -342,6 +347,7 @@ class Methods:
             GET_POSITIONS: str = '/cp/ts/customerComplaints/getPositions'
             CREATE: str = 'cp/ts/customerComplaints/create'
             CREATE_POSITION: str = 'cp/ts/customerComplaints/createPosition'
+            CREATE_POSITION_MULTIPLE: str = 'cp/ts/customerComplaints/createPositionMultiple'
             UPDATE_POSITION: str = 'cp/ts/customerComplaints/updatePosition'
             CHANGE_STATUS_POSITION: str = 'cp/ts/customerComplaints/changeStatusPosition'
             UPDATE: str = 'cp/ts/customerComplaints/update'
@@ -421,8 +427,7 @@ class Methods:
             CREATE: str = 'cp/ts/tagsRelationships/create'
             DELETE: str = 'cp/ts/tagsRelationships/delete'
 
-
-    class Vinqu:
+    class VinQu:
         pass
 
     class TecDoc:
