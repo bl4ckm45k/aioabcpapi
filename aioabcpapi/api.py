@@ -20,22 +20,21 @@ def check_data(host: str, login: str, password: str):
         if host_id.isdigit() and len(host_id) < 6 and host[0:2] == 'id':
             if login[0:6] == 'api@id' and login[6:] == host_id:
                 return True
-            else:
-                if login.isdigit() and 4 < len(login) < 14:
+            if login.isdigit() and 4 < len(login) < 14:
+                return False
+            if '@' in login:
+                email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
+                if email:
                     return False
-                elif '@' in login:
-                    email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
-                    if email:
-                        return False
-                    else:
-                        raise UnsupportedLogin('Недопустимый логин')
                 else:
                     raise UnsupportedLogin('Недопустимый логин')
+            else:
+                raise UnsupportedLogin('Недопустимый логин')
         else:
             raise UnsupportedHost(f'Имя хоста {host} не поддерживается\n'
                                   f'Допустимые имена id200.public.api.abcp.ru')
     else:
-        raise PasswordType(f'Допускаются пароли только в md5 hash')
+        raise PasswordType('Допускаются пароли только в md5 hash')
 
 
 def check_result(method_name: str, content_type: str, status_code: int, body):

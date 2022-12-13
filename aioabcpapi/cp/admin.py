@@ -108,10 +108,10 @@ class Orders(BaseAbcp):
             date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
         if isinstance(format, str) and format not in ["additional", "short", "count", "status_only", "p"]:
             raise AbcpWrongParameterError(
-                f'Параметр "format" должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
-        if limit is not None and not (1 <= int(limit) <= 1000):
+                'Параметр "format" должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
+        if limit is not None and not 1 <= int(limit) <= 1000:
             raise AbcpAPIError(f'The limit must be more than {limit}')
-        if isinstance(status_code, int) or isinstance(status_code, str):
+        if isinstance(status_code, (int, str)):
             status_code = [status_code]
         if not isinstance(numbers, list) and numbers is not None:
             numbers = [numbers]
@@ -262,7 +262,7 @@ class Orders(BaseAbcp):
         if number is None and internal_number is None:
             raise AbcpParameterRequired('number and internal_number is None')
         if delivery_address_id is not None and int(delivery_address_id) == -1 and delivery_address is None:
-            raise AbcpAPIError(f'Не передан новый адрес доставки')
+            raise AbcpAPIError('Не передан новый адрес доставки')
         if delivery_cost is not None and delivery_address_id is None:
             raise AbcpParameterRequired(
                 'Необходимо указать delivery_address_id если это существующий адрес '
@@ -274,7 +274,7 @@ class Orders(BaseAbcp):
                 [order_positions, user_id, delivery_type_id, delivery_office_id, basket_id, guest_order_name,
                  guest_order_mobile, guest_order_email, shipment_date, delivery_cost, delivery_address_id,
                  delivery_address, client_order_number]) is None:
-            raise AbcpParameterRequired(f'Недостаточно параметров')
+            raise AbcpParameterRequired('Недостаточно параметров')
         if note is not None and del_note is not None:
             raise AbcpAPIError('Заметку можно либо удалить либо добавить')
 
@@ -673,7 +673,7 @@ class Finance(BaseAbcp):
         :type amount: str or int or float
         """
 
-        if all(x.isdigit() for x in [payment_id, order_id, amount] if type(x) is str):
+        if all(x.isdigit() for x in [payment_id, order_id, amount] if isinstance(x, str)):
             pass
         else:
             raise AbcpAPIError('Все параметры должны являться цифрами')
@@ -697,7 +697,7 @@ class Finance(BaseAbcp):
         :param refund_amount: Сумма возврата.
         :type refund_amount: int or str or float
         """
-        if not all(x.isdigit() for x in [refund_payment_id, refund_amount] if type(x) is str):
+        if not all(x.isdigit() for x in [refund_payment_id, refund_amount] if isinstance(x, str)):
             raise AbcpAPIError('Все параметры должны являться цифрами')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
@@ -866,8 +866,8 @@ class Users(BaseAbcp):
             date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
 
         if isinstance(format, str) and format != 'p':
-            raise AbcpWrongParameterError(f'The parameter "format" can only take the value "p" or None')
-        if type(customers_ids) is not list and customers_ids is not None:
+            raise AbcpWrongParameterError('The parameter "format" can only take the value "p" or None')
+        if not isinstance(customers_ids, list) and customers_ids is not None:
             customers_ids = [customers_ids]
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.GET_USERS_LIST, payload)
@@ -965,7 +965,7 @@ class Users(BaseAbcp):
         """
         format_params_check = ('brands', 'distributors')
         if isinstance(format, str) and format not in format_params_check:
-            raise AbcpWrongParameterError(f'format parameter can take values "brands" or "distributors"')
+            raise AbcpWrongParameterError('format parameter can take values "brands" or "distributors"')
         del format_params_check
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.GET_PROFILES, payload)
@@ -1015,9 +1015,9 @@ class Users(BaseAbcp):
                                    price_up, payment_methods,
                                    matrix_price_ups, distributors_price_ups]):
             raise AbcpParameterRequired("Один из опциональных параметров должен быть передан")
-        if type(matrix_price_ups) is dict:
+        if isinstance(matrix_price_ups, dict):
             matrix_price_ups = [matrix_price_ups]
-        if type(distributors_price_ups) is dict:
+        if isinstance(distributors_price_ups, dict):
             distributors_price_ups = [distributors_price_ups]
         payload = generate_payload(exclude=['matrix_price_ups', 'distributors_price_ups'], **locals())
         return await self._request(api.Methods.Admin.Users.EDIT_PROFILE, payload, True)
@@ -1264,7 +1264,7 @@ class Distributors(BaseAbcp):
 
         :param distributor_id: 	Id поставщика
         :type distributor_id: str or int
-        :param status: 	1 - Вкл. \ 0 - Выкл.
+        :param status: 	1 - Вкл. / 0 - Выкл.
         :type status: str or int
         """
         if isinstance(status, bool):
@@ -1379,9 +1379,9 @@ class Distributors(BaseAbcp):
         :type not_use_online_supplier_deadline: int or str
         :return: dict
         """
-        if supplier_code_enabled_list is not None and type(supplier_code_enabled_list) is not list:
+        if supplier_code_enabled_list is not None and not isinstance(supplier_code_enabled_list, list):
             supplier_code_enabled_list = [supplier_code_enabled_list]
-        if supplier_code_disabled_list is not None and type(supplier_code_disabled_list) is not list:
+        if supplier_code_disabled_list is not None and isinstance(supplier_code_disabled_list, list):
             supplier_code_disabled_list = [supplier_code_disabled_list]
         payload = generate_payload(**locals())
 
@@ -1433,7 +1433,7 @@ class Distributors(BaseAbcp):
         :type distributors List[Dict] or Dict
         :return: dict
         """
-        if type(distributors) is dict:
+        if isinstance(distributors, dict):
             distributors = [distributors]
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Distributors.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)

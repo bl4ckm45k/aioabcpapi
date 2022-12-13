@@ -62,7 +62,7 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
     if exclude is None:
         exclude = ['order_params', 'distributors', 'note', 'del_note',
                    'basket_positions']
-    data = dict()
+    data = {}
 
     for key, value in kwargs.items():
         if key not in exclude + DEFAULT_FILTER and value is not None and not key.startswith('_'):
@@ -80,15 +80,15 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                     data['articles'] = value
                 elif key == 'reseller_data':
                     data['resellerData'] = value
-                elif key == 'distributors_price_ups' or key == 'matrix_price_ups':
+                elif key in ('distributors_price_ups', 'matrix_price_ups'):
                     data = data | generate_price_ups(key, value)
                 else:
                     data = {**data, **generate_from_list(key, value)}
 
             else:
                 if key == 'del_note':
-                    data[f'order[notes][0][value]'] = None
-                    data[f'order[notes][0][id]'] = value
+                    data['order[notes][0][value]'] = None
+                    data['order[notes][0][id]'] = value
                 else:
                     data[get_excluded_keys(key)] = value
         if key == 'kwargs':
@@ -100,9 +100,9 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
 
 def generate_price_ups(key, value):
     data = {}
-    for z in range(len(value)):
-        for key_z, value_z in value[z].items():
-            data_key = get_excluded_keys(key).replace('_index_', str(z)).replace('_key_', key_z)
+    for i in range(len(value)):
+        for key_z, value_z in value[i].items():
+            data_key = get_excluded_keys(key).replace('_index_', str(i)).replace('_key_', key_z)
             if isinstance(value_z, dict):
                 list_keys = list(value_z.keys())
                 for key_j, value_j in value_z.items():
@@ -117,13 +117,13 @@ def generate_price_ups(key, value):
 
 def generate_from_list(key, value):
     data = {}
-    for z in range(len(value)):
-        for key_z, value_z in value[z].items():
+    for i in range(len(value)):
+        for key_z, value_z in value[i].items():
             if not isinstance(value_z, list):
-                data_key = get_excluded_keys(key).replace('_index_', str(z)).replace('_key_', key_z)
+                data_key = get_excluded_keys(key).replace('_index_', str(i)).replace('_key_', key_z)
                 data[data_key] = value_z
             else:
-                data_key = get_excluded_keys(key).replace('_index_', str(z)).replace('_key_', key_z)
+                data_key = get_excluded_keys(key).replace('_index_', str(i)).replace('_key_', key_z)
                 for index_j, value_j in enumerate(value_z):
                     data[f'{data_key}[{index_j}]'] = value_j
     logger.debug(f'{data}')
@@ -131,10 +131,10 @@ def generate_from_list(key, value):
 
 
 def generate_payload_filter(**kwargs):
-    data = dict()
+    data = {}
     for key, value in kwargs.items():
         if key not in DEFAULT_FILTER and value is not None and not key.startswith('_'):
-            if type(value) is list:
+            if isinstance(value, list):
                 for i, x in enumerate(value):
                     data[
                         f"filter[{get_camel_case_key(key)}][{i}]"] = x
@@ -145,7 +145,7 @@ def generate_payload_filter(**kwargs):
 
 
 def generate_payload_payments(single: bool = True, **kwargs):
-    data = dict()
+    data = {}
     for key, value in kwargs.items():
         if key not in DEFAULT_FILTER and value is not None and not key.startswith('_'):
             if single:
@@ -172,7 +172,7 @@ def generate_payload_online_order(**kwargs):
     :param kwargs:
     :return: dict
     """
-    data = dict()
+    data = {}
     for key, value in kwargs.items():
         if key not in DEFAULT_FILTER and value is not None and not key.startswith('_'):
             if key == 'order_params':

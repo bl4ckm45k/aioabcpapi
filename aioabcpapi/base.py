@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import ssl
-import typing
 from typing import Dict, List, Optional, Union, Type
 
 import aiohttp
@@ -26,7 +25,7 @@ class BaseAbcp:
             password: str = None,
             loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
             connections_limit: int = None,
-            timeout: typing.Optional[typing.Union[int, float, aiohttp.ClientTimeout]] = None,
+            timeout: Optional[Union[int, float, aiohttp.ClientTimeout]] = None,
     ):
         """ You can get API host name, login, password here: https://cp.abcp.ru/?page=allsettings&systemsettings&apiInformation
 
@@ -114,7 +113,7 @@ class BaseAbcp:
         :rtype: Union[List, Dict]
         :raise: :obj:`utils.exceptions`
         """
-        if not self._admin and (isinstance(method, Methods.Admin) or isinstance(method, Methods.TsAdmin)):
+        if not self._admin and isinstance(method, (Methods.Admin, Methods.TsAdmin)):
             raise NotEnoughRights('Недостаточно прав для использования API администратора')
         payload = self.__payload_check(payload)
         if isinstance(payload, FormData):

@@ -7,11 +7,9 @@ def check_fields(fields_to_check, fields_values):
             raise AbcpWrongParameterError(
                 f'Параметр "fields" может принимать значения {fields_values}\n'
                 f'Для передачи нескольких параметров передавайте list')
-        else:
-            return fields_to_check
+        return fields_to_check
     if isinstance(fields_to_check, list):
         if all(x in fields_values for x in fields_to_check):
             return ','.join(fields_to_check)
-        else:
-            raise AbcpWrongParameterError(
-                f'Параметр "fields" может принимать значения {fields_values}')
+        raise AbcpWrongParameterError(
+            f'Параметр "fields" может принимать значения {fields_values}')

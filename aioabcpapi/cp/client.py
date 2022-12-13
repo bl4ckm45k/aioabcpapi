@@ -96,7 +96,7 @@ class Search(BaseAbcp):
         """
         if not self._admin and profile_id is not None:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
-        if type(search) is dict:
+        if isinstance(search, dict):
             search = [search]
         payload = generate_payload(exclude=['search'], **locals())
         # It can work with GET and POST, but the documentation specifies POST
@@ -205,7 +205,7 @@ class Basket(BaseAbcp):
         :type basket_id: :obj:`str` or :obj:`int`
         :return: dict
         """
-        if type(basket_positions) is dict:
+        if isinstance(basket_positions, dict):
             basket_positions = [basket_positions]
         payload = generate_payload(**locals())
 
@@ -473,7 +473,7 @@ class Orders(BaseAbcp):
         :type client_order_number: str
         :return:
         """
-        if type(positions) is dict:
+        if isinstance(positions, dict):
             basket_positions = [positions]
         else:
             basket_positions = positions
@@ -517,8 +517,8 @@ class Orders(BaseAbcp):
         """
         if isinstance(format, str) and format != 'p':
             raise AbcpWrongParameterError('Параметр format может принимать только значение "p"')
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
-            raise AbcpWrongParameterError(f'Параметр limit может быть в диапазоне от 1 до 1000')
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
+            raise AbcpWrongParameterError('Параметр limit может быть в диапазоне от 1 до 1000')
 
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Client.Orders.GET_ORDERS, payload)
@@ -867,14 +867,14 @@ class Articles(BaseAbcp):
         if not self._admin:
             raise AbcpAPIError('Операция доступна только администратору API')
         if isinstance(format, str) and format not in 'bnpchmti':
-            raise AbcpWrongParameterError(f'Параметр "format" может содержать только символы: b, n, p, c, h, m, t, i')
+            raise AbcpWrongParameterError('Параметр "format" может содержать только символы: b, n, p, c, h, m, t, i')
         if isinstance(source, str):
             source = [source]
         if isinstance(cross_image, int) and 'i' not in format:
             raise AbcpWrongParameterError('')
         if isinstance(source, list) and not all(x in ['standard', 'common', 'common_cat'] for x in source):
             raise AbcpWrongParameterError(
-                f'Параметр "source" может содержать следующие флаги: standard, common, common_cat')
+                'Параметр "source" может содержать следующие флаги: standard, common, common_cat')
 
         payload = generate_payload(exclude=['cross_image', 'with_original'], **locals())
         return await self._request(api.Methods.Client.Articles.INFO, payload)

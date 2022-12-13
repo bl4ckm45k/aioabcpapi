@@ -74,7 +74,7 @@ class GoodReceipts(BaseAbcp):
         :param sup_number:
         :return:
         """
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" может принимать значения от 1 до 1000')
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
@@ -105,7 +105,7 @@ class GoodReceipts(BaseAbcp):
         :param auto:
         :return:
         """
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" может принимать значения от 1 до 1000')
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
@@ -142,13 +142,13 @@ class OrderPickings(BaseAbcp):
         :param co_old_pos_ids: список идентификаторов позиций старых заказов
         :return:
         """
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" может принимать значения от 1 до 1000')
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(status, int) and not (1 <= status <= 3):
+        if isinstance(status, int) and not 1 <= status <= 3:
             raise AbcpWrongParameterError('Параметр "status" принимет значения от 1 до 3')
         if isinstance(status, list):
             if all(1 <= x <= 3 for x in status):
@@ -193,7 +193,7 @@ class OrderPickings(BaseAbcp):
 
         if isinstance(output, str) and (not all(x in 'oe' for x in output) or len(output) > 2):
             raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["o", "e"]')
-        elif output is not None:
+        if output is not None:
             raise AbcpWrongParameterError('output must be a string')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsClient.OrderPickings.GET_POSITIONS, payload)
@@ -241,7 +241,7 @@ class CustomerComplaints(BaseAbcp):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(tag_ids, int) or isinstance(tag_ids, str):
+        if isinstance(tag_ids, (int, str)):
             tag_ids = [tag_ids]
         if isinstance(position_statuses, list):
             position_statuses = ','.join(map(str, position_statuses))
@@ -298,9 +298,9 @@ class CustomerComplaints(BaseAbcp):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(status, int) and not (1 <= status <= 6):
+        if isinstance(status, int) and not 1 <= status <= 6:
             raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 6')
-        if isinstance(type, int) and not (1 <= type <= 3):
+        if isinstance(type, int) and not 1 <= type <= 3:
             raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
@@ -390,7 +390,7 @@ class Orders(BaseAbcp):
         """
         if isinstance(create_time, datetime):
             create_time = generate(create_time.replace(tzinfo=pytz.utc))
-        if isinstance(positions, int) or isinstance(positions, str):
+        if isinstance(positions, (int, str)):
             positions = [positions]
         payload = generate_payload(
             exclude=['delivery_address', 'delivery_person',
@@ -570,7 +570,7 @@ class Cart(BaseAbcp):
         :param position_ids:
         :return:
         """
-        if isinstance(position_ids, int) or isinstance(position_ids, str):
+        if isinstance(position_ids, (int, str)):
             position_ids = [position_ids]
 
         payload = generate_payload(**locals())
@@ -647,15 +647,15 @@ class Positions(BaseAbcp):
             deadline_date_start = f'{deadline_date_start:%Y-%m-%d %H:%M:%S}'
         if isinstance(deadline_date_end, datetime):
             deadline_date_end = f'{deadline_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(product_ids, int) or isinstance(product_ids, str):
+        if isinstance(product_ids, (int, str)):
             product_ids = [product_ids]
-        if isinstance(route_ids, int) or isinstance(route_ids, str):
+        if isinstance(route_ids, (int, str)):
             route_ids = [route_ids]
-        if isinstance(distributor_ids, int) or isinstance(distributor_ids, str):
+        if isinstance(distributor_ids, (int, str)):
             distributor_ids = [distributor_ids]
-        if isinstance(ids, int) or isinstance(ids, str):
+        if isinstance(ids, (int, str)):
             ids = [ids]
-        if isinstance(order_ids, int) or isinstance(order_ids, str):
+        if isinstance(order_ids, (int, str)):
             order_ids = [order_ids]
         if isinstance(statuses, str):
             statuses = [statuses]

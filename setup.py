@@ -5,11 +5,11 @@ from setuptools import setup
 if sys.version_info < (3, 7):
     raise RuntimeError('Your Python version {0} is not supported, please install '
                        'Python 3.7+'.format('.'.join(map(str, sys.version_info[:3]))))
-requirements = ["aiohttp>=3.8.1", "certifi>=2022.6.15", "ujson>=5.3.0", "pytz", "pyrfc3339"]
+requirements = ["aiohttp>=3.8.1", "certifi>=2022.12.7", "ujson>=5.3.0", "pytz", "pyrfc3339"]
 
 setup(
     name='aioabcpapi',
-    version='1.1.1',
+    version='1.1.2',
     author='bl4ckm45k',
     author_email='nonpowa@gmail.com',
     description='Async library for ABCP API',

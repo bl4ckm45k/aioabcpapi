@@ -92,20 +92,20 @@ class OrderPickings(BaseAbcp):
         """
         # ISSUE: The "d" flag is not described in the documentation
         if isinstance(output, str) and any(x not in ["e", "t", "s", "d"] for x in output):
-            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "t", "s", "d"')
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+            raise AbcpWrongParameterError('Параметр "output" принимает флаги "e", "t", "s", "d"')
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
         if isinstance(limit, str) and not limit.isdigit():
             raise AbcpWrongParameterError('Параметр "limit" должен быть числом')
         if statuses is not None and any(not (1 <= int(x) <= 5) for x in statuses):
             raise AbcpWrongParameterError('Параметр "statuses" принимает значения от 1 до 5')
-        if isinstance(statuses, int) or isinstance(statuses, str):
+        if isinstance(statuses, (int, str)):
             statuses = [statuses]
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(co_old_pos_ids, int) or isinstance(co_old_pos_ids, str):
+        if isinstance(co_old_pos_ids, (int, str)):
             co_old_pos_ids = [co_old_pos_ids]
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.OrderPickings.GET, payload, True)
@@ -130,7 +130,7 @@ class OrderPickings(BaseAbcp):
         """
         if isinstance(op_id, str) and not op_id.isdigit():
             raise AbcpWrongParameterError('Параметр "op_id" должен быть числом')
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
         if isinstance(ignore_canceled, int):
             if ignore_canceled == 0:
@@ -173,10 +173,10 @@ class OrderPickings(BaseAbcp):
         if status_id is None and done_right_away == 1:
             raise AbcpParameterRequired(
                 'При указании параметра done_right_away, status_id является обязательным и должен иметь признак списания')
-        if isinstance(pp_ids, int) or isinstance(pp_ids, str):
+        if isinstance(pp_ids, (int, str)):
             pp_ids = [pp_ids]
         if isinstance(output, str) and any(x not in ["e", "t", "s"] for x in output):
-            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "t", "s"')
+            raise AbcpWrongParameterError('Параметр "output" принимает флаги "e", "t", "s"')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, True)
 
@@ -194,7 +194,7 @@ class OrderPickings(BaseAbcp):
         """
         if operation_status_id > 5 or operation_status_id < 1:
             raise AbcpWrongParameterError('Параметр "operation_status_id" может принимать значения от 1 до 5')
-        if positions_status_id is None and (operation_status_id == 3 or operation_status_id == 5):
+        if positions_status_id is None and operation_status_id in (3, 5):
             raise AbcpWrongParameterError(
                 f'Параметр "positions_status_id" является обязательным при смене статуса операции на {operation_status_id}')
         payload = generate_payload(**locals())
@@ -319,7 +319,7 @@ class CustomerComplaints(BaseAbcp):
         :param fields:
         :return:
         """
-        if isinstance(sort, str) and not (sort == 'status' or sort == 'createDate'):
+        if isinstance(sort, str) and sort not in ('status', 'createDate'):
             raise AbcpWrongParameterError('Параметр "sort" может принимать одно из значений: "status" или "createDate"')
 
         if isinstance(date_start, datetime):
@@ -334,9 +334,9 @@ class CustomerComplaints(BaseAbcp):
             old_co_position_ids = ','.join(map(str, old_co_position_ids))
         if isinstance(tag_ids, list):
             tag_ids = ','.join(map(str, tag_ids))
-        if isinstance(status, int) and not (1 <= status <= 8):
+        if isinstance(status, int) and not 1 <= status <= 8:
             raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 8')
-        if isinstance(type, int) and not (1 <= type <= 3):
+        if isinstance(type, int) and not 1 <= type <= 3:
             raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
@@ -373,7 +373,7 @@ class CustomerComplaints(BaseAbcp):
         :param comment:комментарий
         :return:
         """
-        if not (1 <= type <= 3):
+        if not 1 <= type <= 3:
             raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload, True)
@@ -406,7 +406,7 @@ class CustomerComplaints(BaseAbcp):
         """
         if all(x is None for x in [quantity, type, comment]):
             raise AbcpParameterRequired('Один из параметров [quantity, type, comment] должен быть указан')
-        if isinstance(type, int) and not (1 <= type <= 3):
+        if isinstance(type, int) and not 1 <= type <= 3:
             raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload, True)
@@ -547,7 +547,7 @@ class Orders(BaseAbcp):
             delivery_start_time = generate(delivery_start_time.replace(tzinfo=pytz.utc))
         if isinstance(delivery_end_time, datetime):
             delivery_end_time = generate(delivery_end_time.replace(tzinfo=pytz.utc))
-        if isinstance(positions, int) or isinstance(positions, str):
+        if isinstance(positions, (int, str)):
             positions = [positions]
         payload = generate_payload(
             exclude=['delivery_address', 'delivery_person', 'delivery_contact',
@@ -672,7 +672,7 @@ class Orders(BaseAbcp):
         :param fields: дополнительная информация
         :return:
         """
-        if isinstance(merge_orders_ids, int) or isinstance(merge_orders_ids, str):
+        if isinstance(merge_orders_ids, (int, str)):
             merge_orders_ids = [merge_orders_ids]
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
@@ -692,7 +692,7 @@ class Orders(BaseAbcp):
         :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
         :return:
         """
-        if isinstance(position_ids, int) or isinstance(position_ids, str):
+        if isinstance(position_ids, (int, str)):
             position_ids = [position_ids]
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.fields)
@@ -1058,21 +1058,21 @@ class Positions(BaseAbcp):
             order_picking_date_start = f'{order_picking_date_start:%Y-%m-%d %H:%M:%S}'
         if isinstance(order_picking_date_end, datetime):
             order_picking_date_end = f'{order_picking_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_good_ids, int) or isinstance(order_picking_good_ids, str):
+        if isinstance(order_picking_good_ids, (int, str)):
             order_picking_good_ids = [order_picking_good_ids]
-        if isinstance(customer_complaint_position_ids, int) or isinstance(customer_complaint_position_ids, str):
+        if isinstance(customer_complaint_position_ids, (int, str)):
             customer_complaint_position_ids = [customer_complaint_position_ids]
-        if isinstance(product_ids, int) or isinstance(product_ids, str):
+        if isinstance(product_ids, (int, str)):
             product_ids = [product_ids]
-        if isinstance(so_position_ids, int) or isinstance(so_position_ids, str):
+        if isinstance(so_position_ids, (int, str)):
             so_position_ids = [so_position_ids]
-        if isinstance(route_ids, int) or isinstance(route_ids, str):
+        if isinstance(route_ids, (int, str)):
             route_ids = [route_ids]
-        if isinstance(distributor_ids, int) or isinstance(distributor_ids, str):
+        if isinstance(distributor_ids, (int, str)):
             distributor_ids = [distributor_ids]
-        if isinstance(ids, int) or isinstance(ids, str):
+        if isinstance(ids, (int, str)):
             ids = [ids]
-        if isinstance(order_ids, int) or isinstance(order_ids, str):
+        if isinstance(order_ids, (int, str)) :
             order_ids = [order_ids]
         if isinstance(statuses, str):
             statuses = [statuses]
@@ -1146,7 +1146,7 @@ class Positions(BaseAbcp):
         if isinstance(deadline_time_max, datetime):
             deadline_time_max = generate(deadline_time_max.replace(tzinfo=pytz.utc))
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
-            raise AbcpWrongParameterError(f'Параметр "status" может принимать значения "new" или "prepayment"')
+            raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Positions.UPDATE, payload, True)
 
@@ -1187,7 +1187,7 @@ class Positions(BaseAbcp):
         :return:
         """
         if all(status != x for x in ['new', 'prepayment']):
-            raise AbcpWrongParameterError(f'Параметр "status" может принимать значения "new" или "prepayment"')
+            raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
         payload = generate_payload(**locals())
@@ -1350,11 +1350,11 @@ class GoodReceipts(BaseAbcp):
         :param sup_number: номер отгрузки поставщика
         :return:
         """
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
         if isinstance(output, str) and not all(x in 'des' for x in output):
             raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["d", "e", "s"]')
-        if isinstance(statuses, int) and not (1 <= statuses <= 3):
+        if isinstance(statuses, int) and not 1 <= statuses <= 3:
             raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
         if isinstance(statuses, list):
             if all(1 <= x <= 3 for x in statuses):
@@ -1384,7 +1384,7 @@ class GoodReceipts(BaseAbcp):
         :return:
         """
 
-        if isinstance(limit, int) and not (1 <= limit <= 1000):
+        if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
@@ -1471,7 +1471,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(barcodes, list):
             barcodes = ' '.join(barcodes)
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
-            raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
+            raise AbcpWrongParameterError('Параметр manufacturer_country должен состоять из 3 английских букв')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.GoodReceipts.CREATE_POSITION, payload, True)
 
@@ -1532,7 +1532,7 @@ class GoodReceipts(BaseAbcp):
         if isinstance(barcodes, list):
             barcodes = ' '.join(map(str, barcodes))
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
-            raise AbcpWrongParameterError(f'Параметр manufacturer_country должен состоять из 3 английских букв')
+            raise AbcpWrongParameterError('Параметр manufacturer_country должен состоять из 3 английских букв')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.GoodReceipts.UPDATE_POSITION, payload, True)
 
@@ -1564,9 +1564,9 @@ class Tags(BaseAbcp):
                 check_hex = int(color, base=16)
                 del check_hex
                 color = f'#{color}'
-            except ValueError:
+            except ValueError as exc:
                 raise AbcpWrongParameterError(
-                    'The "color" must be a hexadecimal string. It is possible to specify both with and without "#"')
+                    'The "color" must be a hexadecimal string. It is possible to specify both with and without "#"') from exc
 
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Tags.CREATE, payload, True)
@@ -1612,12 +1612,12 @@ class TagsRelationships(BaseAbcp):
             raise AbcpWrongParameterError('"object_type" must be in range 1-13')
         if isinstance(group_by_object_id, bool):
             group_by_object_id = int(group_by_object_id)
-        if isinstance(group_by_object_id, int) and not (0 <= group_by_object_id <= 1):
+        if isinstance(group_by_object_id, int) and not 0 <= group_by_object_id <= 1:
             raise AbcpWrongParameterError('"group_by_object_id" must be in range 0-1 or use a Boolean value')
 
         if isinstance(with_all_tags, bool):
             with_all_tags = int(with_all_tags)
-        if isinstance(with_all_tags, int) and not (0 <= with_all_tags <= 1):
+        if isinstance(with_all_tags, int) and not 0 <= with_all_tags <= 1:
             raise AbcpWrongParameterError('"with_all_tags" must be in range 0-1 or use a Boolean value')
         if with_all_tags is not None and tags_ids is None:
             raise AbcpParameterRequired('The "with_all_tags" parameter must be used with the "tags_ids" parameter')
