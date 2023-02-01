@@ -61,7 +61,7 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
     """
     if exclude is None:
         exclude = ['order_params', 'distributors', 'note', 'del_note',
-                   'basket_positions']
+                   'basket_positions', 'sip']
     data = {}
 
     for key, value in kwargs.items():
@@ -86,6 +86,8 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                     data = {**data, **generate_from_list(key, value)}
 
             else:
+                if key == 'sip':
+                    data[key.upper()] = value
                 if key == 'del_note':
                     data['order[notes][0][value]'] = None
                     data['order[notes][0][id]'] = value
