@@ -186,6 +186,7 @@ class Methods:
         @dataclass(frozen=True)
         class Staff:
             GET_STAFF: str = 'cp/managers'
+            UPDATE_STAFF: str = 'cp/manager'
 
         @dataclass(frozen=True)
         class Statuses:
@@ -218,6 +219,11 @@ class Methods:
         @dataclass(frozen=True)
         class UsersCatalog:
             UPLOAD: str = 'cp/usercatalogs/{}/upload'
+
+        @dataclass(frozen=True)
+        class Payment:
+            TOKEN: str = 'cp/payment/token'
+            TOP_BALANCE: str = 'cp/payment/top-balance-link'
 
     class Client:
         # SEARCH METHODS
