@@ -28,6 +28,7 @@ class AdminApi(BaseAbcp):
         self.catalog = Catalog(*args)
         self.articles = Articles(*args)
         self.users_catalog = UsersCatalog(*args)
+        self.payment = Payment(*args)
 
 
 class Orders(BaseAbcp):
@@ -1214,6 +1215,28 @@ class Staff(BaseAbcp):
         """
         return await self._request(api.Methods.Admin.Staff.GET_STAFF)
 
+    async def update_manager(self, id: int, type_id: int = None,
+                             first_name: str = None, last_name: str = None,
+                             email: str = None, phone: str = None, mobile: str = None,
+                             SIP: str = None, comment: str = None, boss_id: int = None, office_id: int = None):
+        """
+
+        :param id:
+        :param type_id:
+        :param first_name:
+        :param last_name:
+        :param email:
+        :param phone:
+        :param mobile:
+        :param SIP:
+        :param comment:
+        :param boss_id:
+        :param office_id:
+        :return:
+        """
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.Admin.Staff.UPDATE_STAFF, payload, True)
+        pass
 
 class Statuses(BaseAbcp):
     async def get(self):
@@ -1545,3 +1568,32 @@ class UsersCatalog(BaseAbcp):
 
         payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], **locals())
         return await self._request(api.Methods.Admin.UsersCatalog.UPLOAD.format(catalog_id), payload, True)
+
+
+class Payment(BaseAbcp):
+    async def token(self, number: Union[str, int]):
+        """
+        Получение ссылки на оплату заказа
+
+        :param number: Онлайн-номер заказа
+        :return:
+        """
+        if isinstance(number, str) and not number.isdigit():
+            raise AbcpWrongParameterError('Параметр "number" должен быть числом')
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.Admin.Payment.TOKEN, payload)
+
+    async def top_balance_link(self, client_id: Union[str, int], amount: Union[float, int, str]):
+        """
+
+        :param client_id: Идентификатор клиента
+        :param amount: Сумма пополнения баланса
+        :return:
+        """
+        if isinstance(client_id, str) and not client_id.isdigit():
+            raise AbcpWrongParameterError('Параметр "client_id" должен быть числом')
+        if isinstance(amount, str) and not amount.isdigit():
+            raise AbcpWrongParameterError('Параметр "amount" должен быть числом')
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.Admin.Payment.TOP_BALANCE, payload)
