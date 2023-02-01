@@ -1218,7 +1218,7 @@ class Staff(BaseAbcp):
     async def update_manager(self, id: int, type_id: int = None,
                              first_name: str = None, last_name: str = None,
                              email: str = None, phone: str = None, mobile: str = None,
-                             SIP: str = None, comment: str = None, boss_id: int = None, office_id: int = None):
+                             sip: Union[str, int] = None, comment: str = None, boss_id: int = None, office_id: int = None):
         """
 
         :param id:
@@ -1234,6 +1234,8 @@ class Staff(BaseAbcp):
         :param office_id:
         :return:
         """
+        if isinstance(sip, str) and not sip.isdigit():
+            raise AbcpWrongParameterError('Параметр "SIP" должен быть числом')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Staff.UPDATE_STAFF, payload, True)
         pass
