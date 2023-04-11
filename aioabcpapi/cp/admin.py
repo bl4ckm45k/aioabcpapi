@@ -18,6 +18,11 @@ logger = logging.getLogger('Cp.Admin')
 
 class AdminApi(BaseAbcp):
     def __init__(self, *args):
+        """
+        Класс содержит методы административного интерфейса
+
+        https://www.abcp.ru/wiki/API.ABCP.Admin
+        """
         super().__init__(*args)
         self.orders = Orders(*args)
         self.finance = Finance(*args)
@@ -46,6 +51,7 @@ class Orders(BaseAbcp):
             distributor_order_id: Union[int, str] = None,
             is_canceled: Union[int, str] = None,
             distributor_id: Union[str, int, List] = None,
+            user_id: Union[int, str] = None,
             with_deleted: Union[str, bool] = None,
             format: Optional[str] = None,
             limit: Optional[int] = None,
@@ -59,6 +65,7 @@ class Orders(BaseAbcp):
 
 
 
+        :param user_id: Идентификатор клиента (покупателя). В результате вернутся все заказы, сделанные указанным клиентом.
         :param date_created_start: Начальная дата размещения заказа `str` в формате %Y-%m-%d %H:%M:%S  или datetime object
         :type date_created_start: `str` or `datetime`
         :param date_created_end: Конечная дата размещения заказа
@@ -116,6 +123,8 @@ class Orders(BaseAbcp):
             status_code = [status_code]
         if not isinstance(numbers, list) and numbers is not None:
             numbers = [numbers]
+        if isinstance(user_id, str) and not user_id.isdigit():
+            raise AbcpAPIError(f'Параметр user_id должен быть числом')
         payload = generate_payload(**locals())
 
         return await self._request(api.Methods.Admin.Orders.GET_ORDERS_LIST, payload)
@@ -806,6 +815,7 @@ class Users(BaseAbcp):
             customers_ids: Union[List, str, int] = None,
             market_type: Union[str, int] = None,
             phone: Union[str, int] = None,
+            enable_sms: Union[str, bool] = None,
             email: str = None,
             safe_mode: Union[str, int] = None,
             format: str = None,
@@ -837,6 +847,7 @@ class Users(BaseAbcp):
         :type market_type: int or str
         :param phone: Номер телефона клиента
         :type phone: str 79998887766
+        :param enable_sms: Производится ли отпровка SMS клиенту
         :param email: E-mail клиента
         :type email: str
         :param safe_mode: "Безопасный режим" для клиентов не имеющих поддержки формата JSON.
@@ -870,6 +881,8 @@ class Users(BaseAbcp):
             raise AbcpWrongParameterError('The parameter "format" can only take the value "p" or None')
         if not isinstance(customers_ids, list) and customers_ids is not None:
             customers_ids = [customers_ids]
+        if isinstance(enable_sms, str) and (enable_sms != 'true' and enable_sms != 'false'):
+            raise AbcpAPIError('Параметр "enable_sms" должен быть булевым значением, либо строкой "true" или "false"')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.GET_USERS_LIST, payload)
 
@@ -1030,7 +1043,7 @@ class Users(BaseAbcp):
             surname: str = None, password: str = None,
             birth_date: Union[str, datetime] = None, city: str = None,
             mobile: Union[str, int] = None, icq: str = None,
-            skype: str = None, state: Union[str, int] = None,
+            skype: str = None, enable_sms: Union[bool, str] = None, state: Union[str, int] = None,
             profile_id: Union[int, str] = None, organization_name: str = None,
             organization_form: str = None, organization_official_name: str = None,
             inn: Union[str, int] = None, kpp: Union[str, int] = None, ogrn: Union[str, int] = None,
@@ -1069,6 +1082,7 @@ class Users(BaseAbcp):
         :param mobile: Номер мобильного телефона
         :param icq:	ICQ UIN
         :param skype: Skype
+        :param enable_sms: Производится ли отпровка SMS клиенту
         :param state: Состояние аккаунта. Значения: от -1 до 2
         :param profile_id: Идентификатор профиля
         :param organization_name: Наименование организации
@@ -1099,6 +1113,8 @@ class Users(BaseAbcp):
             birth_date = f'{birth_date:%Y-%m-%d}'
         if isinstance(pickup_state, bool):
             pickup_state = int(pickup_state)
+        if isinstance(enable_sms, str) and (enable_sms != 'true' and enable_sms != 'false'):
+            raise AbcpAPIError('Параметр "enable_sms" должен быть булевым значением, либо строкой "true" или "false"')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Users.EDIT_USER, payload, True)
 
@@ -1221,24 +1237,30 @@ class Staff(BaseAbcp):
                              sip: Union[str, int] = None, comment: str = None, boss_id: int = None, office_id: int = None):
         """
 
-        :param id:
-        :param type_id:
-        :param first_name:
-        :param last_name:
-        :param email:
-        :param phone:
-        :param mobile:
-        :param SIP:
-        :param comment:
-        :param boss_id:
-        :param office_id:
+        Обновление данных сотрудника.
+
+        При изменении данных сотрудника необязательно передавать все параметры. Используйте в запросе только те данные, которые вы собираетесь изменить.
+
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B4.D0.B0.D0.BD.D0.BD.D1.8B.D1.85_.D1.81.D0.BE.D1.82.D1.80.D1.83.D0.B4.D0.BD.D0.B8.D0.BA.D0.B0
+
+        :param id: Идентификатор сотрудника (обязательное поле)
+        :param type_id: Идентификатор должности сотрудника
+        :param first_name: Имя сотрудника
+        :param last_name: Фамилия сотрудника
+        :param email: Адрес ящика электронной почты
+        :param phone: Номер телефона
+        :param mobile: Номер мобильного телефона
+        :param sip: SIP номер
+        :param comment: Комментарий
+        :param boss_id: Идентификатор руководителя
+        :param office_id: Идентификатор офиса
         :return:
         """
         if isinstance(sip, str) and not sip.isdigit():
             raise AbcpWrongParameterError('Параметр "SIP" должен быть числом')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.Admin.Staff.UPDATE_STAFF, payload, True)
-        pass
+
 
 class Statuses(BaseAbcp):
     async def get(self):
@@ -1568,7 +1590,7 @@ class UsersCatalog(BaseAbcp):
         if image_upload_mode == 1 and image_archive is None:
             raise AbcpWrongParameterError('Не передан архив с изображениями')
 
-        payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], **locals())
+        payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], max_size=100, **locals())
         return await self._request(api.Methods.Admin.UsersCatalog.UPLOAD.format(catalog_id), payload, True)
 
 
