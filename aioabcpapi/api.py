@@ -173,12 +173,12 @@ class Methods:
             EDIT_USER: str = 'cp/user'
 
             GET_USER_SHIPMENT_ADDRESS: str = 'cp/user/shipmentAddresses'
-            GET_USER_SHIPMENT_ADDRESS_ZONES: str = '/cp/user/shipmentAddressZones'
-            GET_USER_SHIPMENT_ADDRESS_ZONE: str = '/cp/user/shipmentAddressZones/{}'
-            UPDATE_SHIPMENT_ZONES: str = '/cp/user/shipmentAddressZones'
-            CREATE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddressZones/new'
-            UPDATE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddressZones/{}/update'
-            DELETE_SHIPMENT_ZONE: str = '/cp/user/shipmentAddress/{}/delete'
+            GET_USER_SHIPMENT_ADDRESS_ZONES: str = 'cp/user/shipmentAddressZones'
+            GET_USER_SHIPMENT_ADDRESS_ZONE: str = 'cp/user/shipmentAddressZones/{}'
+            UPDATE_SHIPMENT_ZONES: str = 'cp/user/shipmentAddressZones'
+            CREATE_SHIPMENT_ZONE: str = 'cp/user/shipmentAddressZones/new'
+            UPDATE_SHIPMENT_ZONE: str = 'cp/user/shipmentAddressZones/{}/update'
+            DELETE_SHIPMENT_ZONE: str = 'cp/user/shipmentAddress/{}/delete'
             # Garage
             GET_USERS_CARS: str = 'cp/garage'
             SMS_SETTINGS: str = 'cp/user/smsSettings'
@@ -340,22 +340,23 @@ class Methods:
         class OrderPickings:
             FAST_GET_OUT: str = 'cp/ts/orderPickings/fastGetOut'
             GET: str = 'cp/ts/orderPickings/get'
-            GET_GOODS: str = '/cp/ts/orderPickings/getGoods'
-            CREATE_BY_OLD_POS: str = '/cp/ts/orderPickings/createByOldPos'
-            CHANGE_STATUS: str = '/cp/ts/orderPickings/changeStatus'
-            UPDATE: str = '/cp/ts/orderPickings/update'
-            DELETE_POSITION: str = '/cp/ts/orderPickings/deletePosition'
+            GET_GOODS: str = 'cp/ts/orderPickings/getGoods'
+            CREATE_BY_OLD_POS: str = 'cp/ts/orderPickings/createByOldPos'
+            CHANGE_STATUS: str = 'cp/ts/orderPickings/changeStatus'
+            UPDATE: str = 'cp/ts/orderPickings/update'
+            DELETE_POSITION: str = 'cp/ts/orderPickings/deletePosition'
 
         @dataclass(frozen=True)
         class CustomerComplaints:
             GET: str = 'cp/ts/customerComplaints/get'
-            GET_POSITIONS: str = '/cp/ts/customerComplaints/getPositions'
+            GET_POSITIONS: str = 'cp/ts/customerComplaints/getPositions'
             CREATE: str = 'cp/ts/customerComplaints/create'
             CREATE_POSITION: str = 'cp/ts/customerComplaints/createPosition'
             CREATE_POSITION_MULTIPLE: str = 'cp/ts/customerComplaints/createPositionMultiple'
             UPDATE_POSITION: str = 'cp/ts/customerComplaints/updatePosition'
             CHANGE_STATUS_POSITION: str = 'cp/ts/customerComplaints/changeStatusPosition'
             UPDATE: str = 'cp/ts/customerComplaints/update'
+            UPDATE_CUSTOM_FILE: str = 'cp/ts/customerComplaints/updateCustomFile'
 
         @dataclass(frozen=True)
         class DistributorOwners:
@@ -431,6 +432,15 @@ class Methods:
             LIST: str = 'cp/ts/tagsRelationships/list'
             CREATE: str = 'cp/ts/tagsRelationships/create'
             DELETE: str = 'cp/ts/tagsRelationships/delete'
+
+        @dataclass(frozen=True)
+        class Payments:
+            GET_LIST: str = 'cp/ts/payments/list'
+            CREATE: str = 'cp/ts/payments/create'
+
+        @dataclass(frozen=True)
+        class PaymentMethods:
+            METHODS_LIST: str = 'cp/ts/paymentMethods/list'
 
     class VinQu:
         pass
