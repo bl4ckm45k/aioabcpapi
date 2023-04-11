@@ -20,22 +20,24 @@ class BaseAbcp:
 
     def __init__(
             self,
-            host: str = None,
-            login: str = None,
-            password: str = None,
+            host: str,
+            login: str,
+            password: str,
             loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
             connections_limit: int = None,
             timeout: Optional[Union[int, float, aiohttp.ClientTimeout]] = None,
     ):
-        """ You can get API host name, login, password here: https://cp.abcp.ru/?page=allsettings&systemsettings&apiInformation
+        """Для получения доступа к API если вы являетесь администратором, перейдите в ПУ.
 
-        :param host: host name from ABCP
-        :type host: 'str'
-        :param login: login from ABCP
-        :type login: 'str'
-        :param password: password from ABCP
-        :type password: 'str' (md5 hash)
+        https://cp.abcp.ru/?page=allsettings&systemsettings&apiInformation
+
+        Если вы являетесь клиентом, запросите доступ у вашего менеджера.
+
+        :param host: Хост
+        :param login: Логин
+        :param password: MD5-пароль
         :raise: when host, login or password is invalid
+        :return: Объект класса
         """
 
         self._main_loop = loop
@@ -66,7 +68,7 @@ class BaseAbcp:
         )
 
     @property
-    def loop(self) -> Optional[asyncio.AbstractEventLoop]:
+    def _loop(self) -> Optional[asyncio.AbstractEventLoop]:
         return self._main_loop
 
     async def _get_session(self) -> Optional[aiohttp.ClientSession]:
@@ -93,14 +95,14 @@ class BaseAbcp:
         elif isinstance(payload, FormData):
             payload.add_field('userlogin', self._login)
             payload.add_field('userpsw', self._password)
-        if payload is None:
+        elif payload is None:
             payload = {'userlogin': self._login, 'userpsw': self._password}
         return payload
 
     async def _request(self, method: str,
                        payload: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
         """
-        Make an _request to ABCP API
+        Make an request to ABCP API
 
         https://www.abcp.ru/wiki/API:Docs
 

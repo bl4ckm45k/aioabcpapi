@@ -15,6 +15,9 @@ class CpApi(BaseAbcp):
         admin - Административный интерфейс
 
         https://www.abcp.ru/wiki/API.ABCP.Admin
+        :param host: Хост
+        :param login: Логин
+        :param password: MD5-пароль
         """
         super().__init__(host, login, password)
         self.client = ClientApi(host, login, password)

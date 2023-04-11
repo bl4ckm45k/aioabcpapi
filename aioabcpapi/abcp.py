@@ -16,6 +16,9 @@ class Abcp(BaseAbcp):
 
         ts - API TS (API 2.0)
 
+        :param host: Хост
+        :param login: Логин
+        :param password: MD5-пароль
         """
         super().__init__(host, login, password)
         self.cp = CpApi(host, login, password)
