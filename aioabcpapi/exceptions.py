@@ -36,3 +36,7 @@ class TeaPot(Exception):
 
 class AbcpNotFoundError(Exception):
     pass
+
+
+class FileSizeExceeded(Exception):
+    pass
