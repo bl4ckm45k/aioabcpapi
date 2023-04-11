@@ -4,7 +4,19 @@ from aioabcpapi.ts.base import TsApi
 
 
 class Abcp(BaseAbcp):
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.cp = CpApi(*args)
-        self.ts = TsApi(*args)
+    def __init__(self, host: str, login: str, password: str):
+        """
+        Инициализация класса API
+
+        api = Abcp(host, login, password)
+
+        Доступные методы:
+
+        cp - API ABCP
+
+        ts - API TS (API 2.0)
+
+        """
+        super().__init__(host, login, password)
+        self.cp = CpApi(host, login, password)
+        self.ts = TsApi(host, login, password)

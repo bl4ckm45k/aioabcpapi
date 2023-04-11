@@ -4,8 +4,18 @@ from ..base import BaseAbcp
 
 
 class CpApi(BaseAbcp):
-    def __init__(self, *args):
-        super().__init__(*args)
-        # If you know how do it other way please commit on https://github.com/bl4ckm45k/aioabcpapi
-        self.client = ClientApi(*args)
-        self.admin = AdminApi(*args)
+    def __init__(self,  host: str, login: str, password: str):
+        """
+        Класс для доступа к методам API ABCP
+
+        client - Общий интерфейс
+
+        https://www.abcp.ru/wiki/API.ABCP.Client
+
+        admin - Административный интерфейс
+
+        https://www.abcp.ru/wiki/API.ABCP.Admin
+        """
+        super().__init__(host, login, password)
+        self.client = ClientApi(host, login, password)
+        self.admin = AdminApi(host, login, password)
