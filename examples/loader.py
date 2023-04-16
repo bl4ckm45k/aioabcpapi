@@ -1,6 +1,6 @@
 from aioabcpapi import Abcp
-from examples.config import host, login, password, login_user, password_user
+from examples.config import load_config
 
-api = Abcp(host, login, password)
+config = load_config()
 
-api_client = Abcp(host, login_user, password_user)
+api = Abcp(config.abcp.host, config.abcp.login, config.abcp.password)
