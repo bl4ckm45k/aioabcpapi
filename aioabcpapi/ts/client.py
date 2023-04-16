@@ -265,7 +265,7 @@ class CustomerComplaints(BaseAbcp):
         """
         Получение списка позиций возврата покупателя
 
-        Source:
+        Source: https://www.abcp.ru/wiki/API.TS.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
         :param op_id: идентификатор операции
         :param order_picking_good_id: идентификатор позиции отгрузки
@@ -282,7 +282,11 @@ class CustomerComplaints(BaseAbcp):
         :param skip: количество операций в ответе, которое нужно пропустить
         :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
         :param output:  формат вывода, 'e' - загрузка дополнительной информации (справочные товары)
-        :param fields: # TODO Check parameters contains only ['orderPickingInfo', 'product', 'operationInfo', 'supplierReturnPos]
+        :param fields: [необязательный] Загрузка дополнительной информации. Строка со следующими параметрами через запятую:
+                        product - товар из справочника
+                        orderPickingInfo - операция расхода; позиция расхода, связанная с возвратом; доступное для возврата количество
+                        operationInfo - информация об операции
+                        supplierReturnPos - связанный возврат поставщику (null, если такого нет)
         :return:
         """
         if isinstance(order_picking_good_ids, list):
