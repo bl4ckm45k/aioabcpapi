@@ -18,8 +18,9 @@ async def get_basket_params():
     await api.cp.client.basket.set_client_params(payment_method_index=0,
                                                  shipment_address_index=0,
                                                  shipment_office_index=0)
-    orders_list = api.cp.client.orders.orders_list(orders=[94233131,
-                                                           93745568])
+    orders_list = await api.cp.client.orders.orders_list(
+        orders=[94233131, 93745568]
+    )
     logger.info(f'{orders_list}')
 
 
