@@ -1,7 +1,10 @@
 import logging
+import os
 from io import BufferedReader
 
 from aiohttp import FormData
+
+from aioabcpapi.exceptions import FileSizeExceeded
 
 DEFAULT_FILTER = ['self', 'cls', 'kwargs']
 logger = logging.getLogger('utils/payload')
@@ -192,10 +195,11 @@ def generate_payload_online_order(**kwargs):
     return data
 
 
-def generate_file_payload(exclude=None, **kwargs):
+def generate_file_payload(exclude=None, max_size: int = None, **kwargs):
     """
     Generate payload
     :param exclude:
+    :param max_size: Максимальный размер в Мб
     :param kwargs:
     :return: :obj:`aiohttp.FormData`
     """
@@ -210,6 +214,9 @@ def generate_file_payload(exclude=None, **kwargs):
                 data.add_field(get_camel_case_key(key), value, filename=value.name, content_type='multipart/form-data')
             if isinstance(value, str) and not value.isdigit():
                 with open(value, 'rb') as file:
+                    if max_size is not None:
+                        size = file.seek(0, os.SEEK_END)
+                        if (size / 1_048_576) > max_size: raise FileSizeExceeded('Файл не может быть больше 100 Мб')
                     data.add_field(get_camel_case_key(key), file, filename=file.name,
                                    content_type='multipart/form-data')
     logger.debug(f'{data}')
