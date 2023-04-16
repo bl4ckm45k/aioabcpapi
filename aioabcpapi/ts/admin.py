@@ -1,7 +1,9 @@
 import base64
 import logging
+import os
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 
 import pytz
 from pyrfc3339 import generate
@@ -27,6 +29,8 @@ class TsAdminApi(BaseAbcp):
         self.good_receipts = GoodReceipts(*args)
         self.tags = Tags(*args)
         self.tags_relationships = TagsRelationships(*args)
+        self.payments = Payments(*args)
+        self.payment_methods = PaymentMethods(*args)
 
 
 class OrderPickings(BaseAbcp):
@@ -35,7 +39,7 @@ class OrderPickings(BaseAbcp):
                            positions: Union[List[Dict], Dict], distributor_id: Union[str, int] = None,
                            route_id: Union[str, int] = None, location_id: Union[str, int] = None,
                            order_picking_reseller_data: Dict = None,
-                           number: Union[str, int] = None, date: str = None,
+                           number: Union[str, int] = None, date: Union[datetime, str] = None,
                            ):
         """
         Операция быстрого создания заказа, приёмки, расхода
@@ -231,7 +235,8 @@ class OrderPickings(BaseAbcp):
 
 
 class CustomerComplaints(BaseAbcp):
-    class FieldsChecker:
+    @dataclass
+    class _FieldsChecker:
         get_fields = ["orderPicking", "agreement", "tags", "posInfo"]
         get_positions_fields = ["item", "product", "location", "orderPickingInfo", "tags", "operationInfo",
                                 "supplierReturnPos"]
@@ -276,7 +281,7 @@ class CustomerComplaints(BaseAbcp):
         if isinstance(position_statuses, list):
             position_statuses = ','.join(map(str, position_statuses))
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.get_fields)
+            fields = check_fields(fields, self._FieldsChecker.get_fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.GET, payload)
 
@@ -288,8 +293,8 @@ class CustomerComplaints(BaseAbcp):
                             item_id: Union[int, str] = None,
                             tag_ids: Union[List, int] = None,
                             loc_id: Union[int, str] = None, status: int = None, type: int = None,
-                            date_start: str = None,
-                            date_end: str = None,
+                            date_start: Union[datetime, str] = None,
+                            date_end: Union[datetime, str] = None,
                             skip: int = None, limit: int = None,
                             sort: str = None, output: str = None,
                             fields: Union[List, str] = None):
@@ -339,7 +344,7 @@ class CustomerComplaints(BaseAbcp):
         if isinstance(type, int) and not 1 <= type <= 3:
             raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.get_positions_fields)
+            fields = check_fields(fields, self._FieldsChecker.get_positions_fields)
         payload = generate_payload(exclude=['old_item_id'], **locals())
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
 
@@ -427,32 +432,57 @@ class CustomerComplaints(BaseAbcp):
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload, True)
 
     async def update(self, id: Union[str, int], number: int = None, expert_id: Union[int, str] = None,
-                     custom_complaint_file: str = None,
+                     custom_complaint_file: str = '',
                      fields: Union[List, str] = None):
         """
 
         :param id: [обязательный] идентификатор операции возврата покупателя
         :param number: [обязательный если не задан expert_id] уникальный номер операции
         :param expert_id: [обязательный если не задан number] идентификатор сотрудника-эксперта
-        :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Для удаления файла - указать пустую строку.
+        :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Если файл не передан, то будет удалён.
         :param fields: Расширенный формат вывода. Набор из следующих строк через запятую:
                         "orderPicking" - операция отгрузки, по которой создан возврат
                         "agreement" - договор, по которому выполнена отгрузка
                         "posInfo" - загрузка суммарной информации о позициях
         :return:
         """
-        if isinstance(custom_complaint_file, str):
+        if os.path.isfile(custom_complaint_file):
             with open(custom_complaint_file, "rb") as ccf:
                 encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
             custom_complaint_file = f"{encoded_string}"
             del ccf
             del encoded_string
+        else:
+            raise TypeError('Неверно передан путь к файлу')
         if all(x is None for x in [number, expert_id]):
             raise AbcpParameterRequired('Один из параметров "number" или "expert_id" должен быть указан')
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.update_fields)
+            fields = check_fields(fields, self._FieldsChecker.update_fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
+
+    async def update_custom_file(self, id: Union[int, str], custom_complaint_file: str = '',
+                                 fields: Union[List, str] = None):
+        """
+
+        :param id: идентификатор операции возврата покупателя
+        :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Если файл не передан, то будет удалён.
+        :param fields: [необязательный] Расширенный формат вывода
+        :return:
+        """
+        if os.path.isfile(custom_complaint_file):
+            with open(custom_complaint_file, "rb") as ccf:
+                encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
+
+            custom_complaint_file = f"{encoded_string}"
+            del ccf
+            del encoded_string
+        else:
+            raise TypeError('Неверно передан путь к файлу')
+        if fields is not None:
+            fields = check_fields(fields, self._FieldsChecker.update_fields)
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.CustomerComplaints.UPDATE_CUSTOM_FILE, payload, True)
 
 
 class DistributorOwners(BaseAbcp):
@@ -474,7 +504,7 @@ class Orders(BaseAbcp):
         super().__init__(*args)
         self.messages = Messages(*args)
 
-    class FieldsChecker:
+    class _FieldsChecker:
         fields = ["deliveries", "agreement", "tags", "posInfo", "amounts"]
 
     async def create(self, client_id: Union[str, int], number: Union[int, str] = None,
@@ -497,7 +527,7 @@ class Orders(BaseAbcp):
         if isinstance(create_time, datetime):
             create_time = generate(create_time.replace(tzinfo=pytz.utc))
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
 
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Orders.CREATE, payload, True)
@@ -506,12 +536,13 @@ class Orders(BaseAbcp):
                              positions: Union[List, int, str],
                              delivery_address: str, delivery_person: str, delivery_contact: str,
                              number: Union[int, str] = None,
-                             create_time: str = None, manager_id: Union[int, str] = None,
+                             create_time: Union[datetime, str] = None, manager_id: Union[int, str] = None,
                              delivery_method_id: Union[int, str] = None,
                              delivery_comment: str = None, delivery_employee_person: str = None,
                              delivery_employee_contact: str = None,
-                             delivery_reseller_comment: str = None, delivery_start_time: str = None,
-                             delivery_end_time: str = None,
+                             delivery_reseller_comment: str = None,
+                             delivery_start_time: Union[datetime, str] = None,
+                             delivery_end_time: Union[datetime, str] = None,
                              locale: str = None, fields: Union[List, str] = None
                              ):
         """
@@ -540,7 +571,7 @@ class Orders(BaseAbcp):
         :return:
         """
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
         if isinstance(create_time, datetime):
             create_time = generate(create_time.replace(tzinfo=pytz.utc))
         if isinstance(delivery_start_time, datetime):
@@ -562,9 +593,10 @@ class Orders(BaseAbcp):
                           manager_id: Union[int, str] = None,
                           delivery_id: Union[int, str] = None,
                           message: str = None,
-                          date_start: str = None, date_end: str = None,
-                          update_date_start: str = None, update_date_end: str = None,
-                          deadline_date_start: str = None, deadline_date_end: str = None,
+                          date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
+                          update_date_start: Union[datetime, str] = None, update_date_end: Union[datetime, str] = None,
+                          deadline_date_start: Union[datetime, str] = None,
+                          deadline_date_end: Union[datetime, str] = None,
                           order_ids: Union[List, int] = None,
                           product_ids: Union[List, int] = None,
                           position_statuses: Union[List, int] = None,
@@ -656,7 +688,7 @@ class Orders(BaseAbcp):
         :return:
         """
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Orders.UPDATE, payload, True)
 
@@ -675,7 +707,7 @@ class Orders(BaseAbcp):
         if isinstance(merge_orders_ids, (int, str)):
             merge_orders_ids = [merge_orders_ids]
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Orders.MERGE, payload, True)
 
@@ -695,7 +727,7 @@ class Orders(BaseAbcp):
         if isinstance(position_ids, (int, str)):
             position_ids = [position_ids]
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Orders.SPLIT, payload, True)
 
@@ -712,7 +744,7 @@ class Orders(BaseAbcp):
         :return:
         """
         if fields is not None:
-            fields = check_fields(fields, self.FieldsChecker.fields)
+            fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Orders.REPRICE, payload, True)
 
@@ -962,7 +994,7 @@ class Positions(BaseAbcp):
         super().__init__(*args)
         self.messages = PositionsMessages(*args)
 
-    class FieldsChecker:
+    class _FieldsChecker:
         additional_info = ["reserv", "product", "orderPicking",
                            "customerComplaintPoses", "supplierOrder", "grPosition",
                            "order", "delivery", "tags", "unpaidAmount"]
@@ -983,7 +1015,7 @@ class Positions(BaseAbcp):
         :return:
         """
         if additional_info is not None:
-            additional_info = check_fields(additional_info, self.FieldsChecker.additional_info)
+            additional_info = check_fields(additional_info, self._FieldsChecker.additional_info)
 
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Positions.GET, payload)
@@ -1072,14 +1104,14 @@ class Positions(BaseAbcp):
             distributor_ids = [distributor_ids]
         if isinstance(ids, (int, str)):
             ids = [ids]
-        if isinstance(order_ids, (int, str)) :
+        if isinstance(order_ids, (int, str)):
             order_ids = [order_ids]
         if isinstance(statuses, str):
             statuses = [statuses]
         if isinstance(tag_ids, list):
             tag_ids = ','.join(map(str, tag_ids))
         if statuses is not None:
-            statuses = check_fields(statuses, self.FieldsChecker.statuses)
+            statuses = check_fields(statuses, self._FieldsChecker.statuses)
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.Positions.GET_LIST, payload)
 
@@ -1115,7 +1147,7 @@ class Positions(BaseAbcp):
                      cl_sell_price: Union[float, int] = None,
                      price_data_sell_price: Union[float, int] = None,
                      prepayment_amount: Union[float, int] = None,
-                     deadline_time: str = None, deadline_time_max: str = None,
+                     deadline_time: Union[datetime, str] = None, deadline_time_max: Union[datetime, str] = None,
                      client_refusal: bool = None,
                      delivery_id: Union[int, str] = None,
                      status: str = None,
@@ -1328,7 +1360,7 @@ class GoodReceipts(BaseAbcp):
                   creator_id: Union[str, int] = None, worker_id: Union[str, int] = None,
                   agreement_id: str = None, statuses: Union[List, int] = None,
                   number: str = None,
-                  date_start: str = None, date_end: str = None,
+                  date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
                   sup_number: str = None):
         """
         Получение списка операций приёмки
@@ -1668,9 +1700,81 @@ class TagsRelationships(BaseAbcp):
             raise AbcpWrongParameterError('Параметр "object_id" должен быть числом')
 
         if isinstance(object_type, str) and object_type.isdigit():
-            if not 1 <= int(object_type) <= 13:
-                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+            object_type = int(object_type)
         if isinstance(object_type, int) and not 1 <= object_type <= 13:
             raise AbcpWrongParameterError('"object_type" must be in range 1-13')
         payload = generate_payload(**locals())
         return await self._request(api.Methods.TsAdmin.TagsRelationships.DELETE, payload, True)
+
+
+class Payments(BaseAbcp):
+    @dataclass(frozen=True)
+    class _Status:
+        status = ["new", "inProcess", "accepted", "rejected", "canceled"]
+
+    async def get_list(self,
+                       contractor_id: Union[str, int] = None, agreement_id: Union[str, int] = None,
+                       amount_start: Union[float, int, str] = None, amount_end: Union[float, int, str] = None,
+                       status: Union[List[str], str] = None,
+                       number: str = None,
+                       requisite_id: Union[str, int] = None,
+                       skip: int = None, limit: int = None,
+                       payment_type: Union[List[str], str] = None, payment_method_ids: Union[List[int], int] = None,
+                       date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
+                       fields: Union[List[str], str] = None):
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        if isinstance(status, list):
+            if any(x not in self._Status.status for x in status):
+                raise AbcpWrongParameterError(
+                    f'Неверный список статусов: {status} Допустимые статусы {self._Status.status}')
+            status = ','.join(status)
+        if isinstance(payment_method_ids, list):
+            payment_method_ids = ','.join(map(str, payment_method_ids))
+        if isinstance(payment_type, list):
+            payment_type = ','.join(payment_type)
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.Payments.GET_LIST, payload)
+
+    async def create(self,
+                     payment_type: str, payment_method_id: int,
+                     agreement_id: int, author_id: int,
+                     amount: Union[float, int, str], date: Union[datetime, str],
+                     contractor_id: int = None, commission: Union[float, int] = None,
+                     comment: str = None, fields: Union[List[str], str] = None):
+        if isinstance(date, datetime):
+            date = generate(date.replace(tzinfo=pytz.utc))
+        if isinstance(fields, list):
+            fields = ','.join(fields)
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.Payments.CREATE, payload)
+
+
+class PaymentMethods(BaseAbcp):
+    @dataclass(frozen=True)
+    class _Fields:
+        allow_change_param = ["yes", "no", "paymentInterfaceOnly", "editOnly"]
+
+    async def get_list(self,
+                       payment_type: Optional[str] = None,
+                       allow_change_payment: Optional[str] = None,
+                       state: Optional[str] = None):
+        """
+        Получение списка способов оплаты
+
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BF.D0.BE.D1.81.D0.BE.D0.B1.D0.BE.D0.B2_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D1.8B
+
+        :param payment_type: Тип оплаты
+        :param allow_change_payment: Вариант доступности изменения платежа
+        :param state: Состояние
+        :return:
+        """
+        if isinstance(allow_change_payment, str) and allow_change_payment not in self._Fields.allow_change_param:
+            raise AbcpWrongParameterError(f'Неверное значение параметра "allow_change_payment" {allow_change_payment}.'
+                                          f'Допустимые значения {self._Fields.allow_change_param}')
+
+        payload = generate_payload(**locals())
+        return await self._request(api.Methods.TsAdmin.PaymentMethods.METHODS_LIST, payload)
