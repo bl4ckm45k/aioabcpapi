@@ -30,6 +30,8 @@ def check_data(host: str, login: str, password: str):
                     raise UnsupportedLogin('Недопустимый логин')
             else:
                 raise UnsupportedLogin('Недопустимый логин')
+        elif host[:4] == 'abcp' and host.split('.')[0][4:].isdigit():
+            return True
         else:
             raise UnsupportedHost(f'Имя хоста {host} не поддерживается\n'
                                   f'Допустимые имена id200.public.api.abcp.ru')
