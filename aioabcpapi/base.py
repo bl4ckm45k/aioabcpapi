@@ -9,7 +9,7 @@ import ujson as json
 from aiohttp import FormData
 
 from . import api
-from .api import Headers, Methods
+from .api import Headers, _Methods
 from .exceptions import NotEnoughRights
 
 logging.basicConfig(level=logging.INFO)
@@ -46,12 +46,12 @@ class BaseAbcp:
         self._host = host
         self._login = login
         self._password = password
-        self._admin = api.check_data(host, login, password)
+        self.admin = api.check_data(host, login, password)
 
-        self._shipment_address = None
-        self._shipment_method = None
-        self._payment_method = None
-        self._shipment_office = None
+        self.shipment_address = None
+        self.shipment_method = None
+        self.payment_method = None
+        self.shipment_office = None
         self._ssl_context = ssl.create_default_context(cafile=certifi.where())
 
         self._session: Optional[aiohttp.ClientSession] = None
@@ -99,8 +99,8 @@ class BaseAbcp:
             payload = {'userlogin': self._login, 'userpsw': self._password}
         return payload
 
-    async def _request(self, method: str,
-                       payload: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
+    async def request(self, method: str,
+                      payload: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
         """
         Make an request to ABCP API
 
@@ -115,7 +115,7 @@ class BaseAbcp:
         :rtype: Union[List, Dict]
         :raise: :obj:`utils.exceptions`
         """
-        if not self._admin and isinstance(method, (Methods.Admin, Methods.TsAdmin)):
+        if not self.admin and isinstance(method, (_Methods.Admin, _Methods.TsAdmin)):
             raise NotEnoughRights('Недостаточно прав для использования API администратора')
         payload = self.__payload_check(payload)
         if isinstance(payload, FormData):
