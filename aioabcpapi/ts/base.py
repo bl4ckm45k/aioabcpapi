@@ -3,8 +3,8 @@ from .client import TsClientApi
 from ..base import BaseAbcp
 
 
-class TsApi(BaseAbcp):
-    def __init__(self,  host: str, login: str, password: str):
+class TsApi:
+    def __init__(self, base: BaseAbcp):
         """
         Класс для доступа к методам API ABCP 2.0 (TS)
 
@@ -19,6 +19,5 @@ class TsApi(BaseAbcp):
         :param login: Логин
         :param password: MD5-пароль
         """
-        super().__init__(host, login, password)
-        self.client = TsClientApi(host, login, password)
-        self.admin = TsAdminApi(host, login, password)
+        self.client = TsClientApi(base)
+        self.admin = TsAdminApi(base)

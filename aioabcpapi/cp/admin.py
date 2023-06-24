@@ -1,42 +1,39 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-import logging
 from datetime import datetime
 from io import BufferedReader
 from typing import Dict, List, Optional, Union
 
-from .. import api
+from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
 from ..utils.payload import generate_payload, generate_payload_filter, generate_payload_payments, \
     generate_payload_online_order, generate_file_payload
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('Cp.Admin')
 
-
-class AdminApi(BaseAbcp):
-    def __init__(self, *args):
+class AdminApi:
+    def __init__(self, base: BaseAbcp):
         """
         Класс содержит методы административного интерфейса
 
         https://www.abcp.ru/wiki/API.ABCP.Admin
         """
-        super().__init__(*args)
-        self.orders = Orders(*args)
-        self.finance = Finance(*args)
-        self.users = Users(*args)
-        self.staff = Staff(*args)
-        self.statuses = Statuses(*args)
-        self.distributors = Distributors(*args)
-        self.catalog = Catalog(*args)
-        self.articles = Articles(*args)
-        self.users_catalog = UsersCatalog(*args)
-        self.payment = Payment(*args)
+        self._base = base
+        self.orders = Orders(base)
+        self.finance = Finance(base)
+        self.users = Users(base)
+        self.staff = Staff(base)
+        self.statuses = Statuses(base)
+        self.distributors = Distributors(base)
+        self.catalog = Catalog(base)
+        self.articles = Articles(base)
+        self.users_catalog = UsersCatalog(base)
+        self.payment = Payment(base)
 
 
-class Orders(BaseAbcp):
+class Orders:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
 
     async def get_orders_list(
             self,
@@ -126,8 +123,7 @@ class Orders(BaseAbcp):
         if isinstance(user_id, str) and not user_id.isdigit():
             raise AbcpAPIError(f'Параметр user_id должен быть числом')
         payload = generate_payload(**locals())
-
-        return await self._request(api.Methods.Admin.Orders.GET_ORDERS_LIST, payload)
+        return await self._base.request(_Methods.Admin.Orders.GET_ORDERS_LIST, payload)
 
     async def get_order(
             self,
@@ -162,7 +158,7 @@ class Orders(BaseAbcp):
             raise AbcpParameterRequired(f'Один из параметров "number" или "internal_number" должен быть указан')
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Orders.GET_ORDER, payload)
+        return await self._base.request(_Methods.Admin.Orders.GET_ORDER, payload)
 
     async def status_history(
             self,
@@ -181,7 +177,7 @@ class Orders(BaseAbcp):
         """
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Orders.STATUS_HISTORY, payload)
+        return await self._base.request(_Methods.Admin.Orders.STATUS_HISTORY, payload)
 
     async def create_or_edit_order(
             self,
@@ -291,7 +287,7 @@ class Orders(BaseAbcp):
         payload = generate_payload(exclude=['client_order_number', 'order_positions', 'note', 'del_note'], order=True,
                                    **locals())
 
-        return await self._request(api.Methods.Admin.Orders.SAVE_ORDER, payload, True)
+        return await self._base.request(_Methods.Admin.Orders.SAVE_ORDER, payload, True)
 
     async def get_online_order_params(
             self,
@@ -323,7 +319,7 @@ class Orders(BaseAbcp):
             position_ids = [position_ids]
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Orders.ONLINE_ORDER, payload)
+        return await self._base.request(_Methods.Admin.Orders.ONLINE_ORDER, payload)
 
     async def send_online_order(
             self,
@@ -364,10 +360,13 @@ class Orders(BaseAbcp):
             order_params = [order_params]
         payload = generate_payload_online_order(**locals())
 
-        return await self._request(api.Methods.Admin.Orders.ONLINE_ORDER, payload, True)
+        return await self._base.request(_Methods.Admin.Orders.ONLINE_ORDER, payload, True)
 
 
-class Finance(BaseAbcp):
+class Finance:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def update_balance(
             self,
             user_id: Union[int, str],
@@ -394,7 +393,7 @@ class Finance(BaseAbcp):
         :type in_stop_list: str or bool ('true', 'false', True, False)
         """
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Finance.UPDATE_BALANCE, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.UPDATE_BALANCE, payload, True)
 
     async def update_credit_limit(
             self,
@@ -416,7 +415,7 @@ class Finance(BaseAbcp):
         """
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.UPDATE_CREDIT_LIMIT, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.UPDATE_CREDIT_LIMIT, payload, True)
 
     async def update_finance_info(
             self,
@@ -449,7 +448,7 @@ class Finance(BaseAbcp):
         """
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.UPDATE_FINANCE_INFO, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.UPDATE_FINANCE_INFO, payload, True)
 
     async def get_payments_info(
             self,
@@ -487,7 +486,7 @@ class Finance(BaseAbcp):
             raise AbcpAPIError('Недостаточно параметров')
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.GET_PAYMENTS, payload)
+        return await self._base.request(_Methods.Admin.Finance.GET_PAYMENTS, payload)
 
     async def get_payment_links(
             self,
@@ -531,7 +530,7 @@ class Finance(BaseAbcp):
             payment_numbers = [payment_numbers]
         payload = generate_payload(exclude=['date_time_start', 'date_time_end'], **locals())
 
-        return await self._request(api.Methods.Admin.Finance.GET_PAYMENTS_LINKS, payload)
+        return await self._base.request(_Methods.Admin.Finance.GET_PAYMENTS_LINKS, payload)
 
     async def get_online_payments(
             self,
@@ -575,7 +574,7 @@ class Finance(BaseAbcp):
 
         payload = generate_payload_filter(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.GET_PAYMENTS_ONLINE, payload)
+        return await self._base.request(_Methods.Admin.Finance.GET_PAYMENTS_ONLINE, payload)
 
     async def add_multiple_payments(
             self,
@@ -598,7 +597,7 @@ class Finance(BaseAbcp):
             payments = [payments]
         payload = generate_payload_payments(single=False, **locals())
 
-        return await self._request(api.Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
 
     async def add_single_payment(
             self,
@@ -641,7 +640,7 @@ class Finance(BaseAbcp):
 
         payload = generate_payload_payments(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.ADD_PAYMENTS, payload, True)
 
     async def delete_link_payment(
             self,
@@ -662,7 +661,7 @@ class Finance(BaseAbcp):
 
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.DELETE_PAYMENT_LINK, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.DELETE_PAYMENT_LINK, payload, True)
 
     async def link_existing_payment(
             self,
@@ -690,7 +689,7 @@ class Finance(BaseAbcp):
 
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Finance.LINK_EXISTING_PLAYMENT, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.LINK_EXISTING_PLAYMENT, payload, True)
 
     async def refund_payment(
             self,
@@ -710,7 +709,7 @@ class Finance(BaseAbcp):
         if not all(x.isdigit() for x in [refund_payment_id, refund_amount] if isinstance(x, str)):
             raise AbcpAPIError('Все параметры должны являться цифрами')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
+        return await self._base.request(_Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
 
     async def get_receipts(
             self,
@@ -778,7 +777,7 @@ class Finance(BaseAbcp):
         if isinstance(date_created_end, datetime):
             date_created_end = f'{date_created_end:%Y-%m-%d}'
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Finance.GET_RECEIPTS, payload)
+        return await self._base.request(_Methods.Admin.Finance.GET_RECEIPTS, payload)
 
     async def get_payments_methods(self, only_enabled: Union[bool, str] = None,
                                    only_disabled: Union[bool, str] = None,
@@ -800,10 +799,13 @@ class Finance(BaseAbcp):
         if all(x is not None for x in [only_enabled, only_disabled]):
             raise AbcpAPIError('Укажите только один параметр должен быть указан only_enabled или only_disabled')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Finance.GET_PAYMENTS_SETTINGS, payload)
+        return await self._base.request(_Methods.Admin.Finance.GET_PAYMENTS_SETTINGS, payload)
 
 
-class Users(BaseAbcp):
+class Users:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def get_users(
             self,
             date_registred_start: Union[str, datetime] = None,
@@ -884,7 +886,7 @@ class Users(BaseAbcp):
         if isinstance(enable_sms, str) and (enable_sms != 'true' and enable_sms != 'false'):
             raise AbcpAPIError('Параметр "enable_sms" должен быть булевым значением, либо строкой "true" или "false"')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.GET_USERS_LIST, payload)
+        return await self._base.request(_Methods.Admin.Users.GET_USERS_LIST, payload)
 
     async def create(
             self,
@@ -956,7 +958,7 @@ class Users(BaseAbcp):
         if isinstance(pickup_state, bool):
             pickup_state = int(pickup_state)
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.CREATE_USER, payload, True)
+        return await self._base.request(_Methods.Admin.Users.CREATE_USER, payload, True)
 
     async def get_profiles(
             self,
@@ -982,7 +984,7 @@ class Users(BaseAbcp):
             raise AbcpWrongParameterError('format parameter can take values "brands" or "distributors"')
         del format_params_check
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.GET_PROFILES, payload)
+        return await self._base.request(_Methods.Admin.Users.GET_PROFILES, payload)
 
     async def edit_profile(
             self,
@@ -1034,7 +1036,7 @@ class Users(BaseAbcp):
         if isinstance(distributors_price_ups, dict):
             distributors_price_ups = [distributors_price_ups]
         payload = generate_payload(exclude=['matrix_price_ups', 'distributors_price_ups'], **locals())
-        return await self._request(api.Methods.Admin.Users.EDIT_PROFILE, payload, True)
+        return await self._base.request(_Methods.Admin.Users.EDIT_PROFILE, payload, True)
 
     async def edit(
             self,
@@ -1116,7 +1118,7 @@ class Users(BaseAbcp):
         if isinstance(enable_sms, str) and (enable_sms != 'true' and enable_sms != 'false'):
             raise AbcpAPIError('Параметр "enable_sms" должен быть булевым значением, либо строкой "true" или "false"')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.EDIT_USER, payload, True)
+        return await self._base.request(_Methods.Admin.Users.EDIT_USER, payload, True)
 
     async def get_user_shipment_address(self, user_id: Union[int, str]):
         """
@@ -1129,7 +1131,7 @@ class Users(BaseAbcp):
         """
 
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS, payload)
+        return await self._base.request(_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS, payload)
 
     async def get_shipment_address_zones(self):
         """
@@ -1137,7 +1139,7 @@ class Users(BaseAbcp):
 
         :return: Возвращает список зон адресов доставки.
         """
-        return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONES)
+        return await self._base.request(_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONES)
 
     async def get_shipment_address_zone(self, id: int):
         """
@@ -1146,7 +1148,7 @@ class Users(BaseAbcp):
         :param id: Уникальный идентификатор зоны адресов доставки
         :return: Возвращает одну зону адресов доставки по указанному уникальному идентификатору.
         """
-        return await self._request(api.Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE.format(id))
+        return await self._base.request(_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE.format(id))
 
     async def update_shipment_zones(self, zones: Union[List[Dict], Dict]):
         """
@@ -1159,7 +1161,7 @@ class Users(BaseAbcp):
             zones = [zones]
 
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.UPDATE_SHIPMENT_ZONES, payload, True)
+        return await self._base.request(_Methods.Admin.Users.UPDATE_SHIPMENT_ZONES, payload, True)
 
     async def create_shipment_zone(self, name: str, **kwargs):
         """
@@ -1173,7 +1175,7 @@ class Users(BaseAbcp):
             raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
                                         'Например: isOnDay1=1, stopTimeDay1="15:30"')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, True, json=True)
+        return await self._base.request(_Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, True, json=True)
 
     async def update_shipment_zone(self, id: int, name: str, **kwargs):
         """
@@ -1187,13 +1189,13 @@ class Users(BaseAbcp):
         if kwargs is None:
             raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
                                         'Например: isOnDay1=1, stopTimeDay1="15:30"')
-        _method = api.Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id)
+        _method = _Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id)
         del id
         payload = generate_payload(**locals())
-        return await self._request(_method, payload, True, json=True)
+        return await self._base.request(_method, payload, True, json=True)
 
     async def delete_shipment_zone(self, id: int):
-        return await self._request(api.Methods.Admin.Users.DELETE_SHIPMENT_ZONE.format(id), None, True)
+        return await self._base.request(_Methods.Admin.Users.DELETE_SHIPMENT_ZONE.format(id), None, True)
 
     async def get_updated_cars(self, date_updated_start: str = None, date_updated_end: str = None):
         """
@@ -1214,22 +1216,25 @@ class Users(BaseAbcp):
         if isinstance(date_updated_end, datetime):
             date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.GET_USERS_CARS, payload)
+        return await self._base.request(_Methods.Admin.Users.GET_USERS_CARS, payload)
 
     async def get_sms_settings(self, user_ids: Union[List, int, str]):
         if not isinstance(user_ids, list):
             user_ids = [user_ids]
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Users.SMS_SETTINGS, payload)
+        return await self._base.request(_Methods.Admin.Users.SMS_SETTINGS, payload)
 
 
-class Staff(BaseAbcp):
+class Staff:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def get(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D1.82.D1.80.D1.83.D0.B4.D0.BD.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список менеджеров.
         """
-        return await self._request(api.Methods.Admin.Staff.GET_STAFF)
+        return await self._base.request(_Methods.Admin.Staff.GET_STAFF)
 
     async def update_manager(self, id: int, type_id: int = None,
                              first_name: str = None, last_name: str = None,
@@ -1259,25 +1264,31 @@ class Staff(BaseAbcp):
         if isinstance(sip, str) and not sip.isdigit():
             raise AbcpWrongParameterError('Параметр "SIP" должен быть числом')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Staff.UPDATE_STAFF, payload, True)
+        return await self._base.request(_Methods.Admin.Staff.UPDATE_STAFF, payload, True)
 
 
-class Statuses(BaseAbcp):
+class Statuses:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def get(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.BE.D0.B2
         Возвращает список всех статусов позиций заказов.
         """
-        return await self._request(api.Methods.Admin.Statuses.GET_STATUSES)
+        return await self._base.request(_Methods.Admin.Statuses.GET_STATUSES)
 
 
-class Articles(BaseAbcp):
+class Articles:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def get_brands(self):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D1.80.D0.B0.D0.B2.D0.BE.D1.87.D0.BD.D0.B8.D0.BA.D0.B0_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2
         Возвращает список всех брендов зарегистрированных в системе с их синонимами.
         """
-        return await self._request(api.Methods.Admin.Articles.GET_BRANDS)
+        return await self._base.request(_Methods.Admin.Articles.GET_BRANDS)
 
     async def get_brand_group(self):
         """
@@ -1285,10 +1296,13 @@ class Articles(BaseAbcp):
 
         Возвращает список всех групп брендов зарегистрированных в системе.
         """
-        return await self._request(api.Methods.Admin.Articles.GET_BRANDS_GROUP)
+        return await self._base.request(_Methods.Admin.Articles.GET_BRANDS_GROUP)
 
 
-class Distributors(BaseAbcp):
+class Distributors:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def get(self, distributors4mc: Union[str, int, bool] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2
@@ -1301,7 +1315,7 @@ class Distributors(BaseAbcp):
         if isinstance(distributors4mc, bool):
             distributors4mc = int(distributors4mc)
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.GET_DISTRIBUTORS_LIST, payload)
+        return await self._base.request(_Methods.Admin.Distributors.GET_DISTRIBUTORS_LIST, payload)
 
     async def edit_status(self, distributor_id: Union[int, str], status: Union[int, bool]):
         """
@@ -1318,7 +1332,7 @@ class Distributors(BaseAbcp):
             status = int(status)
 
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.EDIT_DISTRIBUTORS_STATUS, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.EDIT_DISTRIBUTORS_STATUS, payload, True)
 
     async def get_routes(self, distributor_id: Union[str, int]):
         """
@@ -1330,7 +1344,7 @@ class Distributors(BaseAbcp):
         :type distributor_id: str or int
         """
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.GET_SUPPLIER_ROUTES, payload)
+        return await self._base.request(_Methods.Admin.Distributors.GET_SUPPLIER_ROUTES, payload)
 
     async def edit_route(self,
                          route_id: Union[str, int],
@@ -1432,7 +1446,7 @@ class Distributors(BaseAbcp):
             supplier_code_disabled_list = [supplier_code_disabled_list]
         payload = generate_payload(**locals())
 
-        return await self._request(api.Methods.Admin.Distributors.UPDATE_ROUTE, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.UPDATE_ROUTE, payload, True)
 
     async def edit_route_status(self, route_id: Union[str, int], status: Union[int, bool]):
         """
@@ -1450,7 +1464,7 @@ class Distributors(BaseAbcp):
         if isinstance(status, bool):
             status = int(status)
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.UPDATE_ROUTE_STATUS, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.UPDATE_ROUTE_STATUS, payload, True)
 
     async def delete_route(self, route_id: Union[int, str]):
         """
@@ -1463,7 +1477,7 @@ class Distributors(BaseAbcp):
         :return: dict
         """
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.DELETE_ROUTE, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.DELETE_ROUTE, payload, True)
 
     async def connect_to_office(self, office_id: Union[str, int],
                                 distributors: Union[List[Dict], Dict] = None):
@@ -1483,7 +1497,7 @@ class Distributors(BaseAbcp):
         if isinstance(distributors, dict):
             distributors = [distributors]
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)
 
     async def get_office_distributors(self, office_id: Union[int, str] = None):
         """
@@ -1496,7 +1510,7 @@ class Distributors(BaseAbcp):
         :return:dict
         """
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Distributors.GET_OFFICE_SUPPLIERS, payload)
+        return await self._base.request(_Methods.Admin.Distributors.GET_OFFICE_SUPPLIERS, payload)
 
     async def pricelist_update(self, distributor_id: Union[str, int],
                                upload_file: Union[str, BufferedReader],
@@ -1519,10 +1533,13 @@ class Distributors(BaseAbcp):
         """
 
         payload = generate_file_payload(exclude=['upload_file'], **locals())
-        return await self._request(api.Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
+        return await self._base.request(_Methods.Admin.Distributors.UPLOAD_PRICE, payload, True)
 
 
-class Catalog(BaseAbcp):
+class Catalog:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def info(self, goods_group: str, locale: str = 'ru_RU'):
         """
 
@@ -1531,7 +1548,7 @@ class Catalog(BaseAbcp):
         :return:
         """
         payload = generate_payload(exclude=['goods_group'], **locals())
-        return await self._request(api.Methods.Admin.Catalog.INFO, payload)
+        return await self._base.request(_Methods.Admin.Catalog.INFO, payload)
 
     async def search(self, goods_group: str,
                      properties: Union[List[Dict[str, str]], Dict[str, str]],
@@ -1549,16 +1566,18 @@ class Catalog(BaseAbcp):
         if isinstance(properties, dict):
             properties = [properties]
         payload = generate_payload(exclude=['goods_group', 'properties'], **locals())
-        return await self._request(api.Methods.Admin.Catalog.SEARCH, payload, True)
+        return await self._base.request(_Methods.Admin.Catalog.SEARCH, payload, True)
 
     async def info_batch(self, articles_catalog: Union[List[Dict[str, str]], Dict[str, str]], locale: str = 'ru_RU'):
         if isinstance(articles_catalog, dict):
             articles_catalog = [articles_catalog]
         payload = generate_payload(exclude=['articles_catalog'], **locals())
-        return await self._request(api.Methods.Admin.Catalog.INFO_BATCH, payload, True)
+        return await self._base.request(_Methods.Admin.Catalog.INFO_BATCH, payload, True)
 
 
-class UsersCatalog(BaseAbcp):
+class UsersCatalog:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
 
     async def upload(self, catalog_id: Union[str, int],
                      file: Union[str, BufferedReader],
@@ -1591,10 +1610,13 @@ class UsersCatalog(BaseAbcp):
             raise AbcpWrongParameterError('Не передан архив с изображениями')
 
         payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], max_size=100, **locals())
-        return await self._request(api.Methods.Admin.UsersCatalog.UPLOAD.format(catalog_id), payload, True)
+        return await self._base.request(_Methods.Admin.UsersCatalog.UPLOAD.format(catalog_id), payload, True)
 
 
-class Payment(BaseAbcp):
+class Payment:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
     async def token(self, number: Union[str, int]):
         """
         Получение ссылки на оплату заказа
@@ -1606,7 +1628,7 @@ class Payment(BaseAbcp):
             raise AbcpWrongParameterError('Параметр "number" должен быть числом')
 
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Payment.TOKEN, payload)
+        return await self._base.request(_Methods.Admin.Payment.TOKEN, payload)
 
     async def top_balance_link(self, client_id: Union[str, int], amount: Union[float, int, str]):
         """
@@ -1620,4 +1642,4 @@ class Payment(BaseAbcp):
         if isinstance(amount, str) and not amount.isdigit():
             raise AbcpWrongParameterError('Параметр "amount" должен быть числом')
         payload = generate_payload(**locals())
-        return await self._request(api.Methods.Admin.Payment.TOP_BALANCE, payload)
+        return await self._base.request(_Methods.Admin.Payment.TOP_BALANCE, payload)

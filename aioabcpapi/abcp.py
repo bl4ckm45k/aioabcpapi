@@ -3,7 +3,7 @@ from aioabcpapi.cp.base import CpApi
 from aioabcpapi.ts.base import TsApi
 
 
-class Abcp(BaseAbcp):
+class Abcp:
     def __init__(self, host: str, login: str, password: str):
         """
         Инициализация класса API
@@ -20,6 +20,6 @@ class Abcp(BaseAbcp):
         :param login: Логин
         :param password: MD5-пароль
         """
-        super().__init__(host, login, password)
-        self.cp = CpApi(host, login, password)
-        self.ts = TsApi(host, login, password)
+        self._base = BaseAbcp(host, login, password)
+        self.cp = CpApi(self._base)
+        self.ts = TsApi(self._base)
