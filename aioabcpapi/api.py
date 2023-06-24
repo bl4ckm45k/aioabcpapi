@@ -15,28 +15,25 @@ logger = logging.getLogger('api')
 
 def check_data(host: str, login: str, password: str):
     regex_md = re.match(r"([a-f\d]{32})", password)
-    if regex_md:
-        host_id = host.split('.')[0][2:]
-        if host_id.isdigit() and len(host_id) < 6 and host[0:2] == 'id':
-            if login[0:6] == 'api@id' and login[6:] == host_id:
-                return True
-            if login.isdigit() and 4 < len(login) < 14:
-                return False
-            if '@' in login:
-                email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
-                if email:
-                    return False
-                else:
-                    raise UnsupportedLogin('Недопустимый логин')
-            else:
-                raise UnsupportedLogin('Недопустимый логин')
-        elif host[:4] == 'abcp' and host.split('.')[0][4:].isdigit():
-            return True
-        else:
-            raise UnsupportedHost(f'Имя хоста {host} не поддерживается\n'
-                                  f'Допустимые имена id200.public.api.abcp.ru')
-    else:
+    if not regex_md:
         raise PasswordType('Допускаются пароли только в md5 hash')
+    host_id = host.split('.')[0]
+    if login[0:4] == 'api@':
+        return login.split('@')[1] == host_id
+    if host_id[2:].isdigit() and len(host_id) < 10 and host[0:2] == 'id':
+        if login.isdigit() and 4 < len(login) < 14:
+            return False
+        if '@' in login:
+            email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
+            if not email:
+                raise UnsupportedLogin('Недопустимый логин')
+            return False
+        raise UnsupportedLogin('Недопустимый логин')
+    else:
+        raise UnsupportedHost(f'Имя хоста {host} не поддерживается\n'
+                              f'Допустимые имена:\n'
+                              f'id200.public.api.abcp.ru\n'
+                              f'abcp55333.public.api.abcp.ru')
 
 
 def check_result(method_name: str, content_type: str, status_code: int, body):
@@ -87,9 +84,9 @@ async def make_request_json(session, host, method,
         async with session.post(url, json=data, headers=headers, **kwargs) as response:
             try:
                 body = await response.json()
+                return check_result(method, response.content_type, response.status, body)
             except:
-                body = response.text
-            return check_result(method, response.content_type, response.status, body)
+                raise AbcpAPIError(response.text)
     except aiohttp.ClientError as e:
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
 
@@ -140,7 +137,7 @@ class Headers:
         return self.__multipart_header
 
 
-class Methods:
+class _Methods:
     class Admin:
         @dataclass(frozen=True)
         class Orders:
@@ -337,6 +334,7 @@ class Methods:
             CANCEL: str = 'ts/positions/cancel'
             MASS_CANCEL: str = 'ts/positions/massCancel'
 
+    @dataclass(frozen=True)
     class TsAdmin:
         @dataclass(frozen=True)
         class OrderPickings:
@@ -359,6 +357,36 @@ class Methods:
             CHANGE_STATUS_POSITION: str = 'cp/ts/customerComplaints/changeStatusPosition'
             UPDATE: str = 'cp/ts/customerComplaints/update'
             UPDATE_CUSTOM_FILE: str = 'cp/ts/customerComplaints/updateCustomFile'
+
+        class SupplierReturns:
+            @dataclass
+            class Operations:
+                __section: str = '/cp/ts/supplierReturns/operations'
+                LIST: str = f'{__section}/list'
+                SUM: str = f'{__section}/sum'
+                GET: str = f'{__section}/get'
+                CREATE: str = f'{__section}/create'
+                UPDATE: str = f'{__section}/update'
+                DELETE: str = f'{__section}/delete'
+
+            @dataclass
+            class Positions:
+                __section: str = '/cp/ts/supplierReturns/positions'
+                LIST: str = f'{__section}/list'
+                SUM: str = f'{__section}/sum'
+                STATUS: str = f'{__section}/status'
+                GET: str = f'{__section}/get'
+                CREATE_MULTIPLE: str = f'{__section}/createMultiple'
+                SPLIT = f'{__section}/split'
+                UPDATE = f'{__section}/update'
+                CHANGE_STATUS = f'{__section}/changeStatus'
+
+            @dataclass
+            class PositionsAttr:
+                __section: str = '/cp/ts/supplierReturns/positions/attr'
+                CREATE: str = f'{__section}/create'
+                UPDATE: str = f'{__section}/update'
+                DELETE: str = f'{__section}/delete'
 
         @dataclass(frozen=True)
         class DistributorOwners:
@@ -451,6 +479,6 @@ class Methods:
         pass
 
 
-SEARCH_METHODS = (Methods.Client.Search.BRANDS, Methods.Client.Search.ARTICLES, Methods.Client.Search.BATCH,
-                  Methods.Client.Search.HISTORY, Methods.Client.Search.TIPS, Methods.Client.Search.ADVICES,
-                  Methods.Client.Search.ADVICES_BATCH)
+SEARCH_METHODS = (_Methods.Client.Search.BRANDS, _Methods.Client.Search.ARTICLES, _Methods.Client.Search.BATCH,
+                  _Methods.Client.Search.HISTORY, _Methods.Client.Search.TIPS, _Methods.Client.Search.ADVICES,
+                  _Methods.Client.Search.ADVICES_BATCH)
