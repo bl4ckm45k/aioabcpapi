@@ -1,17 +1,13 @@
 import sys
-
 from setuptools import setup
-from pip._vendor.pkg_resources import parse_version
-import aioabcpapi
 
 if sys.version_info < (3, 7):
     raise RuntimeError('Your Python version {0} is not supported, please install '
                        'Python 3.7+'.format('.'.join(map(str, sys.version_info[:3]))))
 requirements = ["aiohttp>=3.8.3", "certifi>=2022.12.7", "ujson>=5.7.0", "pytz>=2022.7.1", "pyrfc3339"]
-parsed_version = parse_version(aioabcpapi.__version__)
 setup(
     name='aioabcpapi',
-    version=parsed_version,
+    version='2.0.3',
     author='bl4ckm45k',
     author_email='nonpowa@gmail.com',
     description='Async library for ABCP API',
