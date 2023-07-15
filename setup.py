@@ -7,7 +7,7 @@ if sys.version_info < (3, 7):
 requirements = ["aiohttp>=3.8.3", "certifi>=2022.12.7", "ujson>=5.7.0", "pytz>=2022.7.1", "pyrfc3339"]
 setup(
     name='aioabcpapi',
-    version='2.0.3',
+    version='2.0.4',
     author='bl4ckm45k',
     author_email='nonpowa@gmail.com',
     description='Async library for ABCP API',
