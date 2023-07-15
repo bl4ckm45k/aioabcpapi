@@ -34,6 +34,8 @@ class TsAdminApi:
         self.tags_relationships = TagsRelationships(base)
         self.payments = Payments(base)
         self.payment_methods = PaymentMethods(base)
+        self.agrements = Agreements(base)
+        self.legal_persons = LegalPersons(base)
 
 
 class SupplierReturns:
@@ -1997,3 +1999,47 @@ class PaymentMethods:
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.PaymentMethods.METHODS_LIST, payload)
+
+
+class Agreements:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
+    async def get_list(self, contractor_ids: Union[int, List[int]] = None,
+                       contractor_requisite_ids: Union[int, List[int]] = None,
+                       shop_requisite_ids: Union[int, List[int]] = None,
+                       is_active: bool = None, is_delete: bool = None, is_default: bool = None,
+                       agreement_type: int = None, relation_type: int = None,
+                       number: str = None, currency: str = None,
+                       date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
+                       credit_limit: Union[float, int] = None,
+                       limit: int = None, skip: int = None):
+        if isinstance(date_start, datetime):
+            date_start = generate(date_start.replace(tzinfo=pytz.utc))
+        if isinstance(date_end, datetime):
+            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+
+        if isinstance(contractor_ids, int):
+            contractor_ids = [contractor_ids]
+        if isinstance(contractor_requisite_ids, int):
+            contractor_requisite_ids = [contractor_requisite_ids]
+        if isinstance(shop_requisite_ids, int):
+            shop_requisite_ids = [shop_requisite_ids]
+
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.Agreements.get_list, payload)
+
+
+class LegalPersons:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
+    async def get_list(self, ids: Union[str, List[str]] = None, contractor_id: Optional[int] = None,
+                       form: Optional[int] = None, org_type: Optional[int] = None,
+                       agreement_with_individuals_required: Optional[int] = None,
+                       with_tax_systems: Optional[int] = None,
+                       limit: Optional[int] = None, offset: Optional[int] = None):
+        if isinstance(ids, list):
+            ids = ','.join(map(str, ids))
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.LegalPersons.get_list, payload)
