@@ -161,6 +161,7 @@ class _Methods:
             REFUND_PAYMENT: str = 'cp/finance/paymentRefund'
             GET_RECEIPTS: str = 'komtet/getChecks'
             GET_PAYMENTS_SETTINGS: str = 'cp/payments/getPaymentMethodSettings'
+            DELETE_PAYMENT: str = 'cp/finance/deletePayments'
 
         @dataclass(frozen=True)
         class Users:

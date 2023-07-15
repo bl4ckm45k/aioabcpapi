@@ -711,6 +711,12 @@ class Finance:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
 
+    async def delete_payment(self, payment_id: int, delete_link: Union[int, bool] = 0):
+        if isinstance(delete_link, bool):
+            delete_link = int(delete_link)
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.Admin.Finance.DELETE_PAYMENT, payload, True)
+
     async def get_receipts(
             self,
             shop_id: Union[int, str] = None,
