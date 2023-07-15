@@ -334,6 +334,10 @@ class _Methods:
             CANCEL: str = 'ts/positions/cancel'
             MASS_CANCEL: str = 'ts/positions/massCancel'
 
+        @dataclass(frozen=True)
+        class Agreements:
+            get_list: str = 'cp/ts/agreements/list'
+
     @dataclass(frozen=True)
     class TsAdmin:
         @dataclass(frozen=True)
@@ -394,20 +398,21 @@ class _Methods:
 
         @dataclass(frozen=True)
         class Orders:
-            CREATE: str = 'cp/ts/orders/create'
-            CREATE_BY_CART: str = 'cp/ts/orders/createByCart'
-            LIST: str = 'cp/ts/orders/list'
-            GET: str = 'cp/ts/orders/get'
-            REFUSE: str = 'cp/ts/orders/refuse'
-            UPDATE: str = 'cp/ts/orders/update'
-            MERGE: str = 'cp/ts/orders/merge'
-            SPLIT: str = 'cp/ts/orders/split'
-            REPRICE: str = 'cp/ts/orders/reprice'
-            MESSAGES_CREATE: str = 'cp/ts/orders/messages/create'
-            MESSAGES_GET_ONE: str = 'cp/ts/orders/messages/get'
-            MESSAGES_LIST: str = 'cp/ts/orders/messages/list'
-            MESSAGES_UPDATE: str = 'cp/ts/orders/messages/update'
-            MESSAGES_DELETE: str = 'cp/ts/orders/messages/delete'
+            __section: str = 'cp/ts/orders'
+            CREATE: str = f'{__section}/create'
+            CREATE_BY_CART: str = f'{__section}/createByCart'
+            LIST: str = f'{__section}/list'
+            GET: str = f'{__section}/get'
+            REFUSE: str = f'{__section}/refuse'
+            UPDATE: str = f'{__section}/update'
+            MERGE: str = f'{__section}/merge'
+            SPLIT: str = f'{__section}/split'
+            REPRICE: str = f'{__section}/reprice'
+            MESSAGES_CREATE: str = f'{__section}/messages/create'
+            MESSAGES_GET_ONE: str = f'{__section}/messages/get'
+            MESSAGES_LIST: str = f'{__section}/messages/list'
+            MESSAGES_UPDATE: str = f'{__section}/messages/update'
+            MESSAGES_DELETE: str = f'{__section}/messages/delete'
 
         @dataclass(frozen=True)
         class Cart:
@@ -471,6 +476,14 @@ class _Methods:
         @dataclass(frozen=True)
         class PaymentMethods:
             METHODS_LIST: str = 'cp/ts/paymentMethods/list'
+
+        @dataclass(frozen=True)
+        class Agreements:
+            get_list: str = 'cp/ts/agreements/list'
+
+        @dataclass(frozen=True)
+        class LegalPersons:
+            get_list: str = 'cp/ts/legalPersons/list'
 
     class VinQu:
         pass
