@@ -709,6 +709,7 @@ class DistributorOwners:
 class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
+        self.messages = Messages(base)
 
     class _FieldsChecker:
         fields = ["deliveries", "agreement", "tags", "posInfo", "amounts"]
@@ -1201,6 +1202,7 @@ class Cart:
 class Positions:
     def __init__(self, base: BaseAbcp):
         self._base = base
+        self.messages = PositionsMessages(base)
 
     class _FieldsChecker:
         additional_info = ["reserv", "product", "orderPicking",
