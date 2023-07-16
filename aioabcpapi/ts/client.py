@@ -714,9 +714,9 @@ class Agreements:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, contractor_ids: Union[int, List[int]] = None,
-                       contractor_requisite_ids: Union[int, List[int]] = None,
-                       shop_requisite_ids: Union[int, List[int]] = None,
+    async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
+                       contractor_requisite_ids: Union[int, str, List[int]] = None,
+                       shop_requisite_ids: Union[int, str, List[int]] = None,
                        is_active: bool = None, is_delete: bool = None, is_default: bool = None,
                        agreement_type: int = None, relation_type: int = None,
                        number: str = None, currency: str = None,
@@ -728,11 +728,11 @@ class Agreements:
         if isinstance(date_end, datetime):
             date_end = generate(date_end.replace(tzinfo=pytz.utc))
 
-        if isinstance(contractor_ids, int):
+        if isinstance(contractor_ids, int) or isinstance(contractor_ids, str):
             contractor_ids = [contractor_ids]
-        if isinstance(contractor_requisite_ids, int):
+        if isinstance(contractor_requisite_ids, int) or isinstance(contractor_requisite_ids, str):
             contractor_requisite_ids = [contractor_requisite_ids]
-        if isinstance(shop_requisite_ids, int):
+        if isinstance(shop_requisite_ids, int) or isinstance(shop_requisite_ids, str):
             shop_requisite_ids = [shop_requisite_ids]
 
         payload = generate_payload(**locals())
