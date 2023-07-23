@@ -1,15 +1,14 @@
 import asyncio
 import logging
 import ssl
-from typing import Dict, List, Optional, Union, Type
+from typing import Dict, List, Optional, Union, Type, Any
 
 import aiohttp
 import certifi
-import ujson as json
+import ujson
 from aiohttp import FormData
 
-from . import api
-from .api import Headers, _Methods
+from .api import Headers, _Methods, check_data, make_request_json, make_request
 from .exceptions import NotEnoughRights
 
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +45,7 @@ class BaseAbcp:
         self._host = host
         self._login = login
         self._password = password
-        self.admin = api.check_data(host, login, password)
+        self.admin = check_data(host, login, password)
 
         self.shipment_address = None
         self.shipment_method = None
@@ -64,7 +63,7 @@ class BaseAbcp:
     async def _get_new_session(self) -> aiohttp.ClientSession:
         return aiohttp.ClientSession(
             connector=self._connector_class(**self._connector_init),
-            json_serialize=json.dumps
+            json_serialize=ujson.dumps
         )
 
     @property
@@ -88,19 +87,22 @@ class BaseAbcp:
         if self._session:
             await self._session.close()
 
-    def __payload_check(self, payload):
+    def __payload_check(self, payload: Union[Dict[str, Any], FormData]) -> Union[Dict[str, Any], FormData]:
         if isinstance(payload, dict):
             payload['userlogin'] = self._login
             payload['userpsw'] = self._password
+            return payload
         elif isinstance(payload, FormData):
             payload.add_field('userlogin', self._login)
             payload.add_field('userpsw', self._password)
+            return payload
         elif payload is None:
             payload = {'userlogin': self._login, 'userpsw': self._password}
         return payload
 
     async def request(self, method: str,
-                      payload: Union[Dict, FormData] = None, post: bool = False, **kwargs) -> Union[List, Dict, bool]:
+                      payload: Union[Dict[str, Any], FormData] = None,
+                      post: bool = False, **kwargs) -> Union[List, Dict, bool]:
         """
         Make an request to ABCP API
 
@@ -122,8 +124,8 @@ class BaseAbcp:
             headers = self._headers.multipart_header()
         elif kwargs is not None and 'json' in kwargs.keys():
             headers = self._headers.json_header()
-            return await api.make_request_json(await self._get_session(), self._host, method, payload, headers)
+            return await make_request_json(await self._get_session(), self._host, method, payload, headers)
         else:
             headers = self._headers.url_encoded_header()
-        return await api.make_request(await self._get_session(), self._host,
-                                      method, payload, headers, post, timeout=self.timeout, **kwargs)
+        return await make_request(await self._get_session(), self._host,
+                                  method, payload, headers, post, timeout=self.timeout, **kwargs)
