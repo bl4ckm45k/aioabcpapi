@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('api')
 
 
-def check_data(host: str, login: str, password: str):
+def check_data(host: str, login: str, password: str) -> bool:
     regex_md = re.match(r"([a-f\d]{32})", password)
     if not regex_md:
         raise PasswordType('Допускаются пароли только в md5 hash')
