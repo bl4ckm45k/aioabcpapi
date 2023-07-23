@@ -1322,6 +1322,8 @@ class Positions:
             tag_ids = ','.join(map(str, tag_ids))
         if statuses is not None:
             statuses = check_fields(statuses, self._FieldsChecker.statuses)
+        if isinstance(no_manager_assigned, bool):
+            no_manager_assigned = str(no_manager_assigned)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.GET_LIST, payload)
 
@@ -1389,6 +1391,8 @@ class Positions:
             deadline_time_max = generate(deadline_time_max.replace(tzinfo=pytz.utc))
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
             raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
+        if isinstance(client_refusal, bool):
+            client_refusal = str(client_refusal)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.UPDATE, payload, True)
 
@@ -2027,6 +2031,13 @@ class Agreements:
             contractor_requisite_ids = [contractor_requisite_ids]
         if isinstance(shop_requisite_ids, int) or isinstance(shop_requisite_ids, str):
             shop_requisite_ids = [shop_requisite_ids]
+        if isinstance(is_active, bool):
+            is_active = str(is_active)
+        if isinstance(is_delete, bool):
+            is_delete = str(is_delete)
+        if isinstance(is_default, bool):
+            is_default = str(is_default)
+
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Agreements.get_list, payload)
