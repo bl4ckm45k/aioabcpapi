@@ -1051,7 +1051,9 @@ class Users:
             surname: str = None, password: str = None,
             birth_date: Union[str, datetime] = None, city: str = None,
             mobile: Union[str, int] = None, icq: str = None,
-            skype: str = None, enable_sms: Union[bool, str] = None, state: Union[str, int] = None,
+            skype: str = None, enable_sms: Union[bool, str] = None,
+            enable_whatsapp: Union[bool, str] = None,
+            state: Union[str, int] = None,
             profile_id: Union[int, str] = None, organization_name: str = None,
             organization_form: str = None, organization_official_name: str = None,
             inn: Union[str, int] = None, kpp: Union[str, int] = None, ogrn: Union[str, int] = None,
@@ -1091,6 +1093,7 @@ class Users:
         :param icq:	ICQ UIN
         :param skype: Skype
         :param enable_sms: Производится ли отпровка SMS клиенту
+        :param enable_whatsapp: Производится ли отправка Whatsapp клиенту
         :param state: Состояние аккаунта. Значения: от -1 до 2
         :param profile_id: Идентификатор профиля
         :param organization_name: Наименование организации
