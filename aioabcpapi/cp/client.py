@@ -376,10 +376,8 @@ class Basket:
             if shipment_method_index is not None and shipment_address_index is not None:
                 shipment_address = await self.shipment_address()  # 1
                 self._base.shipment_address = shipment_address[shipment_address_index]["id"]
-                logger.info(f'\n\n\n{shipment_address}\n\n\n\n')
                 logger.info(f'Выбран адрес доставки:\nID - {shipment_address[shipment_address_index]["id"]}\n'
                             f'Name - {shipment_address[shipment_address_index]["name"]}')
-
             if shipment_office_index is not None and shipment_method_index is None:
                 shipment_office = await self.shipment_offices()
                 self._base.shipment_office = shipment_office[shipment_office_index]["id"]
