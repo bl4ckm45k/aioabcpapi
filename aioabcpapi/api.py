@@ -486,6 +486,11 @@ class _Methods:
         class LegalPersons:
             get_list: str = 'cp/ts/legalPersons/list'
 
+        @dataclass(frozen=True)
+        class SupplierOrders:
+            orders_list: str = 'cp/ts/supplierOrders/orders/list'
+            positions_list: str = 'cp/ts/supplierOrders/positions/list'
+
     class VinQu:
         pass
 
