@@ -36,6 +36,7 @@ class TsAdminApi:
         self.payment_methods = PaymentMethods(base)
         self.agrements = Agreements(base)
         self.legal_persons = LegalPersons(base)
+        self.supplier_orders = SupplierOrders(base)
 
 
 class SupplierReturns:
@@ -240,6 +241,7 @@ class OrderPickings:
                            route_id: Union[str, int] = None, location_id: Union[str, int] = None,
                            order_picking_reseller_data: Dict = None,
                            number: Union[str, int] = None, date: Union[datetime, str] = None,
+                           execution_date: Union[datetime, str] = None
                            ):
         """
         Операция быстрого создания заказа, приёмки, расхода
@@ -256,10 +258,13 @@ class OrderPickings:
         :param order_picking_reseller_data: Дополнительная информация в формате json, которая будет сохранена в операцию отгрузки
         :param number: Номер отгрузки, если пустой, то будет заполнен автоматически
         :param date: Дата отгрузки, если пустая, то будет заполнена автоматически. `str` в формате RFC3339 или datetime object
+        :param execution_date: [необязательный] Дата проведения/выполнения в формате RFC3339, если пустая, то будет заполнена из `date`
         :return: None
         """
         if isinstance(date, datetime):
             date = generate(date.replace(tzinfo=pytz.utc))
+        if isinstance(execution_date, datetime):
+            execution_date = generate(execution_date.replace(tzinfo=pytz.utc))
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
@@ -1946,6 +1951,24 @@ class Payments:
                        payment_type: Union[List[str], str] = None, payment_method_ids: Union[List[int], int] = None,
                        date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
                        fields: Union[List[str], str] = None):
+        """
+
+        :param contractor_id:
+        :param agreement_id:
+        :param amount_start:
+        :param amount_end:
+        :param status:
+        :param number:
+        :param requisite_id:
+        :param skip:
+        :param limit:
+        :param payment_type:
+        :param payment_method_ids:
+        :param date_start:
+        :param date_end:
+        :param fields:
+        :return:
+        """
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
@@ -1968,6 +1991,20 @@ class Payments:
                      amount: Union[float, int, str], date: Union[datetime, str],
                      contractor_id: int = None, commission: Union[float, int] = None,
                      comment: str = None, fields: Union[List[str], str] = None):
+        """
+
+        :param payment_type:
+        :param payment_method_id:
+        :param agreement_id:
+        :param author_id:
+        :param amount:
+        :param date:
+        :param contractor_id:
+        :param commission:
+        :param comment:
+        :param fields:
+        :return:
+        """
         if isinstance(date, datetime):
             date = generate(date.replace(tzinfo=pytz.utc))
         if isinstance(fields, list):
@@ -2020,6 +2057,25 @@ class Agreements:
                        date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
                        credit_limit: Union[float, int] = None,
                        limit: int = None, skip: int = None):
+        """
+
+        :param contractor_ids:
+        :param contractor_requisite_ids:
+        :param shop_requisite_ids:
+        :param is_active:
+        :param is_delete:
+        :param is_default:
+        :param agreement_type:
+        :param relation_type:
+        :param number:
+        :param currency:
+        :param date_start:
+        :param date_end:
+        :param credit_limit:
+        :param limit:
+        :param skip:
+        :return:
+        """
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):
@@ -2056,3 +2112,20 @@ class LegalPersons:
             ids = ','.join(map(str, ids))
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.LegalPersons.get_list, payload)
+
+class SupplierOrders:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+
+    async def orders_list(self, orders_ids, distributor_ids, supplier_ids, send_statuses,
+                          create_date_start, create_date_end,
+                          send_date_start, send_date_end,
+                          client_order_id, client_order_number: str,
+                          limit: Union[int, str], skip: Union[int, str]):
+        pass
+
+    async def positions_list(self, statuses, order_id, distributor_ids, supplier_ids,
+                             position_ids, gr_position_ids, client_order_id, client_order_number,
+                             without_order, with_order, additional_info,
+                             limit: Union[int, str], skip: Union[int, str]):
+        pass
