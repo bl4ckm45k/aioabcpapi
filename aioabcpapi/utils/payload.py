@@ -92,7 +92,7 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                 if key == 'sip':
                     data[key.upper()] = value
                 if key == 'del_note':
-                    data['order[notes][0][value]'] = None
+                    data['order[notes][0][value]'] = ""
                     data['order[notes][0][id]'] = value
                 else:
                     data[get_excluded_keys(key)] = value
