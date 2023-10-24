@@ -23,3 +23,6 @@ class Abcp:
         self._base = BaseAbcp(host, login, password)
         self.cp = CpApi(self._base)
         self.ts = TsApi(self._base)
+
+    async def close(self):
+        return await self._base.close()
