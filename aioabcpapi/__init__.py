@@ -9,5 +9,5 @@ if sys.version_info < (3, 8):
                        'Python 3.8+'.format('.'.join(map(str, sys.version_info[:3]))))
 
 __author__ = 'bl4ckm45k'
-__version__ = '2.0.9'
+__version__ = '2.1.0'
 __email__ = 'nonpowa@gmail.com'
