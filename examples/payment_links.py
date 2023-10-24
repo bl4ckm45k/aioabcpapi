@@ -17,4 +17,11 @@ async def get_payments_link(order_number: int, client_id: int, amount: int):
 
 
 if __name__ == '__main__':
-    asyncio.run(get_payments_link(order_number=118668754, client_id=6679745, amount=10000))
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(get_payments_link(order_number=118668754, client_id=6679745, amount=10000))
+    finally:
+        loop.run_until_complete(api.close())

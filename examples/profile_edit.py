@@ -56,4 +56,11 @@ async def edit_profile():
 
 
 if __name__ == '__main__':
-    asyncio.run(edit_profile())
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(edit_profile())
+    finally:
+        loop.run_until_complete(api.close())

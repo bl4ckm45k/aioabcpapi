@@ -13,4 +13,11 @@ async def update_manager(id, first_name, last_name, sip):
 
 
 if __name__ == '__main__':
-    asyncio.run(update_manager(id=25119353, first_name='test_first', last_name='test_last', sip=312))
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(update_manager(id=25119353, first_name='test_first', last_name='test_last', sip=312))
+    finally:
+        loop.run_until_complete(api.close())

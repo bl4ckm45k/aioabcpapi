@@ -725,6 +725,25 @@ class Agreements:
                        date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
                        credit_limit: Union[float, int] = None,
                        limit: int = None, skip: int = None):
+        """
+
+        :param contractor_ids:
+        :param contractor_requisite_ids:
+        :param shop_requisite_ids:
+        :param is_active:
+        :param is_delete:
+        :param is_default:
+        :param agreement_type:
+        :param relation_type:
+        :param number:
+        :param currency:
+        :param date_start:
+        :param date_end:
+        :param credit_limit:
+        :param limit:
+        :param skip:
+        :return:
+        """
         if isinstance(date_start, datetime):
             date_start = generate(date_start.replace(tzinfo=pytz.utc))
         if isinstance(date_end, datetime):

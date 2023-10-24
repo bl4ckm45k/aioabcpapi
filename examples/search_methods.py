@@ -40,7 +40,11 @@ async def advices_batch():
 
 
 if __name__ == '__main__':
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
     try:
-        asyncio.run(advices_batch())
-    except RuntimeError:
-        pass
+        loop.run_until_complete(advices_batch())
+    finally:
+        loop.run_until_complete(api.close())

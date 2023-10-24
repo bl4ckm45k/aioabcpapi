@@ -31,5 +31,12 @@ async def not_enough_rights(update_start, update_end):
 if __name__ == '__main__':
     date_start = datetime.datetime.now() - datetime.timedelta(days=3)
     date_end = datetime.datetime.now()
-    asyncio.run(orders_list(update_start=date_start, update_end=date_end))
-    # asyncio.run(not_enough_rights(update_start=date_start, update_end=date_end))
+
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(orders_list(update_start=date_start, update_end=date_end))
+    finally:
+        loop.run_until_complete(api.close())

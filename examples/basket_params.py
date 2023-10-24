@@ -25,4 +25,11 @@ async def get_basket_params():
 
 
 if __name__ == '__main__':
-    asyncio.run(get_basket_params())
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(get_basket_params())
+    finally:
+        loop.run_until_complete(api.close())

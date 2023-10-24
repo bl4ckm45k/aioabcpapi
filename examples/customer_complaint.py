@@ -23,4 +23,12 @@ async def update_complaint(path_to_file):
 if __name__ == '__main__':
     cwd = os.getcwd()
     path_to_some_file = f'{cwd}/files/some_file.txt'
-    asyncio.run(update_complaint(path_to_some_file))
+
+    # Необходимо только в Windows для избежания RuntimeError
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(update_complaint(path_to_some_file))
+    finally:
+        loop.run_until_complete(api.close())
