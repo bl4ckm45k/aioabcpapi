@@ -9,7 +9,6 @@ import aiohttp
 from .exceptions import UnsupportedHost, PasswordType, UnsupportedLogin, NetworkError, \
     AbcpAPIError, TeaPot, AbcpNotFoundError
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('api')
 
 
