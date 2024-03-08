@@ -11,7 +11,6 @@ from aiohttp import FormData
 from .api import Headers, _Methods, check_data, make_request_json, make_request
 from .exceptions import NotEnoughRights
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('base')
 
 
