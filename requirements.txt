@@ -1,6 +1,6 @@
 pytz==2023.3
 pyRFC3339~=1.1
 environs~=9.5.0
-aiohttp==3.9.0
+aiohttp==3.9.4
 ujson==5.8.0
 certifi==2023.7.22
