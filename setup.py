@@ -4,7 +4,7 @@ from setuptools import setup
 if sys.version_info < (3, 8):
     raise RuntimeError('Your Python version {0} is not supported, please install '
                        'Python 3.8+'.format('.'.join(map(str, sys.version_info[:3]))))
-requirements = ["wheel", "aiohttp>=3.8.5,<3.10.0", "certifi>=2023.7.22", "ujson>=5.8.0", "pytz>=2023.3", "pyrfc3339"]
+requirements = ["wheel", "aiohttp>=3.8.5,<3.11.0", "certifi>=2023.7.22", "ujson>=5.8.0", "pytz>=2023.3", "pyrfc3339"]
 setup(
     name='aioabcpapi',
     version='2.1.2',
