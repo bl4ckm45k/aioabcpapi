@@ -13,6 +13,16 @@ logger = logging.getLogger('api')
 
 
 def check_data(host: str, login: str, password: str) -> bool:
+    """
+    Checks if the provided data is valid.
+    :param host: The host to check.
+    :param login: The login to check.
+    :param password: The password to check.
+    :return: True if the data is valid, False otherwise.
+    :raises UnsupportedHost: If the host is not supported.
+    :raises PasswordType: If the password is not in md5 hash format.
+    :raises UnsupportedLogin: If the login is not in a valid format.
+    """
     regex_md = re.match(r"([a-f\d]{32})", password)
     if not regex_md:
         raise PasswordType('Допускаются пароли только в md5 hash')
@@ -23,7 +33,7 @@ def check_data(host: str, login: str, password: str) -> bool:
         if login.isdigit() and 4 < len(login) < 14:
             return False
         if '@' in login:
-            email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
+            email = re.match(r'^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
             if not email:
                 raise UnsupportedLogin('Недопустимый логин')
             return False
@@ -78,6 +88,17 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
 async def make_request_json(session, host, method,
                             data: Dict, headers,
                             **kwargs):
+    """
+    Makes a POST request to the API with JSON data.
+    :param session: The aiohttp session to use.
+    :param host: The host to make the request to.
+    :param method: The method to make the request to.
+    :param data: The data to send in the request.
+    :param headers: The headers to send in the request.
+    :param kwargs: Additional keyword arguments to pass to the aiohttp.ClientSession.post method.
+    :return: The result of the request.
+    :raises NetworkError: If an error occurs during the request.
+    """
     url = f'https://{host}/{method}'
     try:
         async with session.post(url, json=data, headers=headers, **kwargs) as response:
@@ -94,6 +115,18 @@ async def make_request(session, host, method,
                        data: Union[Dict, aiohttp.FormData],
                        headers, post,
                        **kwargs):
+    """
+    Makes a GET or POST request to the API.
+    :param session: The aiohttp session to use.
+    :param host: The host to make the request to.
+    :param method: The method to make the request to.
+    :param data: The data to send in the request.
+    :param headers: The headers to send in the request.
+    :param post: Whether to make a POST request.
+    :param kwargs: Additional keyword arguments to pass to the aiohttp.ClientSession.post or get
+    :return: The result of the request.
+    :raises NetworkError: If an error occurs during the request.
+    """
     logger.debug('Make _request: "%s" with data: "%r"', method, data)
 
     url = f'https://{host}/{method}'
@@ -365,7 +398,7 @@ class _Methods:
         class SupplierReturns:
             @dataclass
             class Operations:
-                __section: str = '/cp/ts/supplierReturns/operations'
+                __section: str = 'cp/ts/supplierReturns/operations'
                 LIST: str = f'{__section}/list'
                 SUM: str = f'{__section}/sum'
                 GET: str = f'{__section}/get'
@@ -375,7 +408,7 @@ class _Methods:
 
             @dataclass
             class Positions:
-                __section: str = '/cp/ts/supplierReturns/positions'
+                __section: str = 'cp/ts/supplierReturns/positions'
                 LIST: str = f'{__section}/list'
                 SUM: str = f'{__section}/sum'
                 STATUS: str = f'{__section}/status'
@@ -387,7 +420,7 @@ class _Methods:
 
             @dataclass
             class PositionsAttr:
-                __section: str = '/cp/ts/supplierReturns/positions/attr'
+                __section: str = 'cp/ts/supplierReturns/positions/attr'
                 CREATE: str = f'{__section}/create'
                 UPDATE: str = f'{__section}/update'
                 DELETE: str = f'{__section}/delete'
