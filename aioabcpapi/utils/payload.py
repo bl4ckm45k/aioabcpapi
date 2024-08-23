@@ -1,8 +1,12 @@
 import logging
 import os
+from datetime import datetime
 from io import BufferedReader
+from typing import Union, List, Dict
 
+import pytz
 from aiohttp import FormData
+from pyrfc3339 import generate
 
 from aioabcpapi.exceptions import FileSizeExceeded
 
@@ -10,15 +14,30 @@ DEFAULT_FILTER = ['self', 'cls', 'kwargs']
 logger = logging.getLogger('utils/payload')
 
 
-def get_pascal_case_key(key: str):
-    return ''.join([*map(str.title, key.split('_'))])
+def get_pascal_case_key(key: str) -> str:
+    """
+    Convert key to Pascal case
+    :param key:
+    :return: str
+    """
+    return ''.join([word.title() for word in key.split('_')])
 
 
-def get_camel_case_key(key: str):
-    return f"{''.join([key.split('_')[0].lower(), *map(str.title, key.split('_')[1:])])}"
+def get_camel_case_key(key: str) -> str:
+    """
+    Convert key to Camel case
+    :param key:
+    :return: str
+    """
+    return f"{''.join([key.split('_')[0].lower()] + [word.title() for word in key.split('_')[1:]])}"
 
 
-def get_excluded_keys(key: str):
+def get_excluded_keys(key: str) -> str:
+    """
+    Get excluded keys
+    :param key:
+    :return: str
+    """
     excluded_keys = {
         'order_positions': 'order[positions][_index_][_key_]',
         'positions': 'positions[_index_][_key_]',
@@ -54,7 +73,7 @@ def get_excluded_keys(key: str):
         return get_pascal_case_key(key)
 
 
-def generate_payload(exclude=None, order: bool = False, **kwargs):
+def generate_payload(exclude=None, order: bool = False, **kwargs) -> dict:
     """
     Generate payload
     :param exclude:
@@ -96,14 +115,20 @@ def generate_payload(exclude=None, order: bool = False, **kwargs):
                     data['order[notes][0][id]'] = value
                 else:
                     data[get_excluded_keys(key)] = value
-        if key == 'kwargs':
+        if key == 'kwargs' and isinstance(value, dict):
             for k, v, in value.items():
                 data[get_camel_case_key(k)] = v
     logger.debug(f'{data}')
     return data
 
 
-def generate_price_ups(key, value):
+def generate_price_ups(key, value) -> dict:
+    """
+    Generate price ups
+    :param key:
+    :param value:
+    :return: dict
+    """
     data = {}
     for i in range(len(value)):
         for key_z, value_z in value[i].items():
@@ -120,7 +145,13 @@ def generate_price_ups(key, value):
     return data
 
 
-def generate_from_list(key, value):
+def generate_from_list(key, value) -> dict:
+    """
+    Generate from list
+    :param key:
+    :param value:
+    :return: dict
+    """
     data = {}
     for i in range(len(value)):
         for key_z, value_z in value[i].items():
@@ -135,7 +166,12 @@ def generate_from_list(key, value):
     return data
 
 
-def generate_payload_filter(**kwargs):
+def generate_payload_filter(**kwargs) -> dict:
+    """
+    Generate payload for filter
+    :param kwargs:
+    :return: dict
+    """
     data = {}
     for key, value in kwargs.items():
         if key not in DEFAULT_FILTER and value is not None and not key.startswith('_'):
@@ -149,7 +185,13 @@ def generate_payload_filter(**kwargs):
     return data
 
 
-def generate_payload_payments(single: bool = True, **kwargs):
+def generate_payload_payments(single: bool = True, **kwargs) -> dict:
+    """
+    Generate payload for payments
+    :param single:
+    :param kwargs:
+    :return: dict
+    """
     data = {}
     for key, value in kwargs.items():
         if key not in DEFAULT_FILTER and value is not None and not key.startswith('_'):
@@ -171,9 +213,9 @@ def generate_payload_payments(single: bool = True, **kwargs):
     return data
 
 
-def generate_payload_online_order(**kwargs):
+def generate_payload_online_order(**kwargs) -> dict:
     """
-    Generate payload
+    Generate payload for online order
     :param kwargs:
     :return: dict
     """
@@ -195,11 +237,11 @@ def generate_payload_online_order(**kwargs):
     return data
 
 
-def generate_file_payload(exclude=None, max_size: int = None, **kwargs):
+def generate_file_payload(exclude=None, max_size: int = None, **kwargs) -> FormData:
     """
-    Generate payload
+    Generate file payload
     :param exclude:
-    :param max_size: Максимальный размер в Мб
+    :param max_size:
     :param kwargs:
     :return: :obj:`aiohttp.FormData`
     """
@@ -222,3 +264,25 @@ def generate_file_payload(exclude=None, max_size: int = None, **kwargs):
                                    content_type='multipart/form-data')
     logger.debug(f'{data}')
     return data
+
+
+def process_ts_list(value: Union[int, str, List[int], List[str]]) -> Union[int, str]:
+    """
+    Process list
+    :param value:
+    :return: Union[int, str]
+    """
+    if isinstance(value, list):
+        return ','.join(map(str, value))
+    return value
+
+
+def process_ts_date(value: Union[str, datetime]) -> Union[str, datetime]:
+    """
+    Process date
+    :param value:
+    :return: Union[str, datetime]
+    """
+    if isinstance(value, datetime):
+        return generate(value.replace(tzinfo=pytz.utc))
+    return value
