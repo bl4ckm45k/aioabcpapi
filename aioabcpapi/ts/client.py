@@ -1,32 +1,12 @@
 import base64
 from datetime import datetime
-from typing import Union, List, Dict
-
-import pytz
-from pyrfc3339 import generate
+from typing import Union, List, Dict, Optional
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError
 from ..utils.fields_checker import check_fields
-from ..utils.payload import generate_payload
-
-
-class TsClientApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы клиентского интерфейса
-
-        https://www.abcp.ru/wiki/API.TS.Client
-        """
-        self._base = base
-        self.good_receipts = GoodReceipts(base)
-        self.order_pickings = OrderPickings(base)
-        self.customer_complaints = CustomerComplaints(base)
-        self.orders = Orders(base)
-        self.cart = Cart(base)
-        self.positions = Positions(base)
-        self.agrements = Agreements(base)
+from ..utils.payload import generate_payload, process_ts_date, process_ts_list
 
 
 class GoodReceipts:
@@ -83,14 +63,13 @@ class GoodReceipts:
         if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" может принимать значения от 1 до 1000')
         if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+            date_start = process_ts_date(date_start)
+            date_end = process_ts_date(date_end)
         if isinstance(output, str) and not all(x in 'des' for x in output):
             raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["d", "e", "s"]')
         if isinstance(statuses, list):
             if all(1 <= int(x) <= 3 for x in statuses):
-                statuses = ','.join(map(str, statuses))
+                statuses = process_ts_list(statuses)
             else:
                 raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
         payload = generate_payload(**locals())
@@ -153,15 +132,13 @@ class OrderPickings:
         """
         if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" может принимать значения от 1 до 1000')
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(status, int) and not 1 <= status <= 3:
             raise AbcpWrongParameterError('Параметр "status" принимет значения от 1 до 3')
         if isinstance(status, list):
             if all(1 <= x <= 3 for x in status):
-                statuses = ','.join(map(str, status))
+                status = process_ts_list(status)
             else:
                 raise AbcpWrongParameterError('Параметр "status" принимет значения от 1 до 3')
         if isinstance(output, str) and (not all(x in 'des' for x in output) or len(output) > 3):
@@ -249,14 +226,11 @@ class CustomerComplaints:
                     posInfo - информация о количестве позиций во всех возможных статусах
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(tag_ids, (int, str)):
             tag_ids = [tag_ids]
-        if isinstance(position_statuses, list):
-            position_statuses = ','.join(map(str, position_statuses))
+        position_statuses = process_ts_list(position_statuses)
         if fields is not None:
             fields = check_fields(fields, self.FieldsChecker.get_fields)
         payload = generate_payload(**locals())
@@ -301,19 +275,12 @@ class CustomerComplaints:
                         supplierReturnPos - связанный возврат поставщику (null, если такого нет)
         :return:
         """
-        if isinstance(order_picking_good_ids, list):
-            order_picking_good_ids = ','.join(map(str, order_picking_good_ids))
+        order_picking_good_ids = process_ts_list(order_picking_good_ids)
+        picking_ids = process_ts_list(picking_ids)
+        old_co_position_ids = process_ts_list(old_co_position_ids)
 
-        if isinstance(picking_ids, list):
-            picking_ids = ','.join(map(str, picking_ids))
-
-        if isinstance(old_co_position_ids, list):
-            old_co_position_ids = ','.join(map(str, old_co_position_ids))
-
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(status, int) and not 1 <= status <= 6:
             raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 6')
         if isinstance(type, int) and not 1 <= type <= 3:
@@ -407,8 +374,7 @@ class Orders:
         :param positions: список ID позиций корзины
         :return:
         """
-        if isinstance(create_time, datetime):
-            create_time = generate(create_time.replace(tzinfo=pytz.utc))
+        create_time = process_ts_date(create_time)
         if isinstance(positions, (int, str)):
             positions = [positions]
         payload = generate_payload(
@@ -449,24 +415,16 @@ class Orders:
         :param limit: максимальное количество заказов, которое должно быть возвращено в ответе
         :return:
         """
-        if isinstance(position_statuses, list):
-            position_statuses = ','.join(map(str, position_statuses))
-        if isinstance(product_ids, list):
-            product_ids = ','.join(map(str, product_ids))
-        if isinstance(order_ids, list):
-            order_ids = ','.join(map(str, order_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_start, datetime):
-            update_date_start = generate(update_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_end, datetime):
-            update_date_end = generate(update_date_end.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_start, datetime):
-            deadline_date_start = generate(deadline_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_end, datetime):
-            deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
+        position_statuses = process_ts_list(position_statuses)
+        product_ids = process_ts_list(product_ids)
+        order_ids = process_ts_list(order_ids)
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
+        update_date_start = process_ts_date(update_date_start)
+        update_date_end = process_ts_date(update_date_end)
+        deadline_date_start = process_ts_date(deadline_date_start)
+        deadline_date_end = process_ts_date(deadline_date_end)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Orders.GET_LIST, payload)
 
@@ -543,8 +501,7 @@ class Cart:
         :param skip: количество позиций корзины в ответе, которое нужно пропустить
         :return:
         """
-        if isinstance(position_ids, list):
-            position_ids = ','.join(map(str, position_ids))
+        position_ids = process_ts_list(position_ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.GET_LIST, payload, True)
 
@@ -685,7 +642,7 @@ class Positions:
         if isinstance(statuses, str):
             statuses = [statuses]
         if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
+            tag_ids = process_ts_list(tag_ids)
         if statuses is not None:
             statuses = check_fields(statuses, self.FieldsChecker.statuses)
         if additional_info is not None:
@@ -744,10 +701,8 @@ class Agreements:
         :param skip:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
 
         if isinstance(contractor_ids, int) or isinstance(contractor_ids, str):
             contractor_ids = [contractor_ids]
@@ -764,3 +719,64 @@ class Agreements:
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Agreements.get_list, payload)
+
+
+class TsClientApi:
+    def __init__(self, base: BaseAbcp):
+        """
+        Класс содержит методы клиентского интерфейса
+
+        https://www.abcp.ru/wiki/API.TS.Client
+        """
+        if not isinstance(base, BaseAbcp):
+            raise TypeError("Expected a BaseAbcp instance")
+        self._base: BaseAbcp = base
+        self._good_receipts: Optional[GoodReceipts] = None
+        self._order_pickings: Optional[OrderPickings] = None
+        self._customer_complaints: Optional[CustomerComplaints] = None
+        self._orders: Optional[Orders] = None
+        self._cart: Optional[Cart] = None
+        self._positions: Optional[Positions] = None
+        self._agreements: Optional[Agreements] = None
+
+    @property
+    def good_receipts(self) -> GoodReceipts:
+        if self._good_receipts is None:
+            self._good_receipts = GoodReceipts(self._base)
+        return self._good_receipts
+
+    @property
+    def order_pickings(self) -> OrderPickings:
+        if self._order_pickings is None:
+            self._order_pickings = OrderPickings(self._base)
+        return self._order_pickings
+
+    @property
+    def customer_complaints(self) -> CustomerComplaints:
+        if self._customer_complaints is None:
+            self._customer_complaints = CustomerComplaints(self._base)
+        return self._customer_complaints
+
+    @property
+    def orders(self) -> Orders:
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def cart(self) -> Cart:
+        if self._cart is None:
+            self._cart = Cart(self._base)
+        return self._cart
+
+    @property
+    def positions(self) -> Positions:
+        if self._positions is None:
+            self._positions = Positions(self._base)
+        return self._positions
+
+    @property
+    def agreements(self) -> Agreements:
+        if self._agreements is None:
+            self._agreements = Agreements(self._base)
+        return self._agreements
