@@ -4,48 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, List, Dict, Optional
 
-import pytz
-from pyrfc3339 import generate
-
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
 from ..utils.fields_checker import check_fields
-from ..utils.payload import generate_payload
-
-
-class TsAdminApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы административного интерфейса
-
-        https://www.abcp.ru/wiki/API.TS.Admin
-        """
-        self._base = base
-        self.order_pickings = OrderPickings(base)
-        self.customer_complaints = CustomerComplaints(base)
-        self.supplier_returns = SupplierReturns(base)
-        self.distributor_owners = DistributorOwners(base)
-        self.orders = Orders(base)
-        self.cart = Cart(base)
-        self.positions = Positions(base)
-        self.good_receipts = GoodReceipts(base)
-        self.tags = Tags(base)
-        self.tags_relationships = TagsRelationships(base)
-        self.payments = Payments(base)
-        self.payment_methods = PaymentMethods(base)
-        self.agrements = Agreements(base)
-        self.legal_persons = LegalPersons(base)
-        self.supplier_orders = SupplierOrders(base)
-
-
-class SupplierReturns:
-
-    def __init__(self, base: BaseAbcp):
-        self._base = base
-        self.operations = SupplierReturnsOperations(base)
-        self.positions = SupplierReturnsPositions(base)
-        self.positions_attr = SupplierReturnsPositionsAttr(base)
+from ..utils.payload import generate_payload, process_ts_list, process_ts_date
 
 
 class SupplierReturnsOperations:
@@ -64,16 +27,12 @@ class SupplierReturnsOperations:
                        date_end: Union[datetime, str],
                        skip: int, limit: int, fields: Union[List, str] = None
                        ):
-        if isinstance(agreement_ids, list):
-            agreement_ids = ','.join(map(str, tag_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
-        if isinstance(sbis_statuses, list):
-            sbis_statuses = ','.join(map(str, tag_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        agreement_ids = process_ts_list(agreement_ids)
+        tag_ids = process_ts_list(tag_ids)
+        sbis_statuses = process_ts_list(sbis_statuses)
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.list_fields)
 
@@ -88,16 +47,11 @@ class SupplierReturnsOperations:
                       date_start: Union[datetime, str], date_end: Union[datetime, str],
                       skip: int = None, limit: int = None
                       ):
-        if isinstance(agreement_ids, list):
-            agreement_ids = ','.join(map(str, agreement_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
-        if isinstance(sbis_statuses, list):
-            sbis_statuses = ','.join(map(str, sbis_statuses))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        agreement_ids = process_ts_list(agreement_ids)
+        tag_ids = process_ts_list(tag_ids)
+        sbis_statuses = process_ts_list(sbis_statuses)
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.SUM, payload)
@@ -141,16 +95,14 @@ class SupplierReturnsPositions:
                        limit: int = None,
                        fields: Union[List[str], str] = None
                        ):
-        if isinstance(goods_receipt_pos_ids, list):
-            goods_receipt_pos_ids = ','.join(map(str, goods_receipt_pos_ids))
-        if isinstance(item_ids, list):
-            item_ids = ','.join(map(str, item_ids))
-        if isinstance(goods_receipt_ids, list):
-            goods_receipt_ids = ','.join(map(str, goods_receipt_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+
+        goods_receipt_pos_ids = process_ts_list(goods_receipt_pos_ids)
+        item_ids = process_ts_list(item_ids)
+        goods_receipt_ids = process_ts_list(goods_receipt_ids)
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
+
         if isinstance(fields, list):
             fields = check_fields(fields, self._FieldsChecker.list_fields)
         payload = generate_payload(**locals())
@@ -166,16 +118,13 @@ class SupplierReturnsPositions:
                       skip: int = None,
                       limit: int = None,
                       fields: Union[List[str], str] = None):
-        if isinstance(goods_receipt_pos_ids, list):
-            goods_receipt_pos_ids = ','.join(map(str, goods_receipt_pos_ids))
-        if isinstance(item_ids, list):
-            item_ids = ','.join(map(str, item_ids))
-        if isinstance(goods_receipt_ids, list):
-            goods_receipt_ids = ','.join(map(str, goods_receipt_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+
+        goods_receipt_pos_ids = process_ts_list(goods_receipt_pos_ids)
+        item_ids = process_ts_list(item_ids)
+        goods_receipt_ids = process_ts_list(goods_receipt_ids)
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(fields, list):
             fields = check_fields(fields, self._FieldsChecker.list_fields)
         payload = generate_payload(**locals())
@@ -232,6 +181,32 @@ class SupplierReturnsPositionsAttr:
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.DELETE, payload, True)
 
 
+class SupplierReturns:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+        self._operations: Optional[SupplierReturnsOperations] = None
+        self._positions: Optional[SupplierReturnsPositions] = None
+        self._positions_attr: Optional[SupplierReturnsPositionsAttr] = None
+
+    @property
+    def operations(self) -> SupplierReturnsOperations:
+        if self._operations is None:
+            self._operations = SupplierReturnsOperations(self._base)
+        return self._operations
+
+    @property
+    def positions(self) -> SupplierReturnsPositions:
+        if self._positions is None:
+            self._positions = SupplierReturnsPositions(self._base)
+        return self._positions
+
+    @property
+    def positions_attr(self) -> SupplierReturnsPositionsAttr:
+        if self._positions_attr is None:
+            self._positions_attr = SupplierReturnsPositionsAttr(self._base)
+        return self._positions_attr
+
+
 class OrderPickings:
     def __init__(self, base: BaseAbcp):
         self._base = base
@@ -261,10 +236,8 @@ class OrderPickings:
         :param execution_date: [необязательный] Дата проведения/выполнения в формате RFC3339, если пустая, то будет заполнена из `date`
         :return: None
         """
-        if isinstance(date, datetime):
-            date = generate(date.replace(tzinfo=pytz.utc))
-        if isinstance(execution_date, datetime):
-            execution_date = generate(execution_date.replace(tzinfo=pytz.utc))
+        date = process_ts_date(date)
+        execution_date = process_ts_date(execution_date)
         if isinstance(positions, dict):
             positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
@@ -310,10 +283,8 @@ class OrderPickings:
             raise AbcpWrongParameterError('Параметр "statuses" принимает значения от 1 до 5')
         if isinstance(statuses, (int, str)):
             statuses = [statuses]
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(co_old_pos_ids, (int, str)):
             co_old_pos_ids = [co_old_pos_ids]
         payload = generate_payload(**locals())
@@ -341,6 +312,7 @@ class OrderPickings:
             raise AbcpWrongParameterError('Параметр "op_id" должен быть числом')
         if isinstance(limit, int) and not 1 <= limit <= 1000:
             raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+
         if isinstance(ignore_canceled, int):
             if ignore_canceled == 0:
                 ignore_canceled = None
@@ -359,7 +331,8 @@ class OrderPickings:
 
     async def create_by_old_pos(self, agreement_id: Union[str, int], account_details_id: Union[str, int],
                                 loc_id: Union[str, int],
-                                pp_ids: Union[List, str, int], op_id: Union[int, str] = None,
+                                pp_ids: Union[List, str, int],
+                                create_date: Union[str, datetime] = None, op_id: Union[int, str] = None,
                                 status_id: Union[int, str] = None,
                                 done_right_away: Union[int, bool] = None, output: str = None):
         """
@@ -372,6 +345,7 @@ class OrderPickings:
         :param account_details_id: Идентификатор реквизитов магазина
         :param loc_id: Идентификатор места хранения
         :param pp_ids: список идентификаторов позиций старых заказов для добавления в отгрузку
+        :param create_date: дата и время создания отгрузки в формате ГГГГ-ММ-ДД ЧЧ:ММ:СС (rfc3339) или datetime, если не указано - используется текущая дата и время
         :param status_id: 	[обязательный при указании флага doneRightAway] статус позиции заказа, в который будут переведены указанные позиции в случае успешного добавления в операцию отгрузки. При указании флага doneRightAway статус должен иметь признак списания.
         :param done_right_away: 1 - сразу завершить операцию после добавления позиций.
         :param output: расширенный формат вывода. 'e' - загрузка дополнительной информации (договора, реквизиты, клиент), 't' - загрузка информации о тегах, 's' - загрузка суммарной информации о позициях
@@ -382,6 +356,7 @@ class OrderPickings:
         if status_id is None and done_right_away == 1:
             raise AbcpParameterRequired(
                 'При указании параметра done_right_away, status_id является обязательным и должен иметь признак списания')
+        create_date = process_ts_date(create_date)
         if isinstance(pp_ids, (int, str)):
             pp_ids = [pp_ids]
         if isinstance(output, str) and any(x not in ["e", "t", "s"] for x in output):
@@ -481,14 +456,11 @@ class CustomerComplaints:
         :param fields:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(position_type, int) and (position_type < 1 or position_type > 3):
             raise AbcpWrongParameterError('position_type parameter must be between 1 and 3')
-        if isinstance(position_statuses, list):
-            position_statuses = ','.join(map(str, position_statuses))
+        position_statuses = process_ts_list(position_statuses)
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.get_fields)
         payload = generate_payload(**locals())
@@ -536,18 +508,13 @@ class CustomerComplaints:
         if isinstance(sort, str) and sort not in ('status', 'createDate'):
             raise AbcpWrongParameterError('Параметр "sort" может принимать одно из значений: "status" или "createDate"')
 
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(picking_ids, list):
-            picking_ids = ','.join(map(str, picking_ids))
-        if isinstance(order_picking_good_ids, list):
-            order_picking_good_ids = ','.join(map(str, order_picking_good_ids))
-        if isinstance(old_co_position_ids, list):
-            old_co_position_ids = ','.join(map(str, old_co_position_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
+
+        picking_ids = process_ts_list(picking_ids)
+        order_picking_good_ids = process_ts_list(order_picking_good_ids)
+        old_co_position_ids = process_ts_list(old_co_position_ids)
+        tag_ids = process_ts_list(tag_ids)
         if isinstance(status, int) and not 1 <= status <= 8:
             raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 8')
         if isinstance(type, int) and not 1 <= type <= 3:
@@ -736,8 +703,8 @@ class Orders:
         :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
         :return:
         """
-        if isinstance(create_time, datetime):
-            create_time = generate(create_time.replace(tzinfo=pytz.utc))
+
+        create_time = process_ts_date(create_time)
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
 
@@ -784,12 +751,11 @@ class Orders:
         """
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
-        if isinstance(create_time, datetime):
-            create_time = generate(create_time.replace(tzinfo=pytz.utc))
-        if isinstance(delivery_start_time, datetime):
-            delivery_start_time = generate(delivery_start_time.replace(tzinfo=pytz.utc))
-        if isinstance(delivery_end_time, datetime):
-            delivery_end_time = generate(delivery_end_time.replace(tzinfo=pytz.utc))
+
+        create_time = process_ts_date(create_time)
+        delivery_start_time = process_ts_date(delivery_start_time)
+        delivery_end_time = process_ts_date(delivery_end_time)
+
         if isinstance(positions, (int, str)):
             positions = [positions]
         payload = generate_payload(
@@ -843,18 +809,13 @@ class Orders:
             product_ids = ','.join(map(str, product_ids))
         if isinstance(order_ids, list):
             order_ids = ','.join(map(str, order_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_start, datetime):
-            update_date_start = generate(update_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_end, datetime):
-            update_date_end = generate(update_date_end.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_start, datetime):
-            deadline_date_start = generate(deadline_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_end, datetime):
-            deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
+        update_date_start = process_ts_date(update_date_start)
+        update_date_end = process_ts_date(update_date_end)
+        deadline_date_start = process_ts_date(deadline_date_start)
+        deadline_date_end = process_ts_date(deadline_date_end)
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.LIST, payload)
@@ -1323,8 +1284,7 @@ class Positions:
             order_ids = [order_ids]
         if isinstance(statuses, str):
             statuses = [statuses]
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
+        tag_ids = process_ts_list(tag_ids)
         if statuses is not None:
             statuses = check_fields(statuses, self._FieldsChecker.statuses)
         if isinstance(no_manager_assigned, bool):
@@ -1390,10 +1350,9 @@ class Positions:
         :param status: string, статус позиции, Новый или Предоплата
         :return:
         """
-        if isinstance(deadline_time, datetime):
-            deadline_time = generate(deadline_time.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_time_max, datetime):
-            deadline_time_max = generate(deadline_time_max.replace(tzinfo=pytz.utc))
+        deadline_time = process_ts_date(deadline_time)
+        deadline_time_max = process_ts_date(deadline_time_max)
+
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
             raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
         if isinstance(client_refusal, bool):
@@ -1422,8 +1381,8 @@ class Positions:
         :param position_ids: идентификаторы позиций через запятую
         :return:
         """
-        if isinstance(position_ids, list):
-            position_ids = ','.join(map(str, position_ids))
+
+        position_ids = process_ts_list(position_ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
 
@@ -1439,8 +1398,8 @@ class Positions:
         """
         if all(status != x for x in ['new', 'prepayment']):
             raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
-        if isinstance(position_ids, list):
-            position_ids = ','.join(map(str, position_ids))
+
+        position_ids = process_ts_list(position_ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
 
@@ -1467,8 +1426,8 @@ class Positions:
         :param merge_positions_ids:
         :return:
         """
-        if isinstance(merge_positions_ids, list):
-            merge_positions_ids = ','.join(map(str, merge_positions_ids))
+
+        merge_positions_ids = process_ts_list(merge_positions_ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MERGE, payload, True)
 
@@ -1615,10 +1574,10 @@ class GoodReceipts:
                 statuses = ','.join(map(str, statuses))
             else:
                 raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.GET, payload)
 
@@ -1802,8 +1761,8 @@ class Tags:
         :param ids: Идентификаторы тегов через запятую
         :return: dict
         """
-        if isinstance(ids, list):
-            ids = ','.join(map(str, ids))
+
+        ids = process_ts_list(ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Tags.LIST, payload)
 
@@ -1860,8 +1819,7 @@ class TagsRelationships:
         :param tags_ids: Необязателен. Идентификаторы тегов через запятую
         :return:
         """
-        if isinstance(object_ids, list):
-            object_ids = ','.join(map(str, object_ids))
+        object_ids = process_ts_list(object_ids)
 
         if isinstance(object_type, str) and object_type.isdigit():
             if not 1 <= int(object_type) <= 13:
@@ -1880,8 +1838,7 @@ class TagsRelationships:
         if with_all_tags is not None and tags_ids is None:
             raise AbcpParameterRequired('The "with_all_tags" parameter must be used with the "tags_ids" parameter')
 
-        if isinstance(tags_ids, list):
-            tags_ids = ','.join(map(str, tags_ids))
+        tags_ids = process_ts_list(tags_ids)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.TagsRelationships.LIST, payload)
 
@@ -1969,19 +1926,16 @@ class Payments:
         :param fields:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
         if isinstance(status, list):
             if any(x not in self._Status.status for x in status):
                 raise AbcpWrongParameterError(
                     f'Неверный список статусов: {status} Допустимые статусы {self._Status.status}')
             status = ','.join(status)
-        if isinstance(payment_method_ids, list):
-            payment_method_ids = ','.join(map(str, payment_method_ids))
-        if isinstance(payment_type, list):
-            payment_type = ','.join(payment_type)
+        payment_method_ids = process_ts_list(payment_method_ids)
+        print(payment_method_ids)
+        payment_type = process_ts_list(payment_type)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Payments.GET_LIST, payload)
 
@@ -2005,8 +1959,7 @@ class Payments:
         :param fields:
         :return:
         """
-        if isinstance(date, datetime):
-            date = generate(date.replace(tzinfo=pytz.utc))
+        date = process_ts_date(date)
         if isinstance(fields, list):
             fields = ','.join(fields)
 
@@ -2076,10 +2029,8 @@ class Agreements:
         :param skip:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        date_start = process_ts_date(date_start)
+        date_end = process_ts_date(date_end)
 
         if isinstance(contractor_ids, int) or isinstance(contractor_ids, str):
             contractor_ids = [contractor_ids]
@@ -2094,7 +2045,6 @@ class Agreements:
         if isinstance(is_default, bool):
             is_default = str(is_default)
 
-
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Agreements.get_list, payload)
 
@@ -2103,29 +2053,195 @@ class LegalPersons:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, ids: Union[str, List[str]] = None, contractor_id: Optional[int] = None,
+    async def get_list(self, ids: Union[str, int, List[str], List[int]] = None, contractor_id: Optional[int] = None,
                        form: Optional[int] = None, org_type: Optional[int] = None,
                        agreement_with_individuals_required: Optional[int] = None,
                        with_tax_systems: Optional[int] = None,
                        limit: Optional[int] = None, offset: Optional[int] = None):
+        """
+
+        :param ids:
+        :param contractor_id:
+        :param form:
+        :param org_type:
+        :param agreement_with_individuals_required:
+        :param with_tax_systems:
+        :param limit:
+        :param offset:
+        :return:
+        """
         if isinstance(ids, list):
             ids = ','.join(map(str, ids))
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.LegalPersons.get_list, payload)
 
+
 class SupplierOrders:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def orders_list(self, orders_ids, distributor_ids, supplier_ids, send_statuses,
-                          create_date_start, create_date_end,
-                          send_date_start, send_date_end,
-                          client_order_id, client_order_number: str,
-                          limit: Union[int, str], skip: Union[int, str]):
-        pass
+    async def orders_list(self, orders_ids: Union[int, str, List[int], List[str]],
+                          distributor_ids: Union[int, str, List[int], List[str]],
+                          supplier_ids: Union[int, str, List[int], List[str]],
+                          send_statuses: Union[int, str, List[int], List[str]],
+                          create_date_start: Union[str, datetime],
+                          create_date_end: Union[str, datetime],
+                          send_date_start: Union[str, datetime],
+                          send_date_end: Union[str, datetime],
+                          client_order_id: Union[str, int],
+                          client_order_number: str,
+                          limit: Union[int, str],
+                          skip: Union[int, str]):
+        """
+
+        :param orders_ids:
+        :param distributor_ids:
+        :param supplier_ids:
+        :param send_statuses:
+        :param create_date_start:
+        :param create_date_end:
+        :param send_date_start:
+        :param send_date_end:
+        :param client_order_id:
+        :param client_order_number:
+        :param limit:
+        :param skip:
+        :return:
+        """
+        orders_ids = process_ts_list(orders_ids)
+        distributor_ids = process_ts_list(distributor_ids)
+        supplier_ids = process_ts_list(supplier_ids)
+        send_statuses = process_ts_list(send_statuses)
+
+        create_date_start = process_ts_date(create_date_start)
+        create_date_end = process_ts_date(create_date_end)
+        send_date_start = process_ts_date(send_date_start)
+        send_date_end = process_ts_date(send_date_end)
+
+        if isinstance(client_order_id, str) and not client_order_id.isdigit():
+            raise AbcpWrongParameterError('client_order_id должен быть типа int или числом в str')
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.SupplierOrders.orders_list, payload, True)
 
     async def positions_list(self, statuses, order_id, distributor_ids, supplier_ids,
                              position_ids, gr_position_ids, client_order_id, client_order_number,
                              without_order, with_order, additional_info,
                              limit: Union[int, str], skip: Union[int, str]):
         pass
+
+
+class TsAdminApi:
+    def __init__(self, base: BaseAbcp):
+        """
+        Класс содержит методы административного интерфейса
+
+        https://www.abcp.ru/wiki/API.TS.Admin
+        """
+        if not isinstance(base, BaseAbcp):
+            raise TypeError("Expected a BaseAbcp instance")
+        self._base: BaseAbcp = base
+        self._order_pickings: Optional[OrderPickings] = None
+        self._customer_complaints: Optional[CustomerComplaints] = None
+        self._supplier_returns: Optional[SupplierReturns] = None
+        self._distributor_owners: Optional[DistributorOwners] = None
+        self._orders: Optional[Orders] = None
+        self._cart: Optional[Cart] = None
+        self._positions: Optional[Positions] = None
+        self._good_receipts: Optional[GoodReceipts] = None
+        self._tags: Optional[Tags] = None
+        self._tags_relationships: Optional[TagsRelationships] = None
+        self._payments: Optional[Payments] = None
+        self._payment_methods: Optional[PaymentMethods] = None
+        self._agreements: Optional[Agreements] = None
+        self._legal_persons: Optional[LegalPersons] = None
+        self._supplier_orders: Optional[SupplierOrders] = None
+
+    @property
+    def order_pickings(self) -> OrderPickings:
+        if self._order_pickings is None:
+            self._order_pickings = OrderPickings(self._base)
+        return self._order_pickings
+
+    @property
+    def customer_complaints(self) -> CustomerComplaints:
+        if self._customer_complaints is None:
+            self._customer_complaints = CustomerComplaints(self._base)
+        return self._customer_complaints
+
+    @property
+    def supplier_returns(self) -> SupplierReturns:
+        if self._supplier_returns is None:
+            self._supplier_returns = SupplierReturns(self._base)
+        return self._supplier_returns
+
+    @property
+    def distributor_owners(self) -> DistributorOwners:
+        if self._distributor_owners is None:
+            self._distributor_owners = DistributorOwners(self._base)
+        return self._distributor_owners
+
+    @property
+    def orders(self) -> Orders:
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def cart(self) -> Cart:
+        if self._cart is None:
+            self._cart = Cart(self._base)
+        return self._cart
+
+    @property
+    def positions(self) -> Positions:
+        if self._positions is None:
+            self._positions = Positions(self._base)
+        return self._positions
+
+    @property
+    def good_receipts(self) -> GoodReceipts:
+        if self._good_receipts is None:
+            self._good_receipts = GoodReceipts(self._base)
+        return self._good_receipts
+
+    @property
+    def tags(self) -> Tags:
+        if self._tags is None:
+            self._tags = Tags(self._base)
+        return self._tags
+
+    @property
+    def tags_relationships(self) -> TagsRelationships:
+        if self._tags_relationships is None:
+            self._tags_relationships = TagsRelationships(self._base)
+        return self._tags_relationships
+
+    @property
+    def payments(self) -> Payments:
+        if self._payments is None:
+            self._payments = Payments(self._base)
+        return self._payments
+
+    @property
+    def payment_methods(self) -> PaymentMethods:
+        if self._payment_methods is None:
+            self._payment_methods = PaymentMethods(self._base)
+        return self._payment_methods
+
+    @property
+    def agreements(self) -> Agreements:
+        if self._agreements is None:
+            self._agreements = Agreements(self._base)
+        return self._agreements
+
+    @property
+    def legal_persons(self) -> LegalPersons:
+        if self._legal_persons is None:
+            self._legal_persons = LegalPersons(self._base)
+        return self._legal_persons
+
+    @property
+    def supplier_orders(self) -> SupplierOrders:
+        if self._supplier_orders is None:
+            self._supplier_orders = SupplierOrders(self._base)
+        return self._supplier_orders
