@@ -9,24 +9,6 @@ from ..utils.payload import generate_payload
 logger = logging.getLogger('Cp.Client')
 
 
-class ClientApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы клиентского интерфейса
-
-        https://www.abcp.ru/wiki/API.ABCP.Client
-        """
-        self._base = base
-        self.search = Search(base)
-        self.basket = Basket(base)
-        self.orders = Orders(base)
-        self.user = User(base)
-        self.garage = Garage(base)
-        self.car_tree = CarTree(base)
-        self.form = Form(base)
-        self.articles = Articles(base)
-
-
 class Search:
     def __init__(self, base: BaseAbcp):
         self._base = base
@@ -102,7 +84,7 @@ class Search:
         :type profile_id: str or int
         :return:
         """
-        if not self._base.admin and profile_id is not None:
+        if not self._base.admin and profile_id:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
         if isinstance(search, dict):
             search = [search]
@@ -895,3 +877,71 @@ class Articles:
 
         payload = generate_payload(exclude=['cross_image', 'with_original'], **locals())
         return await self._base.request(_Methods.Client.Articles.INFO, payload)
+
+
+class ClientApi:
+    def __init__(self, base: BaseAbcp):
+        """
+        Класс содержит методы клиентского интерфейса
+
+        https://www.abcp.ru/wiki/API.ABCP.Client
+        """
+        if not isinstance(base, BaseAbcp):
+            raise TypeError("Expected a BaseAbcp instance")
+        self._base = base
+        self._search: Optional[Search] = None
+        self._basket: Optional[Basket] = None
+        self._orders: Optional[Orders] = None
+        self._user: Optional[User] = None
+        self._garage: Optional[Garage] = None
+        self._car_tree: Optional[CarTree] = None
+        self._form: Optional[Form] = None
+        self._articles: Optional[Articles] = None
+
+    @property
+    def search(self) -> Search:
+        if self._search is None:
+            self._search = Search(self._base)
+        return self._search
+
+    @property
+    def basket(self) -> Basket:
+        if self._basket is None:
+            self._basket = Basket(self._base)
+        return self._basket
+
+    @property
+    def orders(self) -> Orders:
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def user(self) -> User:
+        if self._user is None:
+            self._user = User(self._base)
+        return self._user
+
+    @property
+    def garage(self) -> Garage:
+        if self._garage is None:
+            self._garage = Garage(self._base)
+        return self._garage
+
+    @property
+    def car_tree(self) -> CarTree:
+        if self._car_tree is None:
+            self._car_tree = CarTree(self._base)
+        return self._car_tree
+
+    @property
+    def form(self) -> Form:
+        if self._form is None:
+            self._form = Form(self._base)
+        return self._form
+
+    @property
+    def articles(self) -> Articles:
+        if self._articles is None:
+            self._articles = Articles(self._base)
+        return self._articles

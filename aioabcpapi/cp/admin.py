@@ -11,26 +11,6 @@ from ..utils.payload import generate_payload, generate_payload_filter, generate_
     generate_payload_online_order, generate_file_payload
 
 
-class AdminApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы административного интерфейса
-
-        https://www.abcp.ru/wiki/API.ABCP.Admin
-        """
-        self._base = base
-        self.orders = Orders(base)
-        self.finance = Finance(base)
-        self.users = Users(base)
-        self.staff = Staff(base)
-        self.statuses = Statuses(base)
-        self.distributors = Distributors(base)
-        self.catalog = Catalog(base)
-        self.articles = Articles(base)
-        self.users_catalog = UsersCatalog(base)
-        self.payment = Payment(base)
-
-
 class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
@@ -1157,7 +1137,7 @@ class Users:
         :param id: Уникальный идентификатор зоны адресов доставки
         :return: Возвращает одну зону адресов доставки по указанному уникальному идентификатору.
         """
-        return await self._base.request(_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE.format(id))
+        return await self._base.request(f"{_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE}{id}")
 
     async def update_shipment_zones(self, zones: Union[List[Dict], Dict]):
         """
@@ -1198,13 +1178,13 @@ class Users:
         if kwargs is None:
             raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
                                         'Например: isOnDay1=1, stopTimeDay1="15:30"')
-        _method = _Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id)
+        _method = f"{_Methods.Admin.Users.UPDATE_SHIPMENT_ZONE}{id}"
         del id
         payload = generate_payload(**locals())
         return await self._base.request(_method, payload, True, json=True)
 
     async def delete_shipment_zone(self, id: int):
-        return await self._base.request(_Methods.Admin.Users.DELETE_SHIPMENT_ZONE.format(id), None, True)
+        return await self._base.request(f"{_Methods.Admin.Users.DELETE_SHIPMENT_ZONE}{id}", None, True)
 
     async def get_updated_cars(self, date_updated_start: str = None, date_updated_end: str = None):
         """
@@ -1619,7 +1599,7 @@ class UsersCatalog:
             raise AbcpWrongParameterError('Не передан архив с изображениями')
 
         payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], max_size=100, **locals())
-        return await self._base.request(_Methods.Admin.UsersCatalog.UPLOAD.format(catalog_id), payload, True)
+        return await self._base.request(f"{_Methods.Admin.UsersCatalog.UPLOAD}{catalog_id}", payload, True)
 
 
 class Payment:
@@ -1652,3 +1632,85 @@ class Payment:
             raise AbcpWrongParameterError('Параметр "amount" должен быть числом')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Payment.TOP_BALANCE, payload)
+
+
+class AdminApi:
+    def __init__(self, base: BaseAbcp):
+        """
+        Класс содержит методы административного интерфейса
+
+        https://www.abcp.ru/wiki/API.ABCP.Admin
+        """
+        if not isinstance(base, BaseAbcp):
+            raise TypeError("Expected a BaseAbcp instance")
+        self._base = base
+        self._orders: Optional[Orders] = None
+        self._finance: Optional[Finance] = None
+        self._users: Optional[Users] = None
+        self._staff: Optional[Staff] = None
+        self._statuses: Optional[Statuses] = None
+        self._distributors: Optional[Distributors] = None
+        self._catalog: Optional[Catalog] = None
+        self._articles: Optional[Articles] = None
+        self._users_catalog: Optional[UsersCatalog] = None
+        self._payment: Optional[Payment] = None
+
+    @property
+    def orders(self) -> Orders:
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def finance(self) -> Finance:
+        if self._finance is None:
+            self._finance = Finance(self._base)
+        return self._finance
+
+    @property
+    def users(self) -> Users:
+        if self._users is None:
+            self._users = Users(self._base)
+        return self._users
+
+    @property
+    def staff(self) -> Staff:
+        if self._staff is None:
+            self._staff = Staff(self._base)
+        return self._staff
+
+    @property
+    def statuses(self) -> Statuses:
+        if self._statuses is None:
+            self._statuses = Statuses(self._base)
+        return self._statuses
+
+    @property
+    def distributors(self) -> Distributors:
+        if self._distributors is None:
+            self._distributors = Distributors(self._base)
+        return self._distributors
+
+    @property
+    def catalog(self) -> Catalog:
+        if self._catalog is None:
+            self._catalog = Catalog(self._base)
+        return self._catalog
+
+    @property
+    def articles(self) -> Articles:
+        if self._articles is None:
+            self._articles = Articles(self._base)
+        return self._articles
+
+    @property
+    def users_catalog(self) -> UsersCatalog:
+        if self._users_catalog is None:
+            self._users_catalog = UsersCatalog(self._base)
+        return self._users_catalog
+
+    @property
+    def payment(self) -> Payment:
+        if self._payment is None:
+            self._payment = Payment(self._base)
+        return self._payment
