@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Dict, Union
+from typing import Dict, Union, List, Any, Optional
 
 import aiohttp
 
@@ -85,66 +85,60 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
     raise AbcpAPIError(f"{body} [{status_code}]")
 
 
-async def make_request_json(session, host, method,
-                            data: Dict, headers,
-                            **kwargs):
+async def make_request(
+    session, 
+    host: str, 
+    method: str,
+    data: Union[Dict[str, Any], aiohttp.FormData],
+    headers: Dict[str, str],
+    http_method: str = "GET",
+    **kwargs
+) -> Union[Dict[str, Any], List[Dict[str, Any]], bool]:
     """
-    Makes a POST request to the API with JSON data.
-    :param session: The aiohttp session to use.
-    :param host: The host to make the request to.
-    :param method: The method to make the request to.
-    :param data: The data to send in the request.
-    :param headers: The headers to send in the request.
-    :param kwargs: Additional keyword arguments to pass to the aiohttp.ClientSession.post method.
-    :return: The result of the request.
-    :raises NetworkError: If an error occurs during the request.
+    Универсальная функция для выполнения запросов к API.
+    
+    :param session: Сессия aiohttp
+    :param host: Хост API
+    :param method: Метод API (endpoint)
+    :param data: Данные запроса (payload)
+    :param headers: Заголовки запроса
+    :param http_method: HTTP метод (GET, POST, и т.д.)
+    :param kwargs: Дополнительные параметры для aiohttp.ClientSession.request
+    :return: Результат запроса
+    :raises NetworkError: Если произошла ошибка сети
+    :raises AbcpAPIError: Если API вернуло ошибку или не удалось распарсить JSON
     """
+    logger.debug('Make request [%s]: "%s" with data: "%r"', http_method, method, data)
+
     url = f'https://{host}/{method}'
+    request_kwargs = {'headers': headers, **kwargs}
+    
+    # Определяем, как передавать данные в зависимости от метода и типа данных
+    if http_method.upper() != "GET":
+        # Для не-GET запросов (POST, PUT, и т.д.)
+        if 'json' in kwargs:
+            # Если в kwargs есть json, значит это JSON запрос
+            pass  # json уже в kwargs, используем его напрямую
+        elif isinstance(data, aiohttp.FormData):
+            # FormData для multipart/form-data запросов
+            request_kwargs['data'] = data
+        else:
+            # Обычные данные для application/x-www-form-urlencoded
+            request_kwargs['data'] = data
+    else:
+        # Для GET запросов данные идут в params
+        request_kwargs['params'] = data
+    
     try:
-        async with session.post(url, json=data, headers=headers, **kwargs) as response:
+        response = await session.request(http_method, url, **request_kwargs)
+        
+        async with response:
             try:
                 body = await response.json()
-                return check_result(method, response.content_type, response.status, body)
-            except:
-                raise AbcpAPIError(response.text)
-    except aiohttp.ClientError as e:
-        raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
-
-
-async def make_request(session, host, method,
-                       data: Union[Dict, aiohttp.FormData],
-                       headers, post,
-                       **kwargs):
-    """
-    Makes a GET or POST request to the API.
-    :param session: The aiohttp session to use.
-    :param host: The host to make the request to.
-    :param method: The method to make the request to.
-    :param data: The data to send in the request.
-    :param headers: The headers to send in the request.
-    :param post: Whether to make a POST request.
-    :param kwargs: Additional keyword arguments to pass to the aiohttp.ClientSession.post or get
-    :return: The result of the request.
-    :raises NetworkError: If an error occurs during the request.
-    """
-    logger.debug('Make _request: "%s" with data: "%r"', method, data)
-
-    url = f'https://{host}/{method}'
-    try:
-        if post:
-            async with session.post(url, data=data, headers=headers, **kwargs) as response:
-                try:
-                    body = await response.json()
-                except:
-                    body = response.text
-                return check_result(method, response.content_type, response.status, body)
-        else:
-            async with session.get(url, params=data, **kwargs) as response:
-                try:
-                    body = await response.json()
-                except:
-                    body = response.text
-                return check_result(method, response.content_type, response.status, body)
+            except aiohttp.ContentTypeError:
+                body = await response.text()
+            
+            return check_result(method, response.content_type, response.status, body)
     except aiohttp.ClientError as e:
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
 
@@ -505,6 +499,7 @@ class _Methods:
         class Payments:
             GET_LIST: str = 'cp/ts/payments/list'
             CREATE: str = 'cp/ts/payments/create'
+            UPDATE: str = 'cp/ts/payments/update'
 
         @dataclass(frozen=True)
         class PaymentMethods:
@@ -512,16 +507,16 @@ class _Methods:
 
         @dataclass(frozen=True)
         class Agreements:
-            get_list: str = 'cp/ts/agreements/list'
+            GET_LIST: str = 'cp/ts/agreements/list'
 
         @dataclass(frozen=True)
         class LegalPersons:
-            get_list: str = 'cp/ts/legalPersons/list'
+            GET_LIST: str = 'cp/ts/legalPersons/list'
 
         @dataclass(frozen=True)
         class SupplierOrders:
-            orders_list: str = 'cp/ts/supplierOrders/orders/list'
-            positions_list: str = 'cp/ts/supplierOrders/positions/list'
+            ORDERS_LIST: str = 'cp/ts/supplierOrders/orders/list'
+            POSITIONS_LIST: str = 'cp/ts/supplierOrders/positions/list'
 
     class VinQu:
         pass

@@ -1,42 +1,91 @@
 import asyncio
-import datetime
-import logging
+from datetime import datetime, timedelta
 
-from config import guest_id
-from loader import api, api_client
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from aioabcpapi import Abcp
 
 
-async def orders_list(update_start, update_end):
-    logger.info(f'{update_start}, {update_end}')
-    data = await api.cp.admin.orders.get_orders_list(date_updated_start=update_start,
-                                                     date_updated_end=update_end,
-                                                     format='additional')
+async def search_and_add_to_basket():
+    """
+    Пример использования библиотеки ABCP API
+    Поиск товаров и добавление в корзину
+    """
+    host, login, password = 'id33333', 'api@id33333', 'md5hash'
+    
+    # Использование через контекстный менеджер - сессия закроется автоматически
+    async with Abcp(host, login, password) as api:
+        # Поиск товаров
+        search_result = await api.cp.client.search.articles(
+            number='602000600',
+            brand='LuK',
+            use_online_stocks=True,
+            disable_online_filtering=True,
+            with_out_analogs=True
+        )
+        
+        print(f"Найдено {len(search_result)} товаров")
+        
+        # Фильтрация и обработка результатов
+        for item in search_result:
+            price = float(item['price'])
+            print(f"Артикул: {item['article']}, Бренд: {item['brand']}, Цена: {price}")
+            
+            if price < 3000:
+                print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
+                # Отключаем поставщика с подозрительно низкой ценой
+                await api.cp.admin.distributors.edit_status(item['distributorId'], False)
+            elif price < 37000:
+                # Добавляем товар в корзину
+                await api.cp.client.basket.add(
+                    basket_positions={
+                        'number': item['article'],
+                        'brand': item['brand'],
+                        'supplierCode': item['supplierCode'],
+                        'itemKey': item['itemKey'],
+                        'quantity': 1,
+                        'comment': "РРЦ никто не любит"
+                    }
+                )
+                print(f"Товар добавлен в корзину: {item['article']} {item['brand']}")
 
-    for x in data:
-        if x['userId'] == guest_id:
-            logger.info(f"{x['additional']['phone']}, {x['additional']['consumer']}")
-    await api.close()
 
-
-async def not_enough_rights(update_start, update_end):
-    data = await api_client.cp.admin.orders.get_orders_list(date_updated_start=update_start,
-                                                            date_updated_end=update_end)
-    logger.error(f'{data}')
-    await api_client.close()
+async def get_recent_orders():
+    """
+    Пример получения недавних заказов
+    с использованием параметров даты
+    """
+    host, login, password = 'id33333', 'api@id33333', 'md5hash'
+    
+    # Создание экземпляра API с настройками таймаута и ретраев
+    api = Abcp(
+        host=host, 
+        login=login, 
+        password=password,
+        timeout=30,  # 30 секунд таймаут
+        retry_attempts=5,  # 5 попыток при ошибках
+        retry_delay=0.5  # Задержка между попытками 0.5 секунды
+    )
+    
+    try:
+        # Получаем заказы за последние 7 дней
+        date_from = datetime.now() - timedelta(days=7)
+        date_to = datetime.now()
+        
+        orders = await api.cp.client.garage.get_orders(
+            date_from=date_from,
+            date_to=date_to,
+            limit=10
+        )
+        
+        print(f"Заказы за последние 7 дней: {len(orders)}")
+        for order in orders:
+            print(f"Заказ №{order['orderId']} от {order['createDate']} - {order['statusName']}")
+    
+    finally:
+        # Важно всегда закрывать сессию, если не используете контекстный менеджер
+        await api.close()
 
 
 if __name__ == '__main__':
-    date_start = datetime.datetime.now() - datetime.timedelta(days=3)
-    date_end = datetime.datetime.now()
-
-    # Необходимо только в Windows для избежания RuntimeError
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(orders_list(update_start=date_start, update_end=date_end))
-    finally:
-        loop.run_until_complete(api.close())
+    # Запуск примеров
+    asyncio.run(search_and_add_to_basket())
+    asyncio.run(get_recent_orders())

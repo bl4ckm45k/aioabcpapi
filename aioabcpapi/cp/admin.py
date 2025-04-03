@@ -93,7 +93,10 @@ class Orders:
             date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
         if isinstance(format, str) and format not in ["additional", "short", "count", "status_only", "p"]:
             raise AbcpWrongParameterError(
-                'Параметр "format" должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
+                "format",
+                format,
+                'должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
+
         if limit is not None and not 1 <= int(limit) <= 1000:
             raise AbcpAPIError(f'The limit must be more than {limit}')
         if isinstance(status_code, (int, str)):
@@ -354,7 +357,7 @@ class Finance:
             in_stop_list: Union[bool, str] = None
     ):
         """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B1.D0.B0.D0.BB.D0.B0.D0.BD.D1.81.D0.B0_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D0.B0
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B1.D0.B0.D0.BD.D0.B0.D0.BD.D1.81.D0.B0_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D0.B0
         Изменяет баланс клиента. Принимает в качестве параметра текущий баланс пользователя (float) в валюте сайта
         и идентификатор пользователя на сайте. Идентификатор пользователя - это уникальное значение для всей системы,
         которое может не совпадать со значением поля "Код клиента" в карточке клиента. Узнать его можно, либо из URL
@@ -866,7 +869,7 @@ class Users:
             date_updated_end = f'{date_updated_end:%Y-%m-%d %H:%M:%S}'
 
         if isinstance(format, str) and format != 'p':
-            raise AbcpWrongParameterError('The parameter "format" can only take the value "p" or None')
+            raise AbcpWrongParameterError("format", format, 'can only take the value "p" or None')
         if not isinstance(customers_ids, list) and customers_ids is not None:
             customers_ids = [customers_ids]
         if isinstance(enable_sms, str) and (enable_sms != 'true' and enable_sms != 'false'):
@@ -883,7 +886,8 @@ class Users:
             second_name: str = None, surname: str = None,
             birth_date: Union[str, datetime] = None,
             member_of_club: str = None, office: Union[str, int] = None,
-            email: str = None, icq: str = None, skype: str = None,
+            email: str = None, icq: str = None,
+            skype: str = None,
             region_id: str = None, city: str = None,
             organization_name: str = None, business: Union[str, int] = None,
             organization_form: str = None, organization_official_name: str = None,
@@ -967,7 +971,10 @@ class Users:
         """
         format_params_check = ('brands', 'distributors')
         if isinstance(format, str) and format not in format_params_check:
-            raise AbcpWrongParameterError('format parameter can take values "brands" or "distributors"')
+            raise AbcpWrongParameterError(
+                "format",
+                format,
+                'parameter can take values "brands" or "distributors"')
         del format_params_check
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.GET_PROFILES, payload)
@@ -1051,7 +1058,7 @@ class Users:
     ):
 
         """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B4.D0.B0.D0.BD.D0.BD.D1.8B.D1.85_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B4.D0.B0.D0.BD.D0.BD.D1.8B.D1.85_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.B6.D1.8F
         Осуществляет обновление данных пользователя, присланных в запросе.
         При изменении данных пользователя необязательно передавать все параметры.
         Используйте в запросе только те данные, которые вы собираетесь изменить.
@@ -1152,36 +1159,40 @@ class Users:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.UPDATE_SHIPMENT_ZONES, payload, True)
 
-    async def create_shipment_zone(self, name: str, **kwargs):
+    async def create_shipment_zone(self, name: str, desc: str, address: str, comment: str, lat: float, lng: float,
+                                   radius: float):
         """
-        Создание новой зоны адресов доставки. Метод создания одной зоны адресов доставки.
-
-        :param name: Название зоны
-        :param kwargs: Аргументы isOnDay{day}: int и stopTimeDay{day}: int
-        :return:
+        Функция создания новой зоны доставки
+        :param name: название зоны
+        :param desc: описание зоны
+        :param address: адрес зоны
+        :param comment: дополнительный комментарий
+        :param lat: координата lat зоны доставки, число с плавающей точкой
+        :param lng: координата lng зоны доставки, число с плавающей точкой
+        :param radius: координата radius зоны доставки, число с плавающей точкой
+        :return: идентификатор id новой зоны доставки
         """
-        if kwargs is None:
-            raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
-                                        'Например: isOnDay1=1, stopTimeDay1="15:30"')
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, True, json=True)
+        return await self._base.request(_Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, http_method="POST",
+                                        json=True)
 
-    async def update_shipment_zone(self, id: int, name: str, **kwargs):
+    async def update_shipment_zone(self, shipment_zone_id: str, name: str = None, desc: str = None, address: str = None,
+                                   comment: str = None, lat: float = None, lng: float = None, radius: float = None):
         """
-        Метод обновления данных одной зоны адресов доставки.
-
-        :param id: Идентификатор обновляемой зоны
-        :param name: Название зоны
-        :param kwargs: Аргументы isOnDay{day}: int и stopTimeDay{day}: int
-        :return:
+        Функция изменения существующей зоны доставки
+        :param shipment_zone_id: id зоны доставки
+        :param name: название зоны
+        :param desc: описание зоны
+        :param address: адрес зоны
+        :param comment: дополнительный комментарий
+        :param lat: координата lat зоны доставки, число с плавающей точкой
+        :param lng: координата lng зоны доставки, число с плавающей точкой
+        :param radius: координата radius зоны доставки, число с плавающей точкой
+        :return: ассоциотивный массив с обновленными полями зоны доставки
         """
-        if kwargs is None:
-            raise AbcpParameterRequired('Необходимо передать аргументы "isOnDay{day:int}" и "stopTimeDay{day:int}"\n\n'
-                                        'Например: isOnDay1=1, stopTimeDay1="15:30"')
-        _method = f"{_Methods.Admin.Users.UPDATE_SHIPMENT_ZONE}{id}"
-        del id
+        _method = _Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id=shipment_zone_id)
         payload = generate_payload(**locals())
-        return await self._base.request(_method, payload, True, json=True)
+        return await self._base.request(_method, payload, http_method="POST", json=True)
 
     async def delete_shipment_zone(self, id: int):
         return await self._base.request(f"{_Methods.Admin.Users.DELETE_SHIPMENT_ZONE}{id}", None, True)
@@ -1220,7 +1231,7 @@ class Staff:
 
     async def get(self):
         """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D1.82.D1.80.D1.83.D0.B4.D0.BD.D0.B8.D0.BA.D0.BE.D0.B2
+        Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BE.D1.82.D1.83.D0.BD.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список менеджеров.
         """
         return await self._base.request(_Methods.Admin.Staff.GET_STAFF)
@@ -1251,7 +1262,7 @@ class Staff:
         :return:
         """
         if isinstance(sip, str) and not sip.isdigit():
-            raise AbcpWrongParameterError('Параметр "SIP" должен быть числом')
+            raise AbcpWrongParameterError("SIP", sip, 'Параметр должен быть числом')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Staff.UPDATE_STAFF, payload, True)
 
@@ -1587,7 +1598,8 @@ class UsersCatalog:
         :return:
         """
         if not 0 <= delete_old_mode <= 2:
-            raise AbcpWrongParameterError('Параметр "delete_old_mode" должен быть в диапазоне от 0 до 2')
+            raise AbcpWrongParameterError(
+                "delete_old_mode", delete_old_mode, 'Параметр должен быть в диапазоне от 0 до 2')
 
         if isinstance(default_attributes_hide, bool):
             default_attributes_hide = str(default_attributes_hide).lower()
@@ -1596,7 +1608,8 @@ class UsersCatalog:
             article_only = str(article_only).lower()
 
         if image_upload_mode == 1 and image_archive is None:
-            raise AbcpWrongParameterError('Не передан архив с изображениями')
+            raise AbcpWrongParameterError(
+                "image_archive", image_archive, 'Не передан архив с изображениями')
 
         payload = generate_file_payload(exclude=['file', 'image_archive', 'catalog_id'], max_size=100, **locals())
         return await self._base.request(f"{_Methods.Admin.UsersCatalog.UPLOAD}{catalog_id}", payload, True)
@@ -1614,7 +1627,7 @@ class Payment:
         :return:
         """
         if isinstance(number, str) and not number.isdigit():
-            raise AbcpWrongParameterError('Параметр "number" должен быть числом')
+            raise AbcpWrongParameterError("number", number, 'Параметр должен быть числом')
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Payment.TOKEN, payload)
@@ -1627,9 +1640,9 @@ class Payment:
         :return:
         """
         if isinstance(client_id, str) and not client_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "client_id" должен быть числом')
+            raise AbcpWrongParameterError("client_id", client_id, 'Параметр должен быть числом')
         if isinstance(amount, str) and not amount.isdigit():
-            raise AbcpWrongParameterError('Параметр "amount" должен быть числом')
+            raise AbcpWrongParameterError("amount", amount, 'Параметр должен быть числом')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Payment.TOP_BALANCE, payload)
 
@@ -1642,7 +1655,7 @@ class AdminApi:
         https://www.abcp.ru/wiki/API.ABCP.Admin
         """
         if not isinstance(base, BaseAbcp):
-            raise TypeError("Expected a BaseAbcp instance")
+            raise AbcpWrongParameterError("base", base, "BaseAbcp instance")
         self._base = base
         self._orders: Optional[Orders] = None
         self._finance: Optional[Finance] = None
