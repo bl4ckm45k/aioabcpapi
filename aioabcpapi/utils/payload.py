@@ -1,12 +1,8 @@
 import logging
 import os
-from datetime import datetime
 from io import BufferedReader
-from typing import Union, List, Dict
 
-import pytz
 from aiohttp import FormData
-from pyrfc3339 import generate
 
 from aioabcpapi.exceptions import FileSizeExceeded
 
@@ -29,7 +25,8 @@ def get_camel_case_key(key: str) -> str:
     :param key:
     :return: str
     """
-    return f"{''.join([key.split('_')[0].lower()] + [word.title() for word in key.split('_')[1:]])}"
+    parts = key.split('_')
+    return parts[0].lower() + ''.join(word.title() for word in parts[1:])
 
 
 def get_excluded_keys(key: str) -> str:
@@ -258,31 +255,8 @@ def generate_file_payload(exclude=None, max_size: int = None, **kwargs) -> FormD
                 with open(value, 'rb') as file:
                     if max_size is not None:
                         size = file.seek(0, os.SEEK_END)
-                        if (size / 1_048_576) > max_size: raise FileSizeExceeded(
-                            f'Файл не может быть больше {max_size} Мб')
+                        if (size / 1_048_576) > max_size: raise FileSizeExceeded(max_size)
                     data.add_field(get_camel_case_key(key), file, filename=file.name,
                                    content_type='multipart/form-data')
     logger.debug(f'{data}')
     return data
-
-
-def process_ts_list(value: Union[int, str, List[int], List[str]]) -> Union[int, str]:
-    """
-    Process list
-    :param value:
-    :return: Union[int, str]
-    """
-    if isinstance(value, list):
-        return ','.join(map(str, value))
-    return value
-
-
-def process_ts_date(value: Union[str, datetime]) -> Union[str, datetime]:
-    """
-    Process date
-    :param value:
-    :return: Union[str, datetime]
-    """
-    if isinstance(value, datetime):
-        return generate(value.replace(tzinfo=pytz.utc))
-    return value
