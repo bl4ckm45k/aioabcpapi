@@ -664,7 +664,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         return await self._base.request(_Methods.Client.Garage.USER_GARAGE)
 
@@ -680,7 +680,7 @@ class Garage:
         :param car_id: Идентификатор автомобиля в гараже
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_CAR, payload)
@@ -713,7 +713,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
 
@@ -750,7 +750,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_UPDATE, payload, True)
@@ -765,7 +765,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_DELETE, payload, True)
