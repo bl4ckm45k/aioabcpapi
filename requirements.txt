@@ -1,6 +1,6 @@
-pytz>=2022.7.1
-pyRFC3339>=1.1
-environs>=9.5.0
+pytz>=2025.2
+pyRFC3339>=2.0.1
+environs>=14.1.1
 aiohttp>=3.10.11,<4.0.0
-ujson>=5.7.0
-certifi>=2023.7.22
+ujson>=5.10.0
+certifi>=2025.1.31
