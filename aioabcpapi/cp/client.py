@@ -4,7 +4,7 @@ from typing import Dict, List, Union, Optional, Any
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import NotEnoughRights, AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
-from ..utils.fields_checker import check_limit
+from ..utils.fields_checker import check_limit, process_cp_dates, ensure_list_params
 from ..utils.payload import generate_payload
 
 logger = logging.getLogger('Cp.Client')
@@ -77,6 +77,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ARTICLES, payload)
 
+    @ensure_list_params('search')
     async def batch(self, search: Union[List[Dict], Dict], profile_id: str | int = None):
         """
         Source https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.B0.D0.BA.D0.B5.D1.82.D0.BD.D1.8B.D0.B9_.D0.B7.D0.B0.D0.BF.D1.80.D0.BE.D1.81_.D0.B1.D0.B5.D0.B7_.D1.83.D1.87.D0.B5.D1.82.D0.B0_.D0.B0.D0.BD.D0.B0.D0.B3.D0.BE.D0.B2
@@ -92,8 +93,6 @@ class Search:
         """
         if not self._base.admin and profile_id:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
-        if isinstance(search, dict):
-            search = [search]
         payload = generate_payload(exclude=['search'], **locals())
         # It can work with GET and POST, but the documentation specifies POST
         return await self._base.request(_Methods.Client.Search.BATCH, payload, True)
@@ -144,6 +143,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ADVICES, payload)
 
+    @ensure_list_params('articles')
     async def advices_batch(self, articles: Union[List[Dict], Dict], limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9C.D0.B5.D1.85.D0.B0.D0.BD.D0.B8.D0.B7.D0.BC_.22.D0.A1_.D1.8D.D1.82.D0.B8.D0.BC_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.BC_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.8E.D1.82.22
@@ -156,8 +156,6 @@ class Search:
         :param limit:
         :return:
         """
-        if isinstance(articles, dict):
-            articles = [articles]
         payload = generate_payload(exclude=['articles'], **locals())
         return await self._base.request(_Methods.Client.Search.ADVICES_BATCH, payload, http_method="POST", json=True)
 
@@ -176,6 +174,7 @@ class Basket:
         """
         return await self._base.request(_Methods.Client.Basket.BASKETS_LIST)
 
+    @ensure_list_params('basket_positions')
     async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: str | int = None) -> Dict[str, Any]:
         """
         Добавление товаров в корзину
@@ -199,8 +198,6 @@ class Basket:
         :return: Результат добавления товаров в корзину
         :rtype: Dict[str, Any]
         """
-        if isinstance(basket_positions, dict):
-            basket_positions = [basket_positions]
         payload = generate_payload(**locals())
 
         return await self._base.request(_Methods.Client.Basket.BASKET_ADD, payload, True)
@@ -389,6 +386,7 @@ class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @process_cp_dates('shipment_date')
     async def order_by_basket(self,
                               payment_method: str = None,
                               shipment_method: str = None,
@@ -482,6 +480,7 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.ORDERS_INSTANT, payload, True)
 
+    @ensure_list_params('orders')
     async def orders_list(self, orders: Union[List, str, int]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2_.D1.81.D0.BE_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0.D0.BC.D0.B8
@@ -491,8 +490,7 @@ class Orders:
         :type orders: :obj:`list` or :obj:`str`
         :return:
         """
-        if not isinstance(orders, list):
-            orders = [orders]
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.GET_ORDERS_LIST, payload)
 
@@ -867,6 +865,7 @@ class Articles:
         """
         return await self._base.request(_Methods.Client.Articles.BRANDS)
 
+    @ensure_list_params('source')
     async def info(self, brand: str | int, number: str | int,
                    format: str, source: Union[List, str],
                    cross_image: int = None,
@@ -878,8 +877,7 @@ class Articles:
             raise AbcpWrongParameterError("format",
                                           format,
                                           'может содержать только символы: b, n, p, c, h, m, t, i')
-        if isinstance(source, str):
-            source = [source]
+
         if isinstance(source, list) and not all(x in ['standard', 'common', 'common_cat'] for x in source):
             raise AbcpWrongParameterError("source",
                                           source,

@@ -9,7 +9,8 @@ from pyrfc3339.generator import generate
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
-from ..utils.fields_checker import check_fields, check_limit, process_ts_lists, process_ts_dates
+from ..utils.fields_checker import check_fields, check_limit, process_ts_lists, process_ts_dates, ensure_list_params, \
+    process_cp_dates
 from ..utils.payload import generate_payload
 
 
@@ -237,6 +238,7 @@ class SupplierReturnsPositions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.GET, payload)
 
+    @ensure_list_params('poses_data')
     async def create_multiple(self, op_id: str | int, poses_data: Union[List[Dict], Dict]):
         """
         Создание позиций возврата поставщику
@@ -245,8 +247,6 @@ class SupplierReturnsPositions:
         :param poses_data: список данных позиций или одна позиция
         :return: результат операции создания
         """
-        if isinstance(poses_data, dict):
-            poses_data = [poses_data]
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CREATE_MULTIPLE, payload, post=True)
@@ -395,6 +395,7 @@ class OrderPickings:
         self._base = base
 
     @process_ts_dates('date', 'execution_date')
+    @ensure_list_params('positions')
     async def fast_get_out(self, client_id: str | int, supplier_id: str | int,
                            positions: Union[List[Dict], Dict], distributor_id: str | int = None,
                            route_id: str | int = None, location_id: str | int = None,
@@ -419,9 +420,6 @@ class OrderPickings:
         :param execution_date: [необязательный] Дата проведения/выполнения в формате RFC3339, если пустая,
         то будет заполнена из `date` :return: None
         """
-
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
         return await self._base.request(_Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, http_method="POST")
 
@@ -664,6 +662,7 @@ class CustomerComplaints:
         payload = generate_payload(exclude=['old_item_id'], **locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
 
+    @ensure_list_params('positions')
     async def create(self, order_picking_id: str | int, positions: Union[List[Dict], Dict]):
         """
         Создание возврата покупателя
@@ -675,9 +674,6 @@ class CustomerComplaints:
         :param positions: Список позиций.
         :return:
         """
-        # Прощай маржинальность :(
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE, payload, http_method="POST")
 
@@ -702,7 +698,7 @@ class CustomerComplaints:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload,
                                         http_method="POST")
-
+    @ensure_list_params('positions')
     async def create_position_multiple(self, positions: Union[List[Dict], Dict],
                                        customer_complaint_id: int,
                                        customer_complaint: str,
@@ -712,8 +708,6 @@ class CustomerComplaints:
         custom_complaint_file = f"{encoded_string}"
         del ccf
         del encoded_string
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload,
                                         http_method="POST")
@@ -1244,6 +1238,7 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.CLEAR, payload, True)
 
+    @ensure_list_params('position_ids')
     async def delete_positions(self, position_ids: Union[List, str, int],
                                client_id: str | int = None, guest_id: str | int = None):
         """
@@ -1259,9 +1254,6 @@ class Cart:
         if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
             raise AbcpParameterRequired(
                 'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
-        if not isinstance(position_ids, list):
-            position_ids = [position_ids]
-
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.DELETE, payload, True)
 
@@ -1311,7 +1303,15 @@ class Positions:
         return await self._base.request(_Methods.TsAdmin.Positions.GET, payload)
 
     @check_limit
+    @ensure_list_params('order_picking_good_ids', 'customer_complaint_position_ids',
+                        'product_ids', 'so_position_ids', 'route_ids',
+                        'distributor_ids', 'ids', 'order_ids', 'statuses')
     @process_ts_lists('order_picking_good_ids', 'tag_ids')
+    @process_cp_dates('date_start', 'date_end',
+                      'update_date_start', 'update_date_end',
+                      'deadline_date_start', 'deadline_date_end',
+                      'order_picking_date_start', 'order_picking_date_end')
+
     async def get_list(self, brand: str = None, message: str = None, agreement_id: str | int = None,
                        client_id: str | int = None,
                        manager_id: str | int = None,
@@ -1366,40 +1366,6 @@ class Positions:
         :param skip: смещение (по умолчанию 0)
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = f'{date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(date_end, datetime):
-            date_end = f'{date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(update_date_start, datetime):
-            update_date_start = f'{update_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(update_date_end, datetime):
-            update_date_end = f'{update_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(deadline_date_start, datetime):
-            deadline_date_start = f'{deadline_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(deadline_date_end, datetime):
-            deadline_date_end = f'{deadline_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_date_start, datetime):
-            order_picking_date_start = f'{order_picking_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_date_end, datetime):
-            order_picking_date_end = f'{order_picking_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_good_ids, (int, str)):
-            order_picking_good_ids = [order_picking_good_ids]
-        if isinstance(customer_complaint_position_ids, (int, str)):
-            customer_complaint_position_ids = [customer_complaint_position_ids]
-        if isinstance(product_ids, (int, str)):
-            product_ids = [product_ids]
-        if isinstance(so_position_ids, (int, str)):
-            so_position_ids = [so_position_ids]
-        if isinstance(route_ids, (int, str)):
-            route_ids = [route_ids]
-        if isinstance(distributor_ids, (int, str)):
-            distributor_ids = [distributor_ids]
-        if isinstance(ids, (int, str)):
-            ids = [ids]
-        if isinstance(order_ids, (int, str)):
-            order_ids = [order_ids]
-        if isinstance(statuses, str):
-            statuses = [statuses]
         if statuses is not None:
             statuses = check_fields(statuses, self._FieldsChecker.statuses)
         if isinstance(no_manager_assigned, bool):
@@ -2090,6 +2056,7 @@ class Agreements:
         self._base = base
 
     @process_ts_dates('date_start', 'date_end')
+    @ensure_list_params('contractor_ids', 'contractor_requisite_ids', 'shop_requisite_ids')
     async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
                        contractor_requisite_ids: Union[int, str, List[int]] = None,
                        shop_requisite_ids: Union[int, str, List[int]] = None,
@@ -2118,13 +2085,6 @@ class Agreements:
         :param skip:
         :return:
         """
-
-        if isinstance(contractor_ids, int) or isinstance(contractor_ids, str):
-            contractor_ids = [contractor_ids]
-        if isinstance(contractor_requisite_ids, int) or isinstance(contractor_requisite_ids, str):
-            contractor_requisite_ids = [contractor_requisite_ids]
-        if isinstance(shop_requisite_ids, int) or isinstance(shop_requisite_ids, str):
-            shop_requisite_ids = [shop_requisite_ids]
         if isinstance(is_active, bool):
             is_active = str(is_active)
         if isinstance(is_delete, bool):

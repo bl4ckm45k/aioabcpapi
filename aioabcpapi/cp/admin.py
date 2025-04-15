@@ -320,7 +320,6 @@ class Finance:
         self._base = base
 
     @validate_numeric_params('user_id')
-
     async def update_balance(
             self,
             user_id: str | int,
@@ -739,7 +738,6 @@ class Users:
     @process_cp_dates('date_registred_start', 'date_registred_end',
                       'date_updated_start', 'date_updated_end')
     @ensure_list_params('customers_ids')
-
     async def get_users(
             self,
             date_registred_start: str | datetime = None,
@@ -1075,6 +1073,7 @@ class Users:
         """
         return await self._base.request(f"{_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE}{id}")
 
+    @ensure_list_params('zones')
     async def update_shipment_zones(self, zones: Union[List[Dict], Dict]):
         """
         Сохранение зон адресов доставки. Универсальный метод добавления и обновления зон адресов доставки.
@@ -1082,9 +1081,6 @@ class Users:
         :param zones: Массив объектов зон адресов доставки
         :return:
         """
-        if isinstance(zones, dict):
-            zones = [zones]
-
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.UPDATE_SHIPMENT_ZONES, payload, True)
 
@@ -1143,9 +1139,8 @@ class Users:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.GET_USERS_CARS, payload)
 
+    @ensure_list_params('user_ids')
     async def get_sms_settings(self, user_ids: Union[List, int, str]):
-        if not isinstance(user_ids, list):
-            user_ids = [user_ids]
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.SMS_SETTINGS, payload)
 
@@ -1484,9 +1479,8 @@ class Catalog:
         payload = generate_payload(exclude=['goods_group', 'properties'], **locals())
         return await self._base.request(_Methods.Admin.Catalog.SEARCH, payload, True)
 
+    @ensure_list_params('articles_catalog')
     async def info_batch(self, articles_catalog: Union[List[Dict[str, str]], Dict[str, str]], locale: str = 'ru_RU'):
-        if isinstance(articles_catalog, dict):
-            articles_catalog = [articles_catalog]
         payload = generate_payload(exclude=['articles_catalog'], **locals())
         return await self._base.request(_Methods.Admin.Catalog.INFO_BATCH, payload, True)
 
