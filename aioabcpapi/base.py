@@ -2,7 +2,7 @@ import asyncio
 import logging
 import ssl
 from types import TracebackType
-from typing import Dict, List, Optional, Union, Type, Any, TypeVar, cast
+from typing import Dict, List, Optional, Union, Type, Any, TypeVar
 
 import aiohttp
 import certifi
@@ -26,7 +26,7 @@ class BaseAbcp:
             login: str,
             password: str,
             loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
-            connections_limit: Optional[int] = None,
+            connections_limit: int | None = None,
             timeout: Optional[Union[int, float, aiohttp.ClientTimeout]] = None,
             retry_attempts: int = 3,
             retry_delay: float = 0.3,
@@ -175,7 +175,7 @@ class BaseAbcp:
         method: str,
         payload: Optional[Union[Dict[str, Any], FormData]] = None,
         post: bool = False, 
-        retry: Optional[int] = None,
+        retry: int | None = None,
         **kwargs
     ) -> Union[List, Dict, bool]:
         """

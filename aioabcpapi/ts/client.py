@@ -5,17 +5,17 @@ from typing import Union, List, Dict, Optional, Any
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError
-from ..utils.fields_checker import check_fields
-from ..utils.payload import generate_payload, process_ts_date, process_ts_list
+from ..utils.fields_checker import check_fields, check_limit, process_ts_dates, process_ts_lists
+from ..utils.payload import generate_payload
 
 
 class GoodReceipts:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self, code: Union[str, int],
+    async def create(self, code: str | int,
                      positions: Union[List[Dict[str, str]], Dict[str, str]],
-                     sup_number: str = None, sup_shipment_date: Union[str, datetime] = None):
+                     sup_number: str = None, sup_shipment_date: str | datetime = None):
         """
         Операция создания приёмки
 
@@ -33,13 +33,16 @@ class GoodReceipts:
             payload["sup_shipment_date"] = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
         return await self._base.request(_Methods.TsClient.GoodReceipts.CREATE, payload, post=True)
 
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('statuses')
     async def get(self, limit: int = None, skip: int = None,
                   output: str = None,
                   auto: str = None,
-                  creator_id: Union[int, str] = None, worker_id: Union[int, str] = None,
-                  agreement_id: Union[int, str] = None, statuses: Union[List, str, int] = None,
+                  creator_id: str | int = None, worker_id: str | int = None,
+                  agreement_id: str | int = None, statuses: Union[List, str, int] = None,
                   number: str = None,
-                  date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
+                  date_start: str | datetime = None, date_end: str | datetime = None,
                   sup_number: str = None):
         """
         Получение списка операций приёмки
@@ -60,28 +63,16 @@ class GoodReceipts:
         :param sup_number:
         :return:
         """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-        
+
         payload = generate_payload(**locals())
-        if isinstance(date_start, datetime):
-            payload["date_start"] = process_ts_date(date_start)
-        if isinstance(date_end, datetime):
-            payload["date_end"] = process_ts_date(date_end)
-            
         if isinstance(output, str) and not all(x in 'des' for x in output):
             raise AbcpWrongParameterError("output", output, 'должен состоять из флагов "d", "e", "s"')
-            
-        if isinstance(statuses, list):
-            if all(1 <= int(x) <= 3 for x in statuses):
-                payload["statuses"] = process_ts_list(statuses)
-            else:
-                raise AbcpWrongParameterError("statuses", statuses, "должен содержать значения от 1 до 3")
-                
+
         return await self._base.request(_Methods.TsClient.GoodReceipts.GET, payload)
 
-    async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None,
-                            output: str = None, product_id: Union[int, str] = None, auto: str = None):
+    @check_limit
+    async def get_positions(self, op_id: str | int, limit: int = None, skip: int = None,
+                            output: str = None, product_id: str | int = None, auto: str = None):
         """
         Получение списка позиций приёмки
 
@@ -95,15 +86,13 @@ class GoodReceipts:
         :param auto:
         :return:
         """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
+
         if isinstance(output, str) and output != 'e':
             raise AbcpWrongParameterError("output", output, 'может принимать только значение "e"')
-            
+
         if isinstance(auto, str) and (len(auto) < 3):
             raise AbcpWrongParameterError("auto", auto, "должен состоять минимум из 3 символов")
-            
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.GoodReceipts.GET_POSITIONS, payload)
 
@@ -112,12 +101,15 @@ class OrderPickings:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('status', 'co_old_pos_ids')
     async def get(self, limit: int = None, skip: int = None,
-                  output: str = None, auto: Union[str, int] = None,
-                  creator_id: Union[int, str] = None, worker_id: Union[int, str] = None,
-                  agreement_id: Union[int, str] = None,
+                  output: str = None, auto: str | int = None,
+                  creator_id: str | int = None, worker_id: str | int = None,
+                  agreement_id: str | int = None,
                   status: Union[List, str, int] = None, number: str = None,
-                  date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
+                  date_start: str | datetime = None, date_end: str | datetime = None,
                   co_old_pos_ids: Union[List, str, int] = None):
         """
         Получение списка операций отгрузки (расход)
@@ -138,35 +130,22 @@ class OrderPickings:
         :param co_old_pos_ids: список идентификаторов позиций старых заказов
         :return:
         """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-        
+
         payload = generate_payload(**locals())
-        if isinstance(date_start, datetime):
-            payload["date_start"] = process_ts_date(date_start)
-        if isinstance(date_end, datetime):
-            payload["date_end"] = process_ts_date(date_end)
-            
+
         if isinstance(status, int) and not 1 <= status <= 3:
             raise AbcpWrongParameterError("status", status, "должен быть в диапазоне от 1 до 3")
-            
-        if isinstance(status, list):
-            if all(1 <= x <= 3 for x in status):
-                payload["status"] = process_ts_list(status)
-            else:
-                raise AbcpWrongParameterError("status", status, "должен содержать значения от 1 до 3")
-                
+
         if isinstance(output, str) and (not all(x in 'des' for x in output) or len(output) > 3):
             raise AbcpWrongParameterError("output", output, 'должен состоять из флагов "d", "e", "s"')
-            
-        if isinstance(co_old_pos_ids, list):
-            payload["co_old_pos_ids"] = process_ts_list(co_old_pos_ids)
-            
+
         return await self._base.request(_Methods.TsClient.OrderPickings.GET, payload)
 
-    async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None, output: str = None,
-                            product_id: Union[int, str] = None,
-                            item_id: Union[int, str] = None, ignore_canceled: Union[int, bool] = None):
+
+    @check_limit
+    async def get_positions(self, op_id: str | int, limit: int = None, skip: int = None, output: str = None,
+                            product_id: str | int = None,
+                            item_id: str | int = None, ignore_canceled: Union[int, bool] = None):
         """
         Получение списка позиций товаров отгрузки
 
@@ -182,9 +161,6 @@ class OrderPickings:
         :return:
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
 
         if isinstance(ignore_canceled, bool):
             payload["ignore_canceled"] = 1 if ignore_canceled else None
@@ -197,7 +173,7 @@ class OrderPickings:
 
         if isinstance(output, str) and (not all(x in 'oe' for x in output) or len(output) > 2):
             raise AbcpWrongParameterError("output", output, 'должен состоять из флагов "o", "e"')
-            
+
         return await self._base.request(_Methods.TsClient.OrderPickings.GET_POSITIONS, payload)
 
 
@@ -209,11 +185,14 @@ class CustomerComplaints:
         get_fields = ["orderPicking", "agreement", "posInfo"]
         get_positions_fields = ["product", "orderPickingInfo", "operationInfo", "supplierReturnPos"]
 
-    async def get(self, auto: Union[str, int] = None, creator_id: Union[int, str] = None,
-                  expert_id: Union[int, str] = None,
-                  order_picking_id: Union[int, str] = None, position_statuses: Union[List, str, int] = None,
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('position_statuses', 'tag_ids')
+    async def get(self, auto: str | int = None, creator_id: str | int = None,
+                  expert_id: str | int = None,
+                  order_picking_id: str | int = None, position_statuses: Union[List, str, int] = None,
                   tag_ids: Union[List, str, int] = None, position_auto: str = None,
-                  number: str = None, date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
+                  number: str = None, date_start: str | datetime = None, date_end: str | datetime = None,
                   skip: int = None, limit: int = None,
                   output: str = None, fields: Union[List, str] = None):
         """
@@ -237,36 +216,27 @@ class CustomerComplaints:
         :param fields: дополнительные поля для вывода (orderPicking, agreement, posInfo)
         :return:
         """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
+
         payload = generate_payload(**locals())
-        
-        if isinstance(date_start, datetime):
-            payload["date_start"] = process_ts_date(date_start)
-        if isinstance(date_end, datetime):
-            payload["date_end"] = process_ts_date(date_end)
-            
-        if isinstance(position_statuses, list):
-            payload["position_statuses"] = process_ts_list(position_statuses)
-        if isinstance(tag_ids, list):
-            payload["tag_ids"] = process_ts_list(tag_ids)
-            
+
         if fields is not None:
             payload["fields"] = check_fields(fields, self.FieldsChecker.get_fields)
-            
-        return await self._base.request(_Methods.TsClient.CustomerComplaints.GET, payload)
 
-    async def get_positions(self, op_id: Union[str, int],
-                            order_picking_good_id: Union[int, str] = None,
+        return await self._base.request(_Methods.TsClient.CustomerComplaints.GET, payload)
+    
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists( 'order_picking_good_ids', 'picking_ids', 'old_co_position_ids')
+    async def get_positions(self, op_id: str | int,
+                            order_picking_good_id: str | int = None,
                             order_picking_good_ids: Union[List, str, int] = None,
                             picking_ids: Union[List, str, int] = None,
                             old_co_position_ids: Union[List, str, int] = None,
-                            old_item_id: Union[int, str] = None,
-                            item_id: Union[int, str] = None, loc_id: Union[int, str] = None,
-                            status: int = None, date_start: Union[str, datetime] = None,
-                            date_end: Union[str, datetime] = None,
-                            type: Union[str, int] = None, skip: int = None, limit: int = None,
+                            old_item_id: str | int = None,
+                            item_id: str | int = None, loc_id: str | int = None,
+                            status: int = None, date_start: str | datetime = None,
+                            date_end: str | datetime = None,
+                            type: str | int = None, skip: int = None, limit: int = None,
                             output: str = None, fields: Union[List, str] = None
                             ):
         """
@@ -292,29 +262,15 @@ class CustomerComplaints:
         :param fields: дополнительные поля
         :return:
         """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
+
         payload = generate_payload(**locals())
-        
-        if isinstance(date_start, datetime):
-            payload["date_start"] = process_ts_date(date_start)
-        if isinstance(date_end, datetime):
-            payload["date_end"] = process_ts_date(date_end)
-            
-        if isinstance(order_picking_good_ids, list):
-            payload["order_picking_good_ids"] = process_ts_list(order_picking_good_ids)
-        if isinstance(picking_ids, list):
-            payload["picking_ids"] = process_ts_list(picking_ids)
-        if isinstance(old_co_position_ids, list):
-            payload["old_co_position_ids"] = process_ts_list(old_co_position_ids)
-            
+
         if fields is not None:
             payload["fields"] = check_fields(fields, self.FieldsChecker.get_positions_fields)
-            
+
         return await self._base.request(_Methods.TsClient.CustomerComplaints.GET_POSITIONS, payload)
 
-    async def create(self, order_picking_id: Union[str, int], positions: Union[List[Dict], Dict]):
+    async def create(self, order_picking_id: str | int, positions: Union[List[Dict], Dict]):
         """
         Создание рекламации
 
@@ -346,9 +302,10 @@ class CustomerComplaints:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsClient.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload, post=True)
+        return await self._base.request(_Methods.TsClient.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload,
+                                        post=True)
 
-    async def update_position(self, id: int, quantity: Union[str, int]):
+    async def update_position(self, id: int, quantity: str | int):
         """
         Изменение позиции рекламации
 
@@ -359,7 +316,7 @@ class CustomerComplaints:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsClient.CustomerComplaints.UPDATE_POSITION, payload, post=True)
+        return await self._base.request(_Methods.TsClient.CustomerComplaints.UPDATE, payload, post=True)
 
     async def cancel_position(self, id: int):
         """
@@ -371,16 +328,17 @@ class CustomerComplaints:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsClient.CustomerComplaints.CANCEL_POSITION, payload, post=True)
+        return await self._base.request(_Methods.TsClient.CustomerComplaints.CANCEL, payload, post=True)
 
 
 class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
-
+    @process_ts_dates('create_time')
+    @process_ts_lists('positions')
     async def create_by_cart(self, delivery_address: str, delivery_person: str, delivery_contact: str,
-                             delivery_comment: str = None, delivery_method_id: Union[int, str] = None,
-                             number: Union[str, int] = None, create_time: Union[str, datetime] = None,
+                             delivery_comment: str = None, delivery_method_id: str | int = None,
+                             number: str | int = None, create_time: str | datetime = None,
                              positions: Union[List, str, int] = None):
         """
         Создание заказа по содержимому корзины
@@ -398,22 +356,21 @@ class Orders:
         :return: идентификатор заказа
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(create_time, datetime):
-            payload["create_time"] = process_ts_date(create_time)
-            
-        if isinstance(positions, list):
-            payload["positions"] = process_ts_list(positions)
-            
-        return await self._base.request(_Methods.TsClient.Orders.CREATE_BY_CART, payload, post=True)
 
-    async def get_list(self, number: Union[str, int] = None, agreement_id: Union[int, str] = None,
-                       manager_id: Union[int, str] = None,
-                       delivery_id: Union[int, str] = None, brand: str = None, message: str = None,
-                       date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
-                       update_date_start: Union[str, datetime] = None, update_date_end: Union[str, datetime] = None,
-                       deadline_date_start: Union[str, datetime] = None,
-                       deadline_date_end: Union[str, datetime] = None,
+        return await self._base.request(_Methods.TsClient.Orders.CREATE, payload, post=True)
+
+    @check_limit
+    @process_ts_dates('date_start', 'date_end',
+                      'update_date_start', 'update_date_end',
+                      'deadline_date_start', 'deadline_date_end')
+    @process_ts_lists('order_ids', 'product_ids', 'position_statuses')
+    async def get_list(self, number: str | int = None, agreement_id: str | int = None,
+                       manager_id: str | int = None,
+                       delivery_id: str | int = None, brand: str = None, message: str = None,
+                       date_start: str | datetime = None, date_end: str | datetime = None,
+                       update_date_start: str | datetime = None, update_date_end: str | datetime = None,
+                       deadline_date_start: str | datetime = None,
+                       deadline_date_end: str | datetime = None,
                        order_ids: Union[List, str, int] = None,
                        product_ids: Union[List, str, int] = None,
                        position_statuses: Union[List, str, int] = None, limit: int = None,
@@ -443,33 +400,10 @@ class Orders:
         :return: список заказов
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
-        dates_to_process = [
-            ('date_start', date_start), ('date_end', date_end),
-            ('update_date_start', update_date_start), ('update_date_end', update_date_end),
-            ('deadline_date_start', deadline_date_start), ('deadline_date_end', deadline_date_end)
-        ]
-        
-        for key, date_value in dates_to_process:
-            if isinstance(date_value, datetime):
-                payload[key] = process_ts_date(date_value)
-        
-        lists_to_process = [
-            ('order_ids', order_ids),
-            ('product_ids', product_ids),
-            ('position_statuses', position_statuses)
-        ]
-        
-        for key, list_value in lists_to_process:
-            if isinstance(list_value, list):
-                payload[key] = process_ts_list(list_value)
-                
+
         return await self._base.request(_Methods.TsClient.Orders.GET_LIST, payload)
 
-    async def get_order(self, order_id: Union[str, int]):
+    async def get_order(self, order_id: str | int):
         """
         Получение заказа
 
@@ -479,9 +413,9 @@ class Orders:
         :return: данные заказа
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsClient.Orders.GET_ORDER, payload)
+        return await self._base.request(_Methods.TsClient.Orders.GET, payload)
 
-    async def refuse(self, order_id: Union[str, int]):
+    async def refuse(self, order_id: str | int):
         """
         Отказ от заказа
 
@@ -498,8 +432,8 @@ class Cart:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self, brand: str, number: str, quantity: int, supplier_code: Union[str, int], item_key: str,
-                     agreement_id: Union[int, str] = None) -> Dict[str, Any]:
+    async def create(self, brand: str, number: str, quantity: int, supplier_code: str | int, item_key: str,
+                     agreement_id: str | int = None) -> Dict[str, Any]:
         """
         Создание позиции в корзине
 
@@ -516,7 +450,7 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.CREATE, payload, post=True)
 
-    async def update(self, position_id: Union[str, int], quantity: int):
+    async def update(self, position_id: str | int, quantity: int):
         """
         Обновление позиции в корзине
 
@@ -529,7 +463,9 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.UPDATE, payload, post=True)
 
-    async def get_list(self, position_ids: Union[List, str, int] = None, agreement_id: Union[int, str] = None,
+    @check_limit
+    @process_ts_lists('position_ids')
+    async def get_list(self, position_ids: Union[List, str, int] = None, agreement_id: str | int = None,
                        limit: int = None,
                        skip: int = None) -> List[Dict[str, Any]]:
         """
@@ -544,16 +480,10 @@ class Cart:
         :return: список позиций
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
-        if isinstance(position_ids, list):
-            payload["position_ids"] = process_ts_list(position_ids)
-            
+
         return await self._base.request(_Methods.TsClient.Cart.GET_LIST, payload)
 
-    async def exist(self, agreement_id: Union[str, int], brand: str, number_fix: str):
+    async def exist(self, agreement_id: str | int, brand: str, number_fix: str):
         """
         Проверка наличия товара в корзине
 
@@ -567,7 +497,7 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.EXIST, payload)
 
-    async def summary(self, agreement_id: Union[int, str] = None):
+    async def summary(self, agreement_id: str | int = None):
         """
         Получение сводной информации по корзине
 
@@ -579,7 +509,7 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.SUMMARY, payload)
 
-    async def clear(self, agreement_id: Union[str, int]):
+    async def clear(self, agreement_id: str | int):
         """
         Очистка корзины
 
@@ -591,6 +521,7 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.Cart.CLEAR, payload, post=True)
 
+    @process_ts_lists('position_ids')
     async def delete_positions(self, position_ids: Union[List, str, int]):
         """
         Удаление позиций из корзины
@@ -601,11 +532,8 @@ class Cart:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(position_ids, list):
-            payload["position_ids"] = process_ts_list(position_ids)
-            
-        return await self._base.request(_Methods.TsClient.Cart.DELETE_POSITIONS, payload, post=True)
+
+        return await self._base.request(_Methods.TsClient.Cart.DELETE, payload, post=True)
 
 
 class Positions:
@@ -618,7 +546,7 @@ class Positions:
                     "ordered", "refused", "confirm",
                     "done", "closed"]
 
-    async def get_position(self, position_id: Union[str, int], additional_info: Union[List, str] = None):
+    async def get_position(self, position_id: str | int, additional_info: Union[List, str] = None):
         """
         Получение позиции
 
@@ -629,18 +557,24 @@ class Positions:
         :return: данные позиции
         """
         payload = generate_payload(**locals())
-        
+
         if additional_info is not None:
             payload["additional_info"] = check_fields(additional_info, self.FieldsChecker.additional_info)
-            
-        return await self._base.request(_Methods.TsClient.Positions.GET_POSITION, payload)
 
-    async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
-                       manager_id: Union[int, str] = None,
+        return await self._base.request(_Methods.TsClient.Positions.GET, payload)
+
+    @check_limit
+    @process_ts_dates('date_start', 'date_end',
+                      'update_date_start', 'update_date_end',
+                      'deadline_date_start', 'deadline_date_end')
+    @process_ts_lists('route_ids', 'distributor_ids',
+                      'ids', 'order_ids', 'product_ids', 'statuses', 'tag_ids', 'statuses')
+    async def get_list(self, brand: str = None, message: str = None, agreement_id: str | int = None,
+                       manager_id: str | int = None,
                        no_manager_assigned: bool = False,
-                       date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
-                       update_date_start: Union[str, datetime] = None, update_date_end: Union[str, datetime] = None,
-                       deadline_date_start: Union[str, datetime] = None, deadline_date_end: Union[str, datetime] = None,
+                       date_start: str | datetime = None, date_end: str | datetime = None,
+                       update_date_start: str | datetime = None, update_date_end: str | datetime = None,
+                       deadline_date_start: str | datetime = None, deadline_date_end: str | datetime = None,
                        route_ids: Union[List, str, int] = None,
                        distributor_ids: Union[List, str, int] = None, ids: Union[List, str, int] = None,
                        order_ids: Union[List, str, int] = None, product_ids: Union[List, str, int] = None,
@@ -677,45 +611,13 @@ class Positions:
         :return: список позиций
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-            
-        dates_to_process = [
-            ('date_start', date_start), ('date_end', date_end),
-            ('update_date_start', update_date_start), ('update_date_end', update_date_end),
-            ('deadline_date_start', deadline_date_start), ('deadline_date_end', deadline_date_end)
-        ]
-        
-        for key, date_value in dates_to_process:
-            if isinstance(date_value, datetime):
-                payload[key] = process_ts_date(date_value)
-        
-        lists_to_process = [
-            ('route_ids', route_ids),
-            ('distributor_ids', distributor_ids),
-            ('ids', ids),
-            ('order_ids', order_ids),
-            ('product_ids', product_ids),
-            ('tag_ids', tag_ids),
-        ]
-        
-        for key, list_value in lists_to_process:
-            if isinstance(list_value, list):
-                payload[key] = process_ts_list(list_value)
-        
-        if isinstance(statuses, list):
-            for status in statuses:
-                if status not in self.FieldsChecker.statuses:
-                    raise AbcpWrongParameterError(f'Статус "{status}" не найден в списке допустимых статусов')
-            payload["statuses"] = process_ts_list(statuses)
-        
+
         if additional_info is not None:
             payload["additional_info"] = check_fields(additional_info, self.FieldsChecker.additional_info)
-            
+
         return await self._base.request(_Methods.TsClient.Positions.GET_LIST, payload)
 
-    async def cancel(self, position_id: Union[str, int], additional_info: Union[List, str] = None):
+    async def cancel(self, position_id: str | int, additional_info: Union[List, str] = None):
         """
         Отказ от позиции заказа
 
@@ -726,12 +628,13 @@ class Positions:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        
+
         if additional_info is not None:
             payload["additional_info"] = check_fields(additional_info, self.FieldsChecker.additional_info)
-            
+
         return await self._base.request(_Methods.TsClient.Positions.CANCEL, payload, post=True)
 
+    @process_ts_lists('position_ids')
     async def mass_cancel(self, position_ids: Union[List, str, int], additional_info: Union[List, str] = None):
         """
         Массовый отказ от позиций заказов
@@ -743,13 +646,10 @@ class Positions:
         :return: результат операции
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(position_ids, list):
-            payload["position_ids"] = process_ts_list(position_ids)
-            
+
         if additional_info is not None:
             payload["additional_info"] = check_fields(additional_info, self.FieldsChecker.additional_info)
-            
+
         return await self._base.request(_Methods.TsClient.Positions.MASS_CANCEL, payload, post=True)
 
 
@@ -757,13 +657,16 @@ class Agreements:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('contractor_ids', 'contractor_requisite_ids', 'shop_requisite_ids')
     async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
                        contractor_requisite_ids: Union[int, str, List[int]] = None,
                        shop_requisite_ids: Union[int, str, List[int]] = None,
                        is_active: bool = None, is_delete: bool = None, is_default: bool = None,
                        agreement_type: int = None, relation_type: int = None,
                        number: str = None, currency: str = None,
-                       date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
+                       date_start: str | datetime = None, date_end: str | datetime = None,
                        credit_limit: Union[float, int] = None,
                        limit: int = None, skip: int = None):
         """
@@ -789,23 +692,7 @@ class Agreements:
         :return: список договоров
         """
         payload = generate_payload(**locals())
-        
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit, "должен быть в диапазоне от 1 до 1000")
-        
-        for key, list_value in [
-            ('contractor_ids', contractor_ids),
-            ('contractor_requisite_ids', contractor_requisite_ids),
-            ('shop_requisite_ids', shop_requisite_ids),
-        ]:
-            if isinstance(list_value, list):
-                payload[key] = process_ts_list(list_value)
-        
-        if isinstance(date_start, datetime):
-            payload["date_start"] = process_ts_date(date_start)
-        if isinstance(date_end, datetime):
-            payload["date_end"] = process_ts_date(date_end)
-            
+
         return await self._base.request(_Methods.TsClient.Agreements.GET_LIST, payload)
 
 

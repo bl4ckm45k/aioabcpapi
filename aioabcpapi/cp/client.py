@@ -4,6 +4,7 @@ from typing import Dict, List, Union, Optional, Any
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import NotEnoughRights, AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
+from ..utils.fields_checker import check_limit
 from ..utils.payload import generate_payload
 
 logger = logging.getLogger('Cp.Client')
@@ -13,9 +14,9 @@ class Search:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def brands(self, number: Union[str, int],
+    async def brands(self, number: str | int,
                      use_online_stocks: Union[bool, int] = 0,
-                     locale: Optional[str] = None):
+                     locale: str | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83
         Осуществляет поиск по номеру детали и возвращает массив найденных брендов, имеющих деталь с искомым номером.
@@ -34,12 +35,12 @@ class Search:
         return await self._base.request(_Methods.Client.Search.BRANDS, payload)
 
     async def articles(self,
-                       number: Union[str, int],
-                       brand: Union[str, int],
+                       number: str | int,
+                       brand: str | int,
                        use_online_stocks: Union[bool, int] = 0,
                        disable_online_filtering: Union[bool, int] = 0,
                        with_out_analogs: Union[bool, int] = 1,
-                       profile_id: Union[int, str] = None) -> List[Dict[str, Any]]:
+                       profile_id: str | int = None) -> List[Dict[str, Any]]:
         """
         Поиск детали по номеру и бренду.
         
@@ -76,7 +77,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ARTICLES, payload)
 
-    async def batch(self, search: Union[List[Dict], Dict], profile_id: Union[int, str] = None):
+    async def batch(self, search: Union[List[Dict], Dict], profile_id: str | int = None):
         """
         Source https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.B0.D0.BA.D0.B5.D1.82.D0.BD.D1.8B.D0.B9_.D0.B7.D0.B0.D0.BF.D1.80.D0.BE.D1.81_.D0.B1.D0.B5.D0.B7_.D1.83.D1.87.D0.B5.D1.82.D0.B0_.D0.B0.D0.BD.D0.B0.D0.B3.D0.BE.D0.B2
         Осуществляет поиск по номеру производителя и бренду детали. Возвращает массив найденных деталей.
@@ -107,7 +108,7 @@ class Search:
         """
         return await self._base.request(_Methods.Client.Search.HISTORY)
 
-    async def tips(self, number: Union[str, int], locale: Optional[str]):
+    async def tips(self, number: str | int, locale: str | None):
         """Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B4.D1.81.D0.BA.D0.B0.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D0.BF.D0.BE.D0.B8.D1.81.D0.BA.D1.83
         Возвращает по части номера массив подходящих пар бренд - номер
 
@@ -121,7 +122,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.TIPS, payload)
 
-    async def advices(self, brand: Union[str, int], number: Union[str, int], limit: Optional[int] = 5):
+    async def advices(self, brand: str | int, number: str | int, limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D1.81.D0.BE.D0.BF.D1.83.D1.82.D1.81.D1.82.D0.B2.D1.83.D1.8E.D1.89.D0.B8.D1.85_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2
         Функция реализует механизм "с этим товаром покупают" на основе статистики покупки комплектов товаров.
@@ -132,9 +133,9 @@ class Search:
 
 
         :param brand: Имя производителя
-        :type brand: :obj:`Union[str, int]`
+        :type brand: :obj:`str | int`
         :param number: Номер детали
-        :type number: :obj:`Union[str, int]`
+        :type number: :obj:`str | int`
         :param limit: необязательный параметр, ограничивающий выдачу
         :type limit :obj:`int`
         :return:
@@ -143,7 +144,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ADVICES, payload)
 
-    async def advices_batch(self, articles: Union[List[Dict], Dict], limit: Optional[int] = 5):
+    async def advices_batch(self, articles: Union[List[Dict], Dict], limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9C.D0.B5.D1.85.D0.B0.D0.BD.D0.B8.D0.B7.D0.BC_.22.D0.A1_.D1.8D.D1.82.D0.B8.D0.BC_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.BC_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.8E.D1.82.22
         Функция реализует механизм "с этим товаром покупают" по нескольким товарам.
@@ -175,7 +176,7 @@ class Basket:
         """
         return await self._base.request(_Methods.Client.Basket.BASKETS_LIST)
 
-    async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: Union[int, str] = None) -> Dict[str, Any]:
+    async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: str | int = None) -> Dict[str, Any]:
         """
         Добавление товаров в корзину
         
@@ -204,7 +205,7 @@ class Basket:
 
         return await self._base.request(_Methods.Client.Basket.BASKET_ADD, payload, True)
 
-    async def clear(self, basket_id: Union[int, str] = None):
+    async def clear(self, basket_id: str | int = None):
         """
         Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D1.87.D0.B8.D1.81.D1.82.D0.BA.D0.B0_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
 
@@ -212,13 +213,13 @@ class Basket:
 
 
         :param basket_id: Необязательный параметр - идентификатор корзины при использовании мультикорзины
-        :type basket_id: :obj:`Union[str, int]`
+        :type basket_id: :obj:`str | int`
         :return:
         """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Basket.BASKET_CLEAR, payload, True)
 
-    async def content(self, basket_id: Union[int, str] = None):
+    async def content(self, basket_id: str | int = None):
 
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D0.B5
@@ -230,7 +231,7 @@ class Basket:
 
 
         :param basket_id: Необязательный параметр - идентификатор корзины при использовании мультикорзины
-        :type basket_id: :obj:`Union[str, int]`
+        :type basket_id: :obj:`str | int`
         :return:
         """
         payload = generate_payload(**locals())
@@ -268,7 +269,7 @@ class Basket:
         """
         return await self._base.request(_Methods.Client.Basket.SHIPMENT_METHOD)
 
-    async def shipment_offices(self, offices_type: Optional[str] = None):
+    async def shipment_offices(self, offices_type: str | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BE.D1.84.D0.B8.D1.81.D0.BE.D0.B2_.D1.81.D0.B0.D0.BC.D0.BE.D0.B2.D1.8B.D0.B2.D0.BE.D0.B7.D0.B0
 
@@ -300,7 +301,7 @@ class Basket:
         return await self._base.request(_Methods.Client.Basket.SHIPMENT_ADDRESS)
 
     async def shipment_dates(self, min_deadline_time: int, max_deadline_time: int,
-                             shipment_address: Union[str, int] = None):
+                             shipment_address: str | int = None):
         """
         Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B4.D0.B0.D1.82_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8
 
@@ -398,7 +399,7 @@ class Orders:
                               basket_id: str = None,
                               whole_order_only: int = None,
                               position_ids: List = None,
-                              client_order_number: Union[str, int] = None):
+                              client_order_number: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D1.82.D0.BF.D1.80.D0.B0.D0.B2.D0.BA.D0.B0_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B_.D0.B2_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7
         Отправка корзины в заказ
@@ -495,7 +496,8 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.GET_ORDERS_LIST, payload)
 
-    async def get_orders(self, format: str = None, skip: Optional[int] = None, limit: Optional[int] = None):
+    @check_limit
+    async def get_orders(self, format: str = None, skip: int | None = None, limit: int | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
         Получение списка заказов
@@ -509,8 +511,6 @@ class Orders:
         """
         if isinstance(format, str) and format != 'p':
             raise AbcpWrongParameterError("format", format, 'может принимать только значение "p"')
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError("limit", limit,'может быть в диапазоне от 1 до 1000')
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.GET_ORDERS, payload)
@@ -534,31 +534,31 @@ class User:
         self._base = base
 
     async def register(self,
-                       market_type: Union[str, int],
+                       market_type: str | int,
                        name: str, second_name: str, surname: str,
                        password: str, mobile: str,
-                       office: Union[str, int], email: str,
-                       icq: Union[str, int] = None, skype: str = None,
-                       region_id: Union[int, str] = None,
-                       business: Union[str, int] = None,
+                       office: str | int, email: str,
+                       icq: str | int = None, skype: str = None,
+                       region_id: str | int = None,
+                       business: str | int = None,
                        organization_name: str = None,
                        organization_form: str = None,
                        organization_official_name: str = None,
-                       inn: Union[str, int] = None,
-                       kpp: Union[str, int] = None,
-                       ogrn: Union[str, int] = None,
-                       organization_official_address: Union[str, int] = None,
+                       inn: str | int = None,
+                       kpp: str | int = None,
+                       ogrn: str | int = None,
+                       organization_official_address: str | int = None,
                        bank_name: str = None,
-                       bik: Union[str, int] = None,
-                       correspondent_account: Union[str, int] = None,
-                       organization_account: Union[str, int] = None,
+                       bik: str | int = None,
+                       correspondent_account: str | int = None,
+                       organization_account: str | int = None,
                        delivery_address: str = None,
                        comment: str = None,
-                       send_registration_email: Union[str, int] = None,
+                       send_registration_email: str | int = None,
                        member_of_club: str = None,
                        birth_date: str = None,
-                       filial_id: Union[int, str] = None,
-                       profile_id: Union[int, str] = None,
+                       filial_id: str | int = None,
+                       profile_id: str | int = None,
                        ):
 
         """
@@ -603,7 +603,7 @@ class User:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.User.REGISTER, payload, True)
 
-    async def activate(self, user_code: int, activation_code: Union[str, int]):
+    async def activate(self, user_code: int, activation_code: str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.90.D0.BA.D1.82.D0.B8.D0.B2.D0.B0.D1.86.D0.B8.D1.8F_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
@@ -655,7 +655,7 @@ class Garage:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, user_id: Union[int, str] = None):
+    async def get_list(self, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
         Получение списка автомобилей в гараже
@@ -668,7 +668,7 @@ class Garage:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         return await self._base.request(_Methods.Client.Garage.USER_GARAGE)
 
-    async def get_car(self, car_id: int, user_id: Union[int, str] = None):
+    async def get_car(self, car_id: int, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D0.B1_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
         Получение информации об автомобиле в гараже
@@ -689,11 +689,11 @@ class Garage:
                   comment: str = None, year: str = None, vin: str = None,
                   frame: str = None,
                   mileage: str = None,
-                  manufacturer_id: Union[int, str] = None,
-                  model_id: Union[int, str] = None,
-                  modification_id: Union[int, str] = None,
+                  manufacturer_id: str | int = None,
+                  model_id: str | int = None,
+                  modification_id: str | int = None,
                   vehicle_reg_plate: str = None,
-                  user_id: Union[int, str] = None):
+                  user_id: str | int = None):
 
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6
@@ -723,11 +723,11 @@ class Garage:
                      comment: str = None, year: str = None, vin: str = None,
                      frame: str = None,
                      mileage: str = None,
-                     manufacturer_id: Union[int, str] = None,
-                     model_id: Union[int, str] = None,
-                     modification_id: Union[int, str] = None,
+                     manufacturer_id: str | int = None,
+                     model_id: str | int = None,
+                     modification_id: str | int = None,
                      vehicle_reg_plate: str = None,
-                     user_id: Union[int, str] = None):
+                     user_id: str | int = None):
 
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
@@ -755,7 +755,7 @@ class Garage:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_UPDATE, payload, True)
 
-    async def delete(self, car_id: int, user_id: Union[int, str] = None):
+    async def delete(self, car_id: int, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B8.D0.B7_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B0
         Удаление автомобиля из гаража
@@ -775,7 +775,7 @@ class CarTree:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def years(self, manufacturer_id: Union[int, str] = None):
+    async def years(self, manufacturer_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.B5.D1.80.D0.B5.D0.B2.D0.BE_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
         Получение списка годов дерева автомобилей
@@ -801,7 +801,7 @@ class CarTree:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.CarTree.CAR_TREE_MANUFACTURERS, payload)
 
-    async def models(self, manufacturer_id: Union[int, str] = None, year: Union[int, str] = None):
+    async def models(self, manufacturer_id: str | int = None, year: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.BE.D0.B4.D0.B5.D0.BB.D0.B5.D0.B9_.D0.B4.D0.B5.D1.80.D0.B5.D0.B2.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
 
@@ -813,8 +813,8 @@ class CarTree:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.CarTree.CAR_TREE_MODELS, payload)
 
-    async def modifications(self, manufacturer_id: Union[int, str] = None, model_id: Union[int, str] = None,
-                            year: Union[int, str] = None):
+    async def modifications(self, manufacturer_id: str | int = None, model_id: str | int = None,
+                            year: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.BE.D0.B4.D0.B8.D1.84.D0.B8.D0.BA.D0.B0.D1.86.D0.B8.D0.B9_.D0.B4.D0.B5.D1.80.D0.B5.D0.B2.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
 
@@ -867,7 +867,7 @@ class Articles:
         """
         return await self._base.request(_Methods.Client.Articles.BRANDS)
 
-    async def info(self, brand: Union[int, str], number: Union[str, int],
+    async def info(self, brand: str | int, number: str | int,
                    format: str, source: Union[List, str],
                    cross_image: int = None,
                    with_original: str = None,

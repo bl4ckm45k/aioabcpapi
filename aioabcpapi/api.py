@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Dict, Union, List, Any, Optional
+from typing import Dict, Union, List, Any
 
 import aiohttp
 
@@ -25,7 +25,7 @@ def check_data(host: str, login: str, password: str) -> bool:
     """
     regex_md = re.match(r"([a-f\d]{32})", password)
     if not regex_md:
-        raise PasswordType('Допускаются пароли только в md5 hash')
+        raise PasswordType()
     host_id = host.split('.')[0]
     if login[0:4] == 'api@':
         return login.split('@')[1] == host_id
@@ -80,19 +80,19 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
     elif status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
         raise AbcpAPIError(f"{body} [{status_code}]")
     elif status_code == 418:
-        raise TeaPot("RFC 2324, секция 2.3.2: 418 I'm a teapot")
+        raise TeaPot()
 
     raise AbcpAPIError(f"{body} [{status_code}]")
 
 
 async def make_request(
-    session, 
-    host: str, 
-    method: str,
-    data: Union[Dict[str, Any], aiohttp.FormData],
-    headers: Dict[str, str],
-    http_method: str = "GET",
-    **kwargs
+        session,
+        host: str,
+        method: str,
+        data: Union[Dict[str, Any], aiohttp.FormData],
+        headers: Dict[str, str],
+        http_method: str = "GET",
+        **kwargs
 ) -> Union[Dict[str, Any], List[Dict[str, Any]], bool]:
     """
     Универсальная функция для выполнения запросов к API.
@@ -112,7 +112,7 @@ async def make_request(
 
     url = f'https://{host}/{method}'
     request_kwargs = {'headers': headers, **kwargs}
-    
+
     # Определяем, как передавать данные в зависимости от метода и типа данных
     if http_method.upper() != "GET":
         # Для не-GET запросов (POST, PUT, и т.д.)
@@ -128,16 +128,16 @@ async def make_request(
     else:
         # Для GET запросов данные идут в params
         request_kwargs['params'] = data
-    
+
     try:
         response = await session.request(http_method, url, **request_kwargs)
-        
+
         async with response:
             try:
                 body = await response.json()
             except aiohttp.ContentTypeError:
                 body = await response.text()
-            
+
             return check_result(method, response.content_type, response.status, body)
     except aiohttp.ClientError as e:
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
@@ -363,7 +363,7 @@ class _Methods:
 
         @dataclass(frozen=True)
         class Agreements:
-            get_list: str = 'cp/ts/agreements/list'
+            GET_LIST: str = 'cp/ts/agreements/list'
 
     @dataclass(frozen=True)
     class TsAdmin:

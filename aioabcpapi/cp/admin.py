@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
+from ..utils.fields_checker import check_limit
 from ..utils.payload import generate_payload, generate_payload_filter, generate_payload_payments, \
     generate_payload_online_order, generate_file_payload
 
@@ -15,25 +16,26 @@ class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @check_limit
     async def get_orders_list(
             self,
-            date_created_start: Union[str, datetime] = None,
-            date_created_end: Union[str, datetime] = None,
-            date_updated_start: Union[str, datetime] = None,
-            date_updated_end: Union[str, datetime] = None,
-            numbers: Union[str, int, List] = None,
-            internal_numbers: Optional[List] = None,
-            status_code: Union[str, int, List] = None,
-            office_id: Union[int, str] = None,
-            distributor_order_id: Union[int, str] = None,
-            is_canceled: Union[int, str] = None,
-            distributor_id: Union[str, int, List] = None,
-            user_id: Union[int, str] = None,
-            with_deleted: Union[str, bool] = None,
-            format: Optional[str] = None,
-            limit: Optional[int] = None,
-            skip: Optional[int] = None,
-            desc: Optional[bool] = None
+            date_created_start: str | datetime = None,
+            date_created_end: str | datetime = None,
+            date_updated_start: str | datetime = None,
+            date_updated_end: str | datetime = None,
+            numbers: str | int | List = None,
+            internal_numbers: List | None = None,
+            status_code: str | int | List = None,
+            office_id: str | int = None,
+            distributor_order_id: str | int = None,
+            is_canceled: str | int = None,
+            distributor_id: str | int | List = None,
+            user_id: str | int = None,
+            with_deleted: str | bool = None,
+            format: str | None = None,
+            limit: int | None = None,
+            skip: int | None = None,
+            desc: bool | None = None
 
     ):
         """Принимает в качестве параметров условия фильтрации заказов. Возвращает список заказов (в т.ч. список позиций заказа).
@@ -56,7 +58,7 @@ class Orders:
         :param internal_numbers: Массив номеров заказов в учетной системе (например, в 1С). Используется только, если в параметрах запроса не задан numbers.
         :type internal_numbers: list
         :param status_code: Код статус позиции заказа (один или массив кодов). Будут выбраны заказы содержащие хотя бы одну позицию в данном статусе.
-        :type status_code: Union[str, int, list]
+        :type status_code: str | int | List
         :param office_id: Идентификатор офиса (в ответе по параметру могут быть отфильтрованы заказы где этот офис выбран как самовывоз или если это офис клиента или если менеджер клиента, сделавшего заказ, относится к данному офису)
         :type office_id: int or str
         :param distributor_order_id: Идентификатор заказа у поставщика. В результате вернутся все заказы которые были отправлены поставщику под этим номером.
@@ -64,7 +66,7 @@ class Orders:
         :param is_canceled: Флаг "Запрос на удаление позиции". 0 - запрос не был отправлен, 1 - запрос отправлен, 2 - запрос отклонен менеджером.
         :type is_canceled: int or str
         :param distributor_id: Идентификатор (один или массив идентификаторов) поставщика. В результате вернутся все заказы, содержащие хотя бы одну позицию от указанного поставщика.
-        :type distributor_id: Union[str, int, list]
+        :type distributor_id: str | int | List
         :param with_deleted: Признак, возвращать ли в ответе удаленные заказы и позиции
         :type with_deleted: str or bool ('true', 'false', True, False)
         :param format: Формат ответа. Доступные значения: <br>
@@ -97,8 +99,7 @@ class Orders:
                 format,
                 'должен принимать одно из значений ["additional", "short", "count", "status_only", "p"]')
 
-        if limit is not None and not 1 <= int(limit) <= 1000:
-            raise AbcpAPIError(f'The limit must be more than {limit}')
+
         if isinstance(status_code, (int, str)):
             status_code = [status_code]
         if not isinstance(numbers, list) and numbers is not None:
@@ -110,9 +111,9 @@ class Orders:
 
     async def get_order(
             self,
-            number: Union[int, str] = None,
-            internal_number: Union[int, str] = None,
-            with_deleted: Union[str, bool] = None,
+            number: str | int = None,
+            internal_number: str | int = None,
+            with_deleted: str | bool = None,
             format: str = None
 
     ):
@@ -145,7 +146,7 @@ class Orders:
 
     async def status_history(
             self,
-            position_id: Union[int, str]
+            position_id: str | int
 
     ):
         """Принимает в качестве параметра id позиции заказа. Возвращает информацию об истории изменений статуса позиции заказа.
@@ -164,26 +165,26 @@ class Orders:
 
     async def create_or_edit_order(
             self,
-            number: Union[int, str] = None,
-            internal_number: Union[int, str] = None,
-            user_id: Union[int, str] = None,
-            date: Union[str, datetime] = None,
+            number: str | int = None,
+            internal_number: str | int = None,
+            user_id: str | int = None,
+            date: str | datetime = None,
             comment: str = None,
             order_positions: Union[List[Dict], Dict] = None,
-            delivery_type_id: Union[int, str] = None,
-            delivery_office_id: Union[int, str] = None,
-            basket_id: Union[int, str] = None,
+            delivery_type_id: str | int = None,
+            delivery_office_id: str | int = None,
+            basket_id: str | int = None,
             guest_order_name: str = None,
             guest_order_mobile: str = None,
             guest_order_email: str = None,
-            shipment_date: Union[str, datetime] = None,
+            shipment_date: str | datetime = None,
             delivery_cost: Union[str, int, float] = None,
-            delivery_address_id: Union[int, str] = None,
+            delivery_address_id: str | int = None,
             delivery_address: str = None,
-            manager_id: Union[int, str] = None,
+            manager_id: str | int = None,
             client_order_number: str = None,
             note: str = None,
-            del_note: Union[str, int] = None
+            del_note: str | int = None
 
     ):
         """Универсальный метод сохранения. Принимает в качестве параметра объект описывающий заказ. Для создания заказа
@@ -352,7 +353,7 @@ class Finance:
 
     async def update_balance(
             self,
-            user_id: Union[int, str],
+            user_id: str | int,
             balance: Union[float, int, str],
             in_stop_list: Union[bool, str] = None
     ):
@@ -380,7 +381,7 @@ class Finance:
 
     async def update_credit_limit(
             self,
-            user_id: Union[int, str],
+            user_id: str | int,
             credit_limit: Union[float, int, str]
 
     ):
@@ -402,11 +403,11 @@ class Finance:
 
     async def update_finance_info(
             self,
-            user_id: Union[int, str],
+            user_id: str | int,
             balance: Union[float, int, str] = None,
             credit_limit: float = None,
             in_stop_list: Union[bool, str] = None,
-            pay_delay: Union[int, str] = None,
+            pay_delay: str | int = None,
             overdue_saldo: Union[float, int, str] = None
     ):
         """
@@ -435,10 +436,10 @@ class Finance:
 
     async def get_payments_info(
             self,
-            user_id: Union[int, str] = None,
+            user_id: str | int = None,
             payment_number: str = None,
-            create_date_time_start: Union[str, datetime] = None,
-            create_date_time_end: Union[str, datetime] = None
+            create_date_time_start: str | datetime = None,
+            create_date_time_end: str | datetime = None
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D0.B1_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D0.B0.D1.85_.D0.B8.D0.B7_.D1.84.D0.B8.D0.BD.D0.BC.D0.BE.D0.B4.D1.83.D0.BB.D1.8F
@@ -475,9 +476,9 @@ class Finance:
             self,
             payment_numbers: Union[List, str, int] = None,
             order_ids: Union[List, str, int] = None,
-            user_id: Union[int, str] = None,
-            date_time_start: Union[str, datetime] = None,
-            date_time_end: Union[str, datetime] = None,
+            user_id: str | int = None,
+            date_time_start: str | datetime = None,
+            date_time_end: str | datetime = None,
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE_.D0.BF.D1.80.D0.B8.D0.B2.D1.8F.D0.B7.D0.BA.D0.B0.D1.85_.D0.BF.D0.BB.D0.B0.D1.82.D0.B5.D0.B6.D0.B5.D0.B9_.D0.B8.D0.B7_.D0.BC.D0.BE.D0.B4.D1.83.D0.BB.D1.8F_.D0.A4.D0.B8.D0.BD.D0.B0.D0.BD.D1.81.D1.8B
@@ -517,10 +518,10 @@ class Finance:
 
     async def get_online_payments(
             self,
-            date_start: Union[str, datetime] = None,
-            date_end: Union[str, datetime] = None,
+            date_start: str | datetime = None,
+            date_end: str | datetime = None,
             customer_ids: Union[List, int] = None,
-            payment_method_id: Union[int, str] = None,
+            payment_method_id: str | int = None,
             status_ids: Union[List, str, int] = None,
             order_ids: Union[List, str, int] = None
     ):
@@ -587,10 +588,10 @@ class Finance:
             user_id: int,
             payment_type_id: int,
             amount: Union[float, int],
-            create_date_time: Union[str, datetime] = None,
-            payment_number: Union[str, int] = None,
-            comment: Optional[str] = None,
-            editor_id: Union[int, str] = None,
+            create_date_time: str | datetime = None,
+            payment_number: str | int = None,
+            comment: str | None = None,
+            editor_id: str | int = None,
             link_payments: Union[bool, int] = False
     ):
         """
@@ -648,8 +649,8 @@ class Finance:
 
     async def link_existing_payment(
             self,
-            payment_id: Union[str, int],
-            order_id: Union[str, int],
+            payment_id: str | int,
+            order_id: str | int,
             amount: Union[str, int, float]
     ):
         """
@@ -676,7 +677,7 @@ class Finance:
 
     async def refund_payment(
             self,
-            refund_payment_id: Union[str, int],
+            refund_payment_id: str | int,
             refund_amount: Union[str, int, float]
     ):
         """
@@ -702,23 +703,23 @@ class Finance:
 
     async def get_receipts(
             self,
-            shop_id: Union[int, str] = None,
-            queue_id: Union[int, str] = None,
-            date_created_start: Union[str, datetime] = None,
-            date_created_end: Union[str, datetime] = None,
-            calculation_method: Union[str, int] = None,
-            print_paper_check: Union[str, int] = None,
-            vat: Union[str, int] = None,
-            calculation_subject: Union[str, int] = None,
-            payment_type: Union[str, int] = None,
-            type: Union[str, int] = None,
-            tax_system: Union[str, int] = None,
-            intent: Union[str, int] = None,
-            fiscalization: Union[str, int] = None,
-            employee_id: Union[int, str] = None,
-            client_id: Union[int, str] = None,
-            start: Union[str, int] = None,
-            rows_on_page: Union[str, int] = None,
+            shop_id: str | int = None,
+            queue_id: str | int = None,
+            date_created_start: str | datetime = None,
+            date_created_end: str | datetime = None,
+            calculation_method: str | int = None,
+            print_paper_check: str | int = None,
+            vat: str | int = None,
+            calculation_subject: str | int = None,
+            payment_type: str | int = None,
+            type: str | int = None,
+            tax_system: str | int = None,
+            intent: str | int = None,
+            fiscalization: str | int = None,
+            employee_id: str | int = None,
+            client_id: str | int = None,
+            start: str | int = None,
+            rows_on_page: str | int = None,
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.87.D0.B5.D0.BA.D0.BE.D0.B2
@@ -770,7 +771,7 @@ class Finance:
 
     async def get_payments_methods(self, only_enabled: Union[bool, str] = None,
                                    only_disabled: Union[bool, str] = None,
-                                   payment_method_id: Union[int, str] = None):
+                                   payment_method_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BD.D0.B0.D1.81.D1.82.D1.80.D0.BE.D0.B5.D0.BA_.D0.BF.D0.BB.D0.B0.D1.82.D1.91.D0.B6.D0.BD.D1.8B.D1.85_.D1.81.D0.B8.D1.81.D1.82.D0.B5.D0.BC
         Возвращает настройки платёжных систем.
@@ -797,22 +798,22 @@ class Users:
 
     async def get_users(
             self,
-            date_registred_start: Union[str, datetime] = None,
-            date_registred_end: Union[str, datetime] = None,
-            date_updated_start: Union[str, datetime] = None,
-            date_updated_end: Union[str, datetime] = None,
-            state: Union[str, int] = None,
-            customer_status: Union[str, int] = None,
+            date_registred_start: str | datetime = None,
+            date_registred_end: str | datetime = None,
+            date_updated_start: str | datetime = None,
+            date_updated_end: str | datetime = None,
+            state: str | int = None,
+            customer_status: str | int = None,
             customers_ids: Union[List, str, int] = None,
-            market_type: Union[str, int] = None,
-            phone: Union[str, int] = None,
-            enable_sms: Union[str, bool] = None,
+            market_type: str | int = None,
+            phone: str | int = None,
+            enable_sms: str | bool = None,
             email: str = None,
-            safe_mode: Union[str, int] = None,
+            safe_mode: str | int = None,
             format: str = None,
-            limit: Optional[int] = None,
-            skip: Optional[int] = None,
-            desc: Union[str, bool] = 'false'
+            limit: int | None = None,
+            skip: int | None = None,
+            desc: str | bool = 'false'
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D0.B5.D0.B9
@@ -879,22 +880,22 @@ class Users:
 
     async def create(
             self,
-            market_type: Union[str, int],
+            market_type: str | int,
             name: str, password: str,
-            mobile: Union[str, int],
-            filial_id: Union[int, str] = None,
+            mobile: str | int,
+            filial_id: str | int = None,
             second_name: str = None, surname: str = None,
-            birth_date: Union[str, datetime] = None,
-            member_of_club: str = None, office: Union[str, int] = None,
+            birth_date: str | datetime = None,
+            member_of_club: str = None, office: str | int = None,
             email: str = None, icq: str = None,
             skype: str = None,
             region_id: str = None, city: str = None,
-            organization_name: str = None, business: Union[str, int] = None,
+            organization_name: str = None, business: str | int = None,
             organization_form: str = None, organization_official_name: str = None,
-            inn: Union[str, int] = None, kpp: Union[str, int] = None,
-            ogrn: Union[str, int] = None, organization_official_address: str = None,
-            bank_name: str = None, bik: Union[str, int] = None,
-            correspondent_account: Union[str, int] = None, organization_account: Union[str, int] = None,
+            inn: str | int = None, kpp: str | int = None,
+            ogrn: str | int = None, organization_official_address: str = None,
+            bank_name: str = None, bik: str | int = None,
+            correspondent_account: str | int = None, organization_account: str | int = None,
             delivery_address: str = None, comment: str = None, profile_id: str = None,
             pickup_state: Union[int, bool] = None
     ):
@@ -952,9 +953,9 @@ class Users:
 
     async def get_profiles(
             self,
-            profile_id: Union[int, str] = None,
-            skip: Optional[int] = None,
-            limit: Optional[int] = None,
+            profile_id: str | int = None,
+            skip: int | None = None,
+            limit: int | None = None,
             format: str = None
     ):
         """
@@ -981,11 +982,11 @@ class Users:
 
     async def edit_profile(
             self,
-            profile_id: Union[int, str],
-            code: Union[str, int] = None,
+            profile_id: str | int,
+            code: str | int = None,
             name: str = None,
             comment: str = None,
-            price_up: Union[str, int] = None,
+            price_up: str | int = None,
             payment_methods: str = None,
             matrix_price_ups: Union[List[Dict], Dict] = None,
             distributors_price_ups: Union[List[Dict], Dict] = None,
@@ -1033,26 +1034,26 @@ class Users:
 
     async def edit(
             self,
-            user_id: Union[str, int], business: Union[str, int] = None,
+            user_id: str | int, business: str | int = None,
             email: str = None, name: str = None, second_name: str = None,
             surname: str = None, password: str = None,
-            birth_date: Union[str, datetime] = None, city: str = None,
-            mobile: Union[str, int] = None, icq: str = None,
+            birth_date: str | datetime = None, city: str = None,
+            mobile: str | int = None, icq: str = None,
             skype: str = None, enable_sms: Union[bool, str] = None,
             enable_whatsapp: Union[bool, str] = None,
-            state: Union[str, int] = None,
-            profile_id: Union[int, str] = None, organization_name: str = None,
+            state: str | int = None,
+            profile_id: str | int = None, organization_name: str = None,
             organization_form: str = None, organization_official_name: str = None,
-            inn: Union[str, int] = None, kpp: Union[str, int] = None, ogrn: Union[str, int] = None,
-            bank_name: str = None, bik: Union[str, int] = None,
-            correspondent_account: Union[str, int] = None, organization_account: Union[str, int] = None,
+            inn: str | int = None, kpp: str | int = None, ogrn: str | int = None,
+            bank_name: str = None, bik: str | int = None,
+            correspondent_account: str | int = None, organization_account: str | int = None,
             delivery_address: Union[List[Dict], Dict] = None, baskets: Union[List[Dict], Dict] = None,
             baskets_delivery_address: Union[List[Dict], Dict] = None, comment: str = None,
-            manager_comment: str = None, manager_id: Union[int, str] = None,
-            user_code: Union[str, int] = None, client_service_employee_id: Union[int, str] = None,
-            client_service_employee2_id: Union[int, str] = None, client_service_employee3_id: Union[int, str] = None,
-            client_service_employee4_id: Union[int, str] = None, office: Union[List[Dict], Dict] = None,
-            info: str = None, safe_mode: Union[str, int] = None,
+            manager_comment: str = None, manager_id: str | int = None,
+            user_code: str | int = None, client_service_employee_id: str | int = None,
+            client_service_employee2_id: str | int = None, client_service_employee3_id: str | int = None,
+            client_service_employee4_id: str | int = None, office: Union[List[Dict], Dict] = None,
+            info: str = None, safe_mode: str | int = None,
             pickup_state: Union[int, bool] = None,
 
     ):
@@ -1116,7 +1117,7 @@ class Users:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.EDIT_USER, payload, True)
 
-    async def get_user_shipment_address(self, user_id: Union[int, str]):
+    async def get_user_shipment_address(self, user_id: str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B0.D0.B4.D1.80.D0.B5.D1.81.D0.BE.D0.B2_.D0.B4.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D0.BA.D0.B8
 
@@ -1239,7 +1240,7 @@ class Staff:
     async def update_manager(self, id: int, type_id: int = None,
                              first_name: str = None, last_name: str = None,
                              email: str = None, phone: str = None, mobile: str = None,
-                             sip: Union[str, int] = None, comment: str = None, boss_id: int = None, office_id: int = None):
+                             sip: str | int = None, comment: str = None, boss_id: int = None, office_id: int = None):
         """
 
         Обновление данных сотрудника.
@@ -1317,7 +1318,7 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.GET_DISTRIBUTORS_LIST, payload)
 
-    async def edit_status(self, distributor_id: Union[int, str], status: Union[int, bool]):
+    async def edit_status(self, distributor_id: str | int, status: Union[int, bool]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Изменение статуса поставщика
@@ -1334,7 +1335,7 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.EDIT_DISTRIBUTORS_STATUS, payload, True)
 
-    async def get_routes(self, distributor_id: Union[str, int]):
+    async def get_routes(self, distributor_id: str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.BE.D0.B2_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Возвращает список всех маршрутов поставщика.
@@ -1347,30 +1348,30 @@ class Distributors:
         return await self._base.request(_Methods.Admin.Distributors.GET_SUPPLIER_ROUTES, payload)
 
     async def edit_route(self,
-                         route_id: Union[str, int],
-                         deadline: Union[str, int] = None, deadline_replace: str = None,
-                         is_deadline_replace_franch_enabled: Union[str, bool] = None,
-                         deadline_max: Union[str, int] = None,
+                         route_id: str | int,
+                         deadline: str | int = None, deadline_replace: str = None,
+                         is_deadline_replace_franch_enabled: str | bool = None,
+                         deadline_max: str | int = None,
                          normal_time_start: str = None, normal_time_end: str = None,
                          normal_days_of_week: List = None,
-                         abnormal_deadline: Union[str, int] = None,
-                         abnormal_deadline_max: Union[str, int] = None,
-                         p1: Union[str, int] = None, p2: Union[str, int] = None,
-                         price_per_kg: Union[str, int] = None,
-                         price_up_added: Union[str, int] = None,
-                         c1: Union[str, int] = None,
-                         price_up_min: Union[str, int] = None, price_up_max: Union[str, int] = None,
-                         primary_price_up_to_contractor: Union[str, int] = None,
-                         delivery_probability: Union[str, int] = None,
+                         abnormal_deadline: str | int = None,
+                         abnormal_deadline_max: str | int = None,
+                         p1: str | int = None, p2: str | int = None,
+                         price_per_kg: str | int = None,
+                         price_up_added: str | int = None,
+                         c1: str | int = None,
+                         price_up_min: str | int = None, price_up_max: str | int = None,
+                         primary_price_up_to_contractor: str | int = None,
+                         delivery_probability: str | int = None,
                          description: str = None,
-                         enable_color: Union[str, bool] = None, color: str = None,
-                         is_abnormal_color_enabled: Union[str, bool] = None, abnormal_color: str = None,
+                         enable_color: str | bool = None, color: str = None,
+                         is_abnormal_color_enabled: str | bool = None, abnormal_color: str = None,
                          no_return: Union[bool, str] = None,
                          supplier_code_enabled_list: Union[List, List, str, int] = None,
                          supplier_code_disabled_list: Union[List, List, str, int] = None,
-                         normal_time_display_only: Union[int, str] = None,
-                         disable_order_abnormal_time: Union[int, str] = None,
-                         not_use_online_supplier_deadline: Union[int, str] = None,
+                         normal_time_display_only: str | int = None,
+                         disable_order_abnormal_time: str | int = None,
+                         not_use_online_supplier_deadline: str | int = None,
                          ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B4.D0.B0.D0.BD.D0.BD.D1.8B.D1.85_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
@@ -1448,7 +1449,7 @@ class Distributors:
 
         return await self._base.request(_Methods.Admin.Distributors.UPDATE_ROUTE, payload, True)
 
-    async def edit_route_status(self, route_id: Union[str, int], status: Union[int, bool]):
+    async def edit_route_status(self, route_id: str | int, status: Union[int, bool]):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
 
@@ -1466,7 +1467,7 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.UPDATE_ROUTE_STATUS, payload, True)
 
-    async def delete_route(self, route_id: Union[int, str]):
+    async def delete_route(self, route_id: str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Удаляет маршрут поставщика.
@@ -1479,7 +1480,7 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.DELETE_ROUTE, payload, True)
 
-    async def connect_to_office(self, office_id: Union[str, int],
+    async def connect_to_office(self, office_id: str | int,
                                 distributors: Union[List[Dict], Dict] = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.B4.D0.BA.D0.BB.D1.8E.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BA_.D0.BE.D1.84.D0.B8.D1.81.D1.83
@@ -1499,7 +1500,7 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.EDIT_SUPPLIER_STATUS_FOR_OFFICE, payload, True)
 
-    async def get_office_distributors(self, office_id: Union[int, str] = None):
+    async def get_office_distributors(self, office_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BE.D1.84.D0.B8.D1.81.D0.B0
         Возвращает информацию о подключенных к офису поставщиках
@@ -1512,9 +1513,9 @@ class Distributors:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Distributors.GET_OFFICE_SUPPLIERS, payload)
 
-    async def pricelist_update(self, distributor_id: Union[str, int],
+    async def pricelist_update(self, distributor_id: str | int,
                                upload_file: Union[str, BufferedReader],
-                               file_type_id: Union[int, str] = None):
+                               file_type_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.97.D0.B0.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0_.D0.BF.D1.80.D0.B0.D0.B9.D1.81-.D0.BB.D0.B8.D1.81.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         В ПУ, в разделе "Поставщики"/"Обн."/"Конфигурация прайс-листа" предварительно настраивается конфигурация
@@ -1524,7 +1525,7 @@ class Distributors:
 
 
         :param distributor_id: Id поставщика
-        :type distributor_id: :obj:`Union[str, int]`
+        :type distributor_id: :obj:`str | int`
         :param upload_file: путь до файла прайс-листа
         :type upload_file: :obj:`str` or :obj:`BufferedReader`
         :param file_type_id: Смысла от параметра пока нет (15.05.2022)
@@ -1552,8 +1553,8 @@ class Catalog:
 
     async def search(self, goods_group: str,
                      properties: Union[List[Dict[str, str]], Dict[str, str]],
-                     skip: Optional[int] = None, limit: Optional[int] = None,
-                     locale: Optional[str] = None):
+                     skip: int | None = None, limit: int | None = None,
+                     locale: str | None = None):
         """
 
         :param goods_group:
@@ -1579,11 +1580,11 @@ class UsersCatalog:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def upload(self, catalog_id: Union[str, int],
+    async def upload(self, catalog_id: str | int,
                      file: Union[str, BufferedReader],
                      delete_old_mode: int = 0,
-                     default_attributes_hide: Union[str, bool] = 'false',
-                     article_only: Union[str, bool] = 'false',
+                     default_attributes_hide: str | bool = 'false',
+                     article_only: str | bool = 'false',
                      image_upload_mode: int = 0,
                      image_archive: Union[str, BufferedReader] = None):
         """
@@ -1619,7 +1620,7 @@ class Payment:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def token(self, number: Union[str, int]):
+    async def token(self, number: str | int):
         """
         Получение ссылки на оплату заказа
 
@@ -1632,7 +1633,7 @@ class Payment:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Payment.TOKEN, payload)
 
-    async def top_balance_link(self, client_id: Union[str, int], amount: Union[float, int, str]):
+    async def top_balance_link(self, client_id: str | int, amount: Union[float, int, str]):
         """
 
         :param client_id: Идентификатор клиента
