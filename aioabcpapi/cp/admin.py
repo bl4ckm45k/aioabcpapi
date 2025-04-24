@@ -1098,7 +1098,7 @@ class Users:
         :return: идентификатор id новой зоны доставки
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, http_method="POST",
+        return await self._base.request(_Methods.Admin.Users.CREATE_SHIPMENT_ZONE, payload, post=True,
                                         json=True)
 
     async def update_shipment_zone(self, shipment_zone_id: str, name: str = None, desc: str = None, address: str = None,
@@ -1117,7 +1117,7 @@ class Users:
         """
         _method = _Methods.Admin.Users.UPDATE_SHIPMENT_ZONE.format(id=shipment_zone_id)
         payload = generate_payload(**locals())
-        return await self._base.request(_method, payload, http_method="POST", json=True)
+        return await self._base.request(_method, payload, post=True, json=True)
 
     async def delete_shipment_zone(self, id: int):
         return await self._base.request(f"{_Methods.Admin.Users.DELETE_SHIPMENT_ZONE}{id}", None, True)

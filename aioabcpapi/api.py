@@ -86,7 +86,7 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
 
 
 async def make_request(
-        session,
+        session: aiohttp.ClientSession,
         host: str,
         method: str,
         data: Union[Dict[str, Any], aiohttp.FormData],
@@ -118,7 +118,8 @@ async def make_request(
         # Для не-GET запросов (POST, PUT, и т.д.)
         if 'json' in kwargs:
             # Если в kwargs есть json, значит это JSON запрос
-            pass  # json уже в kwargs, используем его напрямую
+            # pass  # json уже в kwargs, используем его напрямую
+            request_kwargs['json'] = data
         elif isinstance(data, aiohttp.FormData):
             # FormData для multipart/form-data запросов
             request_kwargs['data'] = data

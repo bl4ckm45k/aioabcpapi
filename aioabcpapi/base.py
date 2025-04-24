@@ -10,7 +10,7 @@ import ujson
 from aiohttp import FormData, ClientTimeout
 
 from .api import Headers, _Methods, check_data, make_request
-from .exceptions import NotEnoughRights, AbcpBaseException
+from .exceptions import NotEnoughRights, AbcpBaseException, NetworkError
 
 logger = logging.getLogger('aioabcpapi.base')
 
@@ -72,7 +72,7 @@ class BaseAbcp:
             self.timeout = ClientTimeout(total=timeout)
         else:
             self.timeout = timeout
-            
+
         # Настройка ретраев
         self.retry_attempts = retry_attempts
         self.retry_delay = retry_delay
@@ -111,12 +111,12 @@ class BaseAbcp:
         """
         if self._session is None or self._session.closed:
             self._session = await self._get_new_session()
-        
+
         loop = getattr(self._session, "_loop", None)
         if loop and not loop.is_running():
             await self._session.close()
             self._session = await self._get_new_session()
-            
+
         return self._session
 
     async def close(self) -> None:
@@ -135,12 +135,12 @@ class BaseAbcp:
         :return: self
         """
         return self
-        
+
     async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType]
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_val: Optional[BaseException],
+            exc_tb: Optional[TracebackType]
     ) -> None:
         """
         Выходная точка асинхронного контекстного менеджера
@@ -171,12 +171,12 @@ class BaseAbcp:
             return {'userlogin': self._login, 'userpsw': self._password}
 
     async def request(
-        self, 
-        method: str,
-        payload: Optional[Union[Dict[str, Any], FormData]] = None,
-        post: bool = False, 
-        retry: int | None = None,
-        **kwargs
+            self,
+            method: str,
+            payload: Optional[Union[Dict[str, Any], FormData]] = None,
+            post: bool = False,
+            retry: int | None = None,
+            **kwargs
     ) -> Union[List, Dict, bool]:
         """
         Выполняет запрос к API ABCP с автоматическими повторными попытками при сетевых ошибках.
@@ -196,15 +196,15 @@ class BaseAbcp:
         """
         if not self.admin and isinstance(method, (_Methods.Admin, _Methods.TsAdmin)):
             raise NotEnoughRights('Недостаточно прав для использования API администратора')
-            
+
         attempts = retry if retry is not None else self.retry_attempts
         last_exception = None
-        
+
         for attempt in range(1, attempts + 1):
             try:
                 checked_payload = self.__payload_check(payload)
                 http_method = "POST" if post else "GET"
-                
+
                 # Определение заголовков на основе типа данных и параметров
                 if isinstance(checked_payload, FormData):
                     headers = self._headers.multipart_header()
@@ -212,21 +212,20 @@ class BaseAbcp:
                     headers = self._headers.json_header()
                 else:
                     headers = self._headers.url_encoded_header()
-                
+
                 # Используем универсальную функцию make_request
                 return await make_request(
-                    await self._get_session(), 
+                    await self._get_session(),
                     self._host,
-                    method, 
-                    checked_payload, 
-                    headers, 
+                    method,
+                    checked_payload,
+                    headers,
                     http_method=http_method,
-                    timeout=self.timeout, 
                     **kwargs
                 )
             except AbcpBaseException as e:
                 # Не повторяем запрос при ошибках бизнес-логики или авторизации
-                if not isinstance(e, (NotEnoughRights)):
+                if not isinstance(e, NotEnoughRights):
                     raise
                 last_exception = e
                 raise
@@ -235,14 +234,10 @@ class BaseAbcp:
                 logger.warning(
                     f"Attempt {attempt}/{attempts} failed with error: {e.__class__.__name__}: {e}"
                 )
-                
+
                 if attempt < attempts:
                     await asyncio.sleep(self.retry_delay * attempt)  # Увеличиваем задержку с каждой попыткой
                 else:
-                    # Все попытки исчерпаны
-                    from .exceptions import NetworkError
                     raise NetworkError(f"All {attempts} attempts failed. Last error: {e.__class__.__name__}: {e}")
-        
-        # Этот код не должен выполняться, но добавлен для типизации
-        from .exceptions import NetworkError
+
         raise NetworkError(f"Unexpected error during request execution: {last_exception}")

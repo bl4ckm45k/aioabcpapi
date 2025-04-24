@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Union, Optional, Any
+from typing import Dict, List, Union, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
@@ -157,7 +157,7 @@ class Search:
         :return:
         """
         payload = generate_payload(exclude=['articles'], **locals())
-        return await self._base.request(_Methods.Client.Search.ADVICES_BATCH, payload, http_method="POST", json=True)
+        return await self._base.request(_Methods.Client.Search.ADVICES_BATCH, payload, post=True, json=True)
 
 
 class Basket:
@@ -893,7 +893,7 @@ class ClientApi:
     
     Предоставляет доступ ко всем методам API для клиента.
     """
-    
+
     def __init__(self, base: BaseAbcp):
         """
         Инициализация API клиента

@@ -3,9 +3,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, List, Dict, Optional, Any
 
-import pytz
-from pyrfc3339.generator import generate
-
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
@@ -421,7 +418,7 @@ class OrderPickings:
         то будет заполнена из `date` :return: None
         """
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, post=True)
 
     @check_limit
     @process_ts_dates('date_start', 'date_end')
@@ -435,7 +432,7 @@ class OrderPickings:
                   co_old_pos_ids: Union[List, str, int] = None):
 
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.GET, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.GET, payload, post=True)
 
     @check_limit
     async def get_goods(self, op_id: str | int, limit: int = None, skip: int = None,
@@ -498,7 +495,7 @@ class OrderPickings:
             done_right_away = int(done_right_away)
 
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, post=True)
 
     async def change_status(self, id: int, operation_status_id: str | int,
                             positions_status_id: str | int = None):
@@ -517,7 +514,7 @@ class OrderPickings:
         :return: OrderPicking
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, post=True)
 
     async def update(self, id: int, number: str | int = None, creator_id: str | int = None,
                      worker_id: str | int = None,
@@ -545,7 +542,7 @@ class OrderPickings:
         :return: OrderPicking
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.UPDATE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.UPDATE, payload, post=True)
 
     async def delete(self, id: int):
         payload = generate_payload(**locals())
@@ -675,7 +672,7 @@ class CustomerComplaints:
         :return:
         """
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE, payload, post=True)
 
     async def create_position(self, op_id: str | int, order_picking_position_id: str | int, quantity: int,
                               type: int, comment: str):
@@ -697,7 +694,8 @@ class CustomerComplaints:
             raise AbcpWrongParameterError("type", type, "должен быть в диапазоне от 1 до 3")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload,
-                                        http_method="POST")
+                                        post=True)
+
     @ensure_list_params('positions')
     async def create_position_multiple(self, positions: Union[List[Dict], Dict],
                                        customer_complaint_id: int,
@@ -710,7 +708,7 @@ class CustomerComplaints:
         del encoded_string
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload,
-                                        http_method="POST")
+                                        post=True)
 
     async def update_position(self, id: int, quantity: int = None, type: int = None, comment: str = None):
         """
@@ -730,7 +728,7 @@ class CustomerComplaints:
             raise AbcpWrongParameterError("type", type, "должен быть в диапазоне от 1 до 3")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload,
-                                        http_method="POST")
+                                        post=True)
 
     async def change_position_status(self, id: int, status: int):
         """
@@ -746,7 +744,7 @@ class CustomerComplaints:
             raise AbcpWrongParameterError("status", status, "должен быть в диапазоне от 1 до 8")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload,
-                                        http_method="POST")
+                                        post=True)
 
     async def update(self, id: str | int, number: int = None, expert_id: str | int = None,
                      custom_complaint_file: str = '',
@@ -764,7 +762,7 @@ class CustomerComplaints:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.update_fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE, payload, post=True)
 
     async def update_custom_file(self, id: str | int, custom_complaint_file: str = '',
                                  fields: Union[List, str] = None):
@@ -790,7 +788,7 @@ class CustomerComplaints:
             fields = check_fields(fields, self._FieldsChecker.update_fields)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_CUSTOM_FILE, payload,
-                                        http_method="POST")
+                                        post=True)
 
 
 class DistributorOwners:
@@ -840,7 +838,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.CREATE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.CREATE, payload, post=True)
 
     @process_ts_dates('create_time', 'delivery_start_time', 'delivery_end_time')
     @process_ts_lists('positions')
@@ -886,7 +884,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.CREATE_BY_CART, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.CREATE_BY_CART, payload, post=True)
 
     @check_limit
     @process_ts_lists('order_ids', 'product_ids', 'position_statuses')
@@ -949,7 +947,7 @@ class Orders:
         :return:
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.REFUSE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.REFUSE, payload, post=True)
 
     async def update(self, order_id: str | int, number: str | int = None, client_id: str | int = None,
                      agreement_id: str | int = None,
@@ -970,7 +968,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.UPDATE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.UPDATE, payload, post=True)
 
     @process_ts_lists('merge_orders_ids')
     async def merge(self, main_order_id: str | int, merge_orders_ids: Union[List, str, int] = None,
@@ -985,7 +983,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.MERGE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.MERGE, payload, post=True)
 
     @process_ts_lists('position_ids')
     async def split(self, order_id: str | int, position_ids: Union[List, str, int] = None,
@@ -1000,7 +998,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.SPLIT, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.SPLIT, payload, post=True)
 
     async def reprice(self, order_id: str | int, new_sum: Union[float, int],
                       fields: Union[List, str] = None):
@@ -1014,7 +1012,7 @@ class Orders:
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.REPRICE, payload, http_method="POST")
+        return await self._base.request(_Methods.TsAdmin.Orders.REPRICE, payload, post=True)
 
 
 class Messages:
@@ -1046,6 +1044,7 @@ class Messages:
         """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.MESSAGES_GET_ONE, payload)
+
     @check_limit
     async def get_list(self, order_id: str | int, skip: int = None, limit: int = None):
         """
@@ -1311,7 +1310,6 @@ class Positions:
                       'update_date_start', 'update_date_end',
                       'deadline_date_start', 'deadline_date_end',
                       'order_picking_date_start', 'order_picking_date_end')
-
     async def get_list(self, brand: str = None, message: str = None, agreement_id: str | int = None,
                        client_id: str | int = None,
                        manager_id: str | int = None,
