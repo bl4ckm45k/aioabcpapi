@@ -1,42 +1,104 @@
 import asyncio
-import datetime
-import logging
-
-from config import guest_id
-from loader import api, api_client
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from loader import api
 
 
-async def orders_list(update_start, update_end):
-    logger.info(f'{update_start}, {update_end}')
-    data = await api.cp.admin.orders.get_orders_list(date_updated_start=update_start,
-                                                     date_updated_end=update_end,
-                                                     format='additional')
+# from aioabcpapi import Abcp
 
-    for x in data:
-        if x['userId'] == guest_id:
-            logger.info(f"{x['additional']['phone']}, {x['additional']['consumer']}")
+# api = Abcp('host', 'login', 'password')
+
+async def async_context_manager():
+    """
+    Пример использования библиотеки ABCP API
+    Поиск товаров и добавление в корзину
+
+    Использование через контекстный менеджер - сессия закроется автоматически
+    """
+
+    async with api:
+        # Поиск товаров
+        search_result = await api.cp.client.search.articles(
+            number='602000600',
+            brand='LuK',
+            use_online_stocks=True,
+            disable_online_filtering=True,
+            with_out_analogs=True
+        )
+
+        print(f"Найдено товаров: {len(search_result)}")
+        sorted_search_result = sorted(search_result, key=lambda x: x['price'])
+    # Фильтрация и обработка результатов
+    for item in sorted_search_result:
+        price = float(item['price'])
+        print(f"Артикул: {item['numberFix']}, Бренд: {item['brand']}, Цена: {price}")
+        if price < 3000:
+            print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
+            # Отключаем поставщика с подозрительно низкой ценой
+            async with api:
+                result = await api.cp.admin.distributors.edit_status(item['distributorId'], False)
+                print(f"Результат отключения поставщика: {result}")
+        elif price < 45000:
+            # Добавляем товар в корзину
+            async with api:
+                result = await api.cp.client.basket.add(
+                    basket_positions={
+                        'number': item['article'],
+                        'brand': item['brand'],
+                        'supplierCode': item['supplierCode'],
+                        'itemKey': item['itemKey'],
+                        'quantity': 1,
+                        'comment': "РРЦ никто не любит"
+                    }
+                )
+
+                print(f"Результат добавляение в корзину: {result}")
+
+
+async def wo_async_context_manager():
+    """
+    Пример использования библиотеки ABCP API
+    Поиск товаров и добавление в корзину
+
+    Использование без контекстного менеджера - закрывайте сессию самостоятельно
+    """
+
+    # Поиск товаров
+    search_result = await api.cp.client.search.articles(
+        number='602000600',
+        brand='LuK',
+        use_online_stocks=True,
+        disable_online_filtering=True,
+        with_out_analogs=True
+    )
+
+    print(f"Найдено товаров: {len(search_result)}")
+    sorted_search_result = sorted(search_result, key=lambda x: x['price'])
+    # Фильтрация и обработка результатов
+    for item in sorted_search_result:
+        price = float(item['price'])
+        print(f"Артикул: {item['numberFix']}, Бренд: {item['brand']}, Цена: {price}")
+        if price < 3000:
+            print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
+            # Отключаем поставщика с подозрительно низкой ценой
+            result = await api.cp.admin.distributors.edit_status(item['distributorId'], False)
+            print(f"Результат отключения поставщика: {result}")
+        elif price < 45000:
+            # Добавляем товар в корзину
+            result = await api.cp.client.basket.add(
+                basket_positions={
+                    'number': item['article'],
+                    'brand': item['brand'],
+                    'supplierCode': item['supplierCode'],
+                    'itemKey': item['itemKey'],
+                    'quantity': 1,
+                    'comment': "РРЦ никто не любит"
+                }
+            )
+
+            print(f"Результат добавляение в корзину: {result}")
+
     await api.close()
 
-
-async def not_enough_rights(update_start, update_end):
-    data = await api_client.cp.admin.orders.get_orders_list(date_updated_start=update_start,
-                                                            date_updated_end=update_end)
-    logger.error(f'{data}')
-    await api_client.close()
-
-
 if __name__ == '__main__':
-    date_start = datetime.datetime.now() - datetime.timedelta(days=3)
-    date_end = datetime.datetime.now()
-
-    # Необходимо только в Windows для избежания RuntimeError
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(orders_list(update_start=date_start, update_end=date_end))
-    finally:
-        loop.run_until_complete(api.close())
+    # Запуск примеров
+    asyncio.run(async_context_manager())
+    asyncio.run(wo_async_context_manager())

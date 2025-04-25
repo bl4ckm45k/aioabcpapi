@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Dict, Union
+from typing import Dict, List, Any
 
 import aiohttp
 
@@ -13,9 +13,19 @@ logger = logging.getLogger('api')
 
 
 def check_data(host: str, login: str, password: str) -> bool:
+    """
+    Checks if the provided data is valid.
+    :param host: The host to check.
+    :param login: The login to check.
+    :param password: The password to check.
+    :return: True if the data is valid, False otherwise.
+    :raises UnsupportedHost: If the host is not supported.
+    :raises PasswordType: If the password is not in md5 hash format.
+    :raises UnsupportedLogin: If the login is not in a valid format.
+    """
     regex_md = re.match(r"([a-f\d]{32})", password)
     if not regex_md:
-        raise PasswordType('Допускаются пароли только в md5 hash')
+        raise PasswordType()
     host_id = host.split('.')[0]
     if login[0:4] == 'api@':
         return login.split('@')[1] == host_id
@@ -23,7 +33,7 @@ def check_data(host: str, login: str, password: str) -> bool:
         if login.isdigit() and 4 < len(login) < 14:
             return False
         if '@' in login:
-            email = re.match('^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
+            email = re.match(r'^[\w.]+@([\w-]+\.)+[\w-]{2,6}$', login, flags=re.IGNORECASE)
             if not email:
                 raise UnsupportedLogin('Недопустимый логин')
             return False
@@ -70,48 +80,66 @@ def check_result(method_name: str, content_type: str, status_code: int, body):
     elif status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
         raise AbcpAPIError(f"{body} [{status_code}]")
     elif status_code == 418:
-        raise TeaPot("RFC 2324, секция 2.3.2: 418 I'm a teapot")
+        raise TeaPot()
 
     raise AbcpAPIError(f"{body} [{status_code}]")
 
 
-async def make_request_json(session, host, method,
-                            data: Dict, headers,
-                            **kwargs):
+async def make_request(
+        session: aiohttp.ClientSession,
+        host: str,
+        method: str,
+        data: Dict[str, Any] | aiohttp.FormData,
+        headers: Dict[str, str],
+        http_method: str = "GET",
+        **kwargs
+) -> Dict[str, Any] | List[Dict[str, Any]] | bool:
+    """
+    Универсальная функция для выполнения запросов к API.
+    
+    :param session: Сессия aiohttp
+    :param host: Хост API
+    :param method: Метод API (endpoint)
+    :param data: Данные запроса (payload)
+    :param headers: Заголовки запроса
+    :param http_method: HTTP метод (GET, POST, и т.д.)
+    :param kwargs: Дополнительные параметры для aiohttp.ClientSession.request
+    :return: Результат запроса
+    :raises NetworkError: Если произошла ошибка сети
+    :raises AbcpAPIError: Если API вернуло ошибку или не удалось распарсить JSON
+    """
+    logger.debug('Make request [%s]: "%s" with data: "%r"', http_method, method, data)
+
     url = f'https://{host}/{method}'
+    request_kwargs = {'headers': headers, **kwargs}
+
+    # Определяем, как передавать данные в зависимости от метода и типа данных
+    if http_method.upper() != "GET":
+        # Для не-GET запросов (POST, PUT, и т.д.)
+        if 'json' in kwargs:
+            # Если в kwargs есть json, значит это JSON запрос
+            # pass  # json уже в kwargs, используем его напрямую
+            request_kwargs['json'] = data
+        elif isinstance(data, aiohttp.FormData):
+            # FormData для multipart/form-data запросов
+            request_kwargs['data'] = data
+        else:
+            # Обычные данные для application/x-www-form-urlencoded
+            request_kwargs['data'] = data
+    else:
+        # Для GET запросов данные идут в params
+        request_kwargs['params'] = data
+
     try:
-        async with session.post(url, json=data, headers=headers, **kwargs) as response:
+        response = await session.request(http_method, url, **request_kwargs)
+
+        async with response:
             try:
                 body = await response.json()
-                return check_result(method, response.content_type, response.status, body)
-            except:
-                raise AbcpAPIError(response.text)
-    except aiohttp.ClientError as e:
-        raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
+            except aiohttp.ContentTypeError:
+                body = await response.text()
 
-
-async def make_request(session, host, method,
-                       data: Union[Dict, aiohttp.FormData],
-                       headers, post,
-                       **kwargs):
-    logger.debug('Make _request: "%s" with data: "%r"', method, data)
-
-    url = f'https://{host}/{method}'
-    try:
-        if post:
-            async with session.post(url, data=data, headers=headers, **kwargs) as response:
-                try:
-                    body = await response.json()
-                except:
-                    body = response.text
-                return check_result(method, response.content_type, response.status, body)
-        else:
-            async with session.get(url, params=data, **kwargs) as response:
-                try:
-                    body = await response.json()
-                except:
-                    body = response.text
-                return check_result(method, response.content_type, response.status, body)
+            return check_result(method, response.content_type, response.status, body)
     except aiohttp.ClientError as e:
         raise NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")
 
@@ -336,7 +364,7 @@ class _Methods:
 
         @dataclass(frozen=True)
         class Agreements:
-            get_list: str = 'cp/ts/agreements/list'
+            GET_LIST: str = 'cp/ts/agreements/list'
 
     @dataclass(frozen=True)
     class TsAdmin:
@@ -365,7 +393,7 @@ class _Methods:
         class SupplierReturns:
             @dataclass
             class Operations:
-                __section: str = '/cp/ts/supplierReturns/operations'
+                __section: str = 'cp/ts/supplierReturns/operations'
                 LIST: str = f'{__section}/list'
                 SUM: str = f'{__section}/sum'
                 GET: str = f'{__section}/get'
@@ -375,7 +403,7 @@ class _Methods:
 
             @dataclass
             class Positions:
-                __section: str = '/cp/ts/supplierReturns/positions'
+                __section: str = 'cp/ts/supplierReturns/positions'
                 LIST: str = f'{__section}/list'
                 SUM: str = f'{__section}/sum'
                 STATUS: str = f'{__section}/status'
@@ -387,7 +415,7 @@ class _Methods:
 
             @dataclass
             class PositionsAttr:
-                __section: str = '/cp/ts/supplierReturns/positions/attr'
+                __section: str = 'cp/ts/supplierReturns/positions/attr'
                 CREATE: str = f'{__section}/create'
                 UPDATE: str = f'{__section}/update'
                 DELETE: str = f'{__section}/delete'
@@ -472,6 +500,7 @@ class _Methods:
         class Payments:
             GET_LIST: str = 'cp/ts/payments/list'
             CREATE: str = 'cp/ts/payments/create'
+            UPDATE: str = 'cp/ts/payments/update'
 
         @dataclass(frozen=True)
         class PaymentMethods:
@@ -479,16 +508,16 @@ class _Methods:
 
         @dataclass(frozen=True)
         class Agreements:
-            get_list: str = 'cp/ts/agreements/list'
+            GET_LIST: str = 'cp/ts/agreements/list'
 
         @dataclass(frozen=True)
         class LegalPersons:
-            get_list: str = 'cp/ts/legalPersons/list'
+            GET_LIST: str = 'cp/ts/legalPersons/list'
 
         @dataclass(frozen=True)
         class SupplierOrders:
-            orders_list: str = 'cp/ts/supplierOrders/orders/list'
-            positions_list: str = 'cp/ts/supplierOrders/positions/list'
+            ORDERS_LIST: str = 'cp/ts/supplierOrders/orders/list'
+            POSITIONS_LIST: str = 'cp/ts/supplierOrders/positions/list'
 
     class VinQu:
         pass
