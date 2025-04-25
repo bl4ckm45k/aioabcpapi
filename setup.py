@@ -2,9 +2,9 @@ import sys
 
 from setuptools import setup, find_packages
 
-if sys.version_info < (3, 8):
+if sys.version_info < (3, 10):
     raise RuntimeError('Your Python version {0} is not supported, please install '
-                       'Python 3.8+'.format('.'.join(map(str, sys.version_info[:3]))))
+                       'Python 3.10+'.format('.'.join(map(str, sys.version_info[:3]))))
 
 requirements = [
     "aiohttp>=3.10.11,<4.0.0",
