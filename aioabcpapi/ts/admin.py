@@ -1,51 +1,14 @@
 import base64
-import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Union, List, Dict, Optional
-
-import pytz
-from pyrfc3339 import generate
+from typing import List, Dict, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
-from ..utils.fields_checker import check_fields
+from ..utils.fields_checker import check_fields, check_limit, process_ts_lists, process_ts_dates, ensure_list_params, \
+    process_cp_dates, convert_bool_params_to_str
 from ..utils.payload import generate_payload
-
-
-class TsAdminApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы административного интерфейса
-
-        https://www.abcp.ru/wiki/API.TS.Admin
-        """
-        self._base = base
-        self.order_pickings = OrderPickings(base)
-        self.customer_complaints = CustomerComplaints(base)
-        self.supplier_returns = SupplierReturns(base)
-        self.distributor_owners = DistributorOwners(base)
-        self.orders = Orders(base)
-        self.cart = Cart(base)
-        self.positions = Positions(base)
-        self.good_receipts = GoodReceipts(base)
-        self.tags = Tags(base)
-        self.tags_relationships = TagsRelationships(base)
-        self.payments = Payments(base)
-        self.payment_methods = PaymentMethods(base)
-        self.agrements = Agreements(base)
-        self.legal_persons = LegalPersons(base)
-        self.supplier_orders = SupplierOrders(base)
-
-
-class SupplierReturns:
-
-    def __init__(self, base: BaseAbcp):
-        self._base = base
-        self.operations = SupplierReturnsOperations(base)
-        self.positions = SupplierReturnsPositions(base)
-        self.positions_attr = SupplierReturnsPositionsAttr(base)
 
 
 class SupplierReturnsOperations:
@@ -55,71 +18,121 @@ class SupplierReturnsOperations:
     class _FieldsChecker:
         list_fields = ["goodsReceipt", "agreement", "tags", ]
 
-    async def get_list(self, creator_id: int, supplier_id: int,
-                       goods_receipt_id: int,
-                       agreement_ids: Union[List[int], int],
-                       tag_ids: Union[List[int], int],
-                       sbis_statuses: Union[List[str], str],
-                       date_start: Union[datetime, str],
-                       date_end: Union[datetime, str],
-                       skip: int, limit: int, fields: Union[List, str] = None
+    @check_limit
+    @process_ts_lists('agreement_ids', 'tag_ids', 'sbis_statuses')
+    @process_ts_dates('date_start', 'date_end')
+    async def get_list(self, creator_id: str | int = None, supplier_id: str | int = None,
+                       goods_receipt_id: str | int = None,
+                       agreement_ids: List[int] | int | str = None,
+                       tag_ids: List[int] | int | str = None,
+                       sbis_statuses: List[str] | str = None,
+                       date_start: str | datetime = None,
+                       date_end: str | datetime = None,
+                       skip: int = None, limit: int = None, fields: List | str = None
                        ):
-        if isinstance(agreement_ids, list):
-            agreement_ids = ','.join(map(str, tag_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
-        if isinstance(sbis_statuses, list):
-            sbis_statuses = ','.join(map(str, tag_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if fields is not None:
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
+        """
+        Получение списка операций возврата поставщику
 
+        :param creator_id: идентификатор сотрудника-создателя
+        :param supplier_id: идентификатор поставщика
+        :param goods_receipt_id: идентификатор приходной операции
+        :param agreement_ids: список идентификаторов договоров
+        :param tag_ids: список идентификаторов тегов
+        :param sbis_statuses: список статусов в системе СБИС
+        :param date_start: начальная дата диапазона поиска
+        :param date_end: конечная дата диапазона поиска
+        :param skip: количество операций, которое нужно пропустить
+        :param limit: максимальное количество операций в ответе
+        :param fields: дополнительные поля для вывода
+        :return: список операций возврата поставщику
+        """
         payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.LIST, payload)
 
-    async def get_sum(self, creator_id: int, supplier_id: int,
-                      goods_receipt_id: int,
-                      agreement_ids: Union[List[int], int],
-                      tag_ids: Union[List[int], int],
-                      sbis_statuses: Union[List[str], str],
-                      date_start: Union[datetime, str], date_end: Union[datetime, str],
+    @check_limit
+    @process_ts_lists('agreement_ids', 'tag_ids', 'sbis_statuses')
+    @process_ts_dates('date_start', 'date_end')
+    async def get_sum(self, creator_id: str | int = None, supplier_id: str | int = None,
+                      goods_receipt_id: str | int = None,
+                      agreement_ids: List[int] | int | str = None,
+                      tag_ids: List[int] | int | str = None,
+                      sbis_statuses: List[str] | str = None,
+                      date_start: str | datetime = None,
+                      date_end: str | datetime = None,
                       skip: int = None, limit: int = None
                       ):
-        if isinstance(agreement_ids, list):
-            agreement_ids = ','.join(map(str, agreement_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
-        if isinstance(sbis_statuses, list):
-            sbis_statuses = ','.join(map(str, sbis_statuses))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
+        """
+        Получение суммы операций возврата поставщику
 
+        :param creator_id: идентификатор сотрудника-создателя
+        :param supplier_id: идентификатор поставщика
+        :param goods_receipt_id: идентификатор приходной операции
+        :param agreement_ids: список идентификаторов договоров
+        :param tag_ids: список идентификаторов тегов
+        :param sbis_statuses: список статусов в системе СБИС
+        :param date_start: начальная дата диапазона поиска
+        :param date_end: конечная дата диапазона поиска
+        :param skip: количество операций, которое нужно пропустить
+        :param limit: максимальное количество операций в ответе
+        :return: сумма операций возврата поставщику
+        """
         payload = generate_payload(**locals())
+
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.SUM, payload)
 
-    async def get(self, id: int):
+    async def get(self, id: str | int):
+        """
+        Получение операции возврата поставщику
+
+        :param id: идентификатор операции
+        :return: операция возврата поставщику
+        """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.GET, payload)
 
-    async def create(self, creator_id: int, supplier_id: int,
-                     goods_receipt_id: int, agreement_id: int):
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.CREATE, payload, True)
+    async def create(self, creator_id: str | int, supplier_id: str | int,
+                     goods_receipt_id: str | int, agreement_id: str | int):
+        """
+        Создание операции возврата поставщику
 
-    async def update(self, id: int, number: str = None, fields: Union[List, str] = None):
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
+        :param creator_id: идентификатор сотрудника-создателя
+        :param supplier_id: идентификатор поставщика
+        :param goods_receipt_id: идентификатор приходной операции
+        :param agreement_id: идентификатор договора
+        :return: результат операции создания
+        """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.UPDATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.CREATE, payload, post=True)
 
-    async def delete(self, id: int):
+    async def update(self, id: str | int, number: str = None, fields: List | str = None):
+        """
+        Обновление операции возврата поставщику
+
+        :param id: идентификатор операции
+        :param number: номер операции
+        :param fields: дополнительные поля для вывода
+        :return: результат операции обновления
+        """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.DELETE, payload, True)
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.UPDATE, payload, post=True)
+
+    async def delete(self, id: str | int):
+        """
+        Удаление операции возврата поставщику
+
+        :param id: идентификатор операции
+        :return: результат операции удаления
+        """
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.DELETE, payload, post=True)
 
 
 class SupplierReturnsPositions:
@@ -130,309 +143,406 @@ class SupplierReturnsPositions:
         list_fields = ["item", "location", "operationInfo", "tags",
                        "goodsReceiptPos", "availableQuantity", "customerComplaintPos"]
 
-    async def get_list(self, op_id: int = None, status: int = None, type: int = None,
-                       goods_receipt_pos_ids: Union[List[str], str] = None,
-                       item_ids: Union[List[str], str] = None,
+    @check_limit
+    @process_ts_lists('goods_receipt_pos_ids', 'item_ids', 'goods_receipt_ids')
+    @process_ts_dates('date_start', 'date_end')
+    async def get_list(self, op_id: str | int = None, status: int = None, type: int = None,
+                       goods_receipt_pos_ids: List[str] | str = None,
+                       item_ids: List[str] | str = None,
                        supplier_id: str = None,
-                       goods_receipt_ids: Union[List[str], str] = None,
-                       date_start: Union[datetime, str] = None,
-                       date_end: Union[datetime, str] = None,
+                       goods_receipt_ids: List[str] | str = None,
+                       date_start: str | datetime = None,
+                       date_end: str | datetime = None,
                        skip: int = None,
                        limit: int = None,
-                       fields: Union[List[str], str] = None
-                       ):
-        if isinstance(goods_receipt_pos_ids, list):
-            goods_receipt_pos_ids = ','.join(map(str, goods_receipt_pos_ids))
-        if isinstance(item_ids, list):
-            item_ids = ','.join(map(str, item_ids))
-        if isinstance(goods_receipt_ids, list):
-            goods_receipt_ids = ','.join(map(str, goods_receipt_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
+                       fields: List[str] | str = None):
+        """
+        Получение списка позиций возврата поставщику
+
+        :param op_id: идентификатор операции
+        :param status: статус позиции
+        :param type: тип позиции
+        :param goods_receipt_pos_ids: список идентификаторов позиций прихода
+        :param item_ids: список идентификаторов партий
+        :param supplier_id: идентификатор поставщика
+        :param goods_receipt_ids: список идентификаторов операций прихода
+        :param date_start: начальная дата диапазона поиска
+        :param date_end: конечная дата диапазона поиска
+        :param skip: количество позиций, которое нужно пропустить
+        :param limit: максимальное количество позиций в ответе
+        :param fields: дополнительные поля для вывода
+        :return: список позиций возврата поставщику
+        """
         payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.LIST, payload)
 
-    async def get_sum(self, op_id: int = None, status: int = None, type: int = None,
-                      goods_receipt_pos_ids: Union[List[str], str] = None,
-                      item_ids: Union[List[str], str] = None,
+    @check_limit
+    @process_ts_lists('goods_receipt_pos_ids', 'item_ids', 'goods_receipt_ids')
+    @process_ts_dates('date_start', 'date_end')
+    async def get_sum(self, op_id: str | int = None, status: int = None, type: int = None,
+                      goods_receipt_pos_ids: List[str] | str = None,
+                      item_ids: List[str] | str = None,
                       supplier_id: str = None,
-                      goods_receipt_ids: Union[List[str], str] = None,
-                      date_start: Union[datetime, str] = None,
-                      date_end: Union[datetime, str] = None,
+                      goods_receipt_ids: List[str] | str = None,
+                      date_start: str | datetime = None,
+                      date_end: str | datetime = None,
                       skip: int = None,
                       limit: int = None,
-                      fields: Union[List[str], str] = None):
-        if isinstance(goods_receipt_pos_ids, list):
-            goods_receipt_pos_ids = ','.join(map(str, goods_receipt_pos_ids))
-        if isinstance(item_ids, list):
-            item_ids = ','.join(map(str, item_ids))
-        if isinstance(goods_receipt_ids, list):
-            goods_receipt_ids = ','.join(map(str, goods_receipt_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
+                      fields: List[str] | str = None):
+        """
+        Получение суммы позиций возврата поставщику
+
+        :param op_id: идентификатор операции
+        :param status: статус позиции
+        :param type: тип позиции
+        :param goods_receipt_pos_ids: список идентификаторов позиций прихода
+        :param item_ids: список идентификаторов партий
+        :param supplier_id: идентификатор поставщика
+        :param goods_receipt_ids: список идентификаторов операций прихода
+        :param date_start: начальная дата диапазона поиска
+        :param date_end: конечная дата диапазона поиска
+        :param skip: количество позиций, которое нужно пропустить
+        :param limit: максимальное количество позиций в ответе
+        :param fields: дополнительные поля для вывода
+        :return: сумма позиций возврата поставщику
+        """
         payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.SUM, payload)
 
     async def status(self):
+        """
+        Получение возможных статусов позиций возврата поставщику
+
+        :return: список статусов
+        """
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.STATUS)
 
-    async def get(self, id: int):
+    async def get(self, id: str | int):
+        """
+        Получение позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :return: позиция возврата поставщику
+        """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.GET, payload)
 
-    async def create_multiple(self, op_id: int, poses_data: Union[List[Dict], Dict]):
-        # TODO: PREPARE poses_data maybe we can use dataclass constructor
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CREATE_MULTIPLE, payload, True)
+    @ensure_list_params('poses_data')
+    async def create_multiple(self, op_id: str | int, poses_data: List[Dict] | Dict):
+        """
+        Создание позиций возврата поставщику
 
-    async def split(self, id: int, quantity: Union[int, float],
-                    fields: Union[List[str], str] = None):
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.SPLIT, payload, True)
-
-    async def update(self, id: int, type: int = None, loc_id: int = None, quantity: int = None,
-                     comment: str = None, fields: Union[List[str], str] = None):
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.UPDATE, payload, True)
-
-    async def change_status(self, id: int, status: int, fields: Union[List[str], str] = None):
-        if isinstance(fields, list):
-            fields = check_fields(fields, self._FieldsChecker.list_fields)
+        :param op_id: идентификатор операции
+        :param poses_data: список данных позиций или одна позиция
+        :return: результат операции создания
+        """
 
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CHANGE_STATUS, payload, True)
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CREATE_MULTIPLE, payload, post=True)
+
+    async def split(self, id: str | int, quantity: int | float,
+                    fields: List[str] | str = None):
+        """
+        Разделение позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :param quantity: количество для разделения
+        :param fields: дополнительные поля для вывода
+        :return: результат операции разделения
+        """
+        payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.SPLIT, payload, post=True)
+
+    async def update(self, id: str | int, type: int = None, loc_id: str | int = None,
+                     quantity: int | float = None, comment: str = None,
+                     fields: List[str] | str = None):
+        """
+        Обновление позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :param type: тип позиции
+        :param loc_id: идентификатор места хранения
+        :param quantity: количество
+        :param comment: комментарий
+        :param fields: дополнительные поля для вывода
+        :return: результат операции обновления
+        """
+        payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.UPDATE, payload, post=True)
+
+    async def change_status(self, id: str | int, status: int, fields: List[str] | str = None):
+        """
+        Изменение статуса позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :param status: новый статус
+        :param fields: дополнительные поля для вывода
+        :return: результат операции изменения статуса
+        """
+        payload = generate_payload(**locals())
+
+        if fields is not None:
+            payload["fields"] = check_fields(fields, self._FieldsChecker.list_fields)
+
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CHANGE_STATUS, payload, post=True)
 
 
 class SupplierReturnsPositionsAttr:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self, id: int, attr: Dict):
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.CREATE, payload, True)
+    async def create(self, id: str | int, attr: Dict):
+        """
+        Создание атрибута позиции возврата поставщику
 
-    async def update(self, id: int, old_name: str, new_name, description: str):
+        :param id: идентификатор позиции
+        :param attr: данные атрибута
+        :return: результат операции создания
+        """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.UPDATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.CREATE, payload, post=True)
 
-    async def delete(self, id: int, name: str):
+    async def update(self, id: str | int, old_name: str, new_name: str, description: str):
+        """
+        Обновление атрибута позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :param old_name: текущее имя атрибута
+        :param new_name: новое имя атрибута
+        :param description: описание атрибута
+        :return: результат операции обновления
+        """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.DELETE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.UPDATE, payload, post=True)
+
+    async def delete(self, id: str | int, name: str):
+        """
+        Удаление атрибута позиции возврата поставщику
+
+        :param id: идентификатор позиции
+        :param name: имя атрибута
+        :return: результат операции удаления
+        """
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.SupplierReturns.PositionsAttr.DELETE, payload, post=True)
+
+
+class SupplierReturns:
+    def __init__(self, base: BaseAbcp):
+        self._base = base
+        self._operations: SupplierReturnsOperations | None = None
+        self._positions: SupplierReturnsPositions | None = None
+        self._positions_attr: SupplierReturnsPositionsAttr | None = None
+
+    @property
+    def operations(self) -> SupplierReturnsOperations:
+        """
+        Получить доступ к операциям возврата поставщику
+
+        :return: Объект для работы с операциями возврата поставщику
+        :rtype: SupplierReturnsOperations
+        """
+        if self._operations is None:
+            self._operations = SupplierReturnsOperations(self._base)
+        return self._operations
+
+    @property
+    def positions(self) -> SupplierReturnsPositions:
+        """
+        Получить доступ к позициям возврата поставщику
+
+        :return: Объект для работы с позициями возврата поставщику
+        :rtype: SupplierReturnsPositions
+        """
+        if self._positions is None:
+            self._positions = SupplierReturnsPositions(self._base)
+        return self._positions
+
+    @property
+    def positions_attr(self) -> SupplierReturnsPositionsAttr:
+        """
+        Получить доступ к атрибутам позиций возврата поставщику
+
+        :return: Объект для работы с атрибутами позиций возврата поставщику
+        :rtype: SupplierReturnsPositionsAttr
+        """
+        if self._positions_attr is None:
+            self._positions_attr = SupplierReturnsPositionsAttr(self._base)
+        return self._positions_attr
 
 
 class OrderPickings:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def fast_get_out(self, client_id: Union[str, int], supplier_id: Union[str, int],
-                           positions: Union[List[Dict], Dict], distributor_id: Union[str, int] = None,
-                           route_id: Union[str, int] = None, location_id: Union[str, int] = None,
+    @process_ts_dates('date', 'execution_date')
+    @ensure_list_params('positions')
+    async def fast_get_out(self, client_id: str | int, supplier_id: str | int,
+                           positions: List[Dict] | Dict, distributor_id: str | int = None,
+                           route_id: str | int = None, location_id: str | int = None,
                            order_picking_reseller_data: Dict = None,
-                           number: Union[str, int] = None, date: Union[datetime, str] = None,
-                           execution_date: Union[datetime, str] = None
+                           number: str | int = None, date: str | datetime = None,
+                           execution_date: str | datetime = None
                            ):
         """
         Операция быстрого создания заказа, приёмки, расхода
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D1.8F_.D0.B1.D1.8B.D1.81.D1.82.D1.80.D0.BE.D0.B3.D0.BE_.D1.81.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D1.8F_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0.2C_.D0.BF.D1.80.D0.B8.D1.91.D0.BC.D0.BA.D0.B8.2C_.D1.80.D0.B0.D1.81.D1.85.D0.BE.D0.B4.D0.B0
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D1.8F_.D0.B1.D1.8B
+        .D1.81.D1.82.D1.80.D0.BE.D0.B3.D0.BE_.D1.81.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D1.8F_.D0.B7.D0.B0.D0.BA.D0
+        .B0.D0.B7.D0.B0.2C_.D0.BF.D1.80.D0.B8.D1.91.D0.BC.D0.BA.D0.B8.2C_.D1.80.D0.B0.D1.81.D1.85.D0.BE.D0.B4.D0.B0
 
 
-        :param client_id: Идентификатор клиента.
-        :param supplier_id: Идентификатор поставщика.
-        :param positions: Массив объектов позиций отгрузки. :obj:`dict` или :obj:`List[Dict]`
-        :param distributor_id: Идентификатор прайс-листа.
-        :param route_id: Идентификатор маршрута.
-        :param location_id: Идентификатор места хранения.
-        :param order_picking_reseller_data: Дополнительная информация в формате json, которая будет сохранена в операцию отгрузки
-        :param number: Номер отгрузки, если пустой, то будет заполнен автоматически
-        :param date: Дата отгрузки, если пустая, то будет заполнена автоматически. `str` в формате RFC3339 или datetime object
-        :param execution_date: [необязательный] Дата проведения/выполнения в формате RFC3339, если пустая, то будет заполнена из `date`
-        :return: None
+        :param client_id: Идентификатор клиента. :param supplier_id: Идентификатор поставщика. :param positions:
+        Массив объектов позиций отгрузки. :obj:`dict` или :obj:`List[Dict]` :param distributor_id: Идентификатор
+        прайс-листа. :param route_id: Идентификатор маршрута. :param location_id: Идентификатор места хранения.
+        :param order_picking_reseller_data: Дополнительная информация в формате json, которая будет сохранена в
+        операцию отгрузки :param number: Номер отгрузки, если пустой, то будет заполнен автоматически :param date:
+        Дата отгрузки, если пустая, то будет заполнена автоматически. `str` в формате RFC3339 или datetime object
+        :param execution_date: [необязательный] Дата проведения/выполнения в формате RFC3339, если пустая,
+        то будет заполнена из `date` :return: None
         """
-        if isinstance(date, datetime):
-            date = generate(date.replace(tzinfo=pytz.utc))
-        if isinstance(execution_date, datetime):
-            execution_date = generate(execution_date.replace(tzinfo=pytz.utc))
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, True)
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.FAST_GET_OUT, payload, post=True)
 
-    async def get(self, id: Union[int, str] = None, client_id: Union[int, str] = None, limit: int = None,
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('statuses', 'co_old_pos_ids')
+    async def get(self, id: str | int = None, client_id: str | int = None, limit: int = None,
                   skip: int = None,
-                  output: str = None, auto: str = None, creator_id: Union[int, str] = None,
-                  worker_id: Union[int, str] = None,
-                  agreement_id: Union[int, str] = None, statuses: Union[List, str, int] = None,
-                  number: int = None, date_start: Union[str, datetime] = None, date_end: Union[str, datetime] = None,
-                  co_old_pos_ids: Union[List, str, int] = None):
-        """
-        Получение списка операций отгрузка (расход)
+                  output: str = None, auto: str = None, creator_id: str | int = None,
+                  worker_id: str | int = None,
+                  agreement_id: str | int = None, statuses: List | str | int = None,
+                  number: int = None, date_start: str | datetime = None, date_end: str | datetime = None,
+                  co_old_pos_ids: List | str | int = None):
 
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B9_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0_.28.D1.80.D0.B0.D1.81.D1.85.D0.BE.D0.B4.29
-
-        :param id: Идентификатор операции. При использовании вернётся одна операция, а не список.
-        :param client_id: Идентификатор клиента.
-        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
-        :param skip: количество операций в ответе, которое нужно пропустить
-        :param output: формат вывода, флаг 'e' - загрузка дополнительной информации (договора, места хранения, доставки, упаковки), 't' - загрузка информации о тегах, 's' - суммы по позициям, кол-во позиций
-        :param auto: автоопределяемое поле (поиск по частичному номеру операции или идентификатору, если задано число)
-        :param creator_id: Идентификатор сотрудника-создателя
-        :param worker_id: Идентификатор сотрудника-исполнителя
-        :param agreement_id: Идентификатор договора
-        :param statuses: список статусов (1 - новая, 2 - сборка, 5 - готов к выдаче, 3 - завершена, 4 - аннулирована.)
-        :param number: номер операций
-        :param date_start: начальная дата диапазона поиска `str` в формате RFC3339 или datetime object
-        :param date_end: конечная  дата диапазона поиска `str` в формате RFC3339 или datetime object
-        :param co_old_pos_ids: список идентификаторов позиций старых заказов
-        :return:
-        """
-        # ISSUE: The "d" flag is not described in the documentation
-        if isinstance(output, str) and any(x not in ["e", "t", "s", "d"] for x in output):
-            raise AbcpWrongParameterError('Параметр "output" принимает флаги "e", "t", "s", "d"')
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
-        if isinstance(limit, str) and not limit.isdigit():
-            raise AbcpWrongParameterError('Параметр "limit" должен быть числом')
-        if statuses is not None and any(not (1 <= int(x) <= 5) for x in statuses):
-            raise AbcpWrongParameterError('Параметр "statuses" принимает значения от 1 до 5')
-        if isinstance(statuses, (int, str)):
-            statuses = [statuses]
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(co_old_pos_ids, (int, str)):
-            co_old_pos_ids = [co_old_pos_ids]
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.GET, payload, True)
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.GET, payload, post=True)
 
-    async def get_goods(self, op_id: Union[str, int], limit: int = None, skip: int = None,
-                        output: str = None, product_id: Union[int, str] = None, item_id: Union[int, str] = None,
-                        ignore_canceled: Union[int, bool] = None):
-        """
-        Получение списка позиций товаров операции отгрузки
+    @check_limit
+    async def get_goods(self, op_id: str | int, limit: int = None, skip: int = None,
+                        output: str = None, product_id: str | int = None, item_id: str | int = None,
+                        ignore_canceled: int | bool = None):
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8
-
-
-        :param op_id: Идентификатор операции
-        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
-        :param skip: количество операций в ответе, которое нужно пропустить
-        :param output: формат вывода, 'e' - загрузка дополнительной информации (справочные товары), 'o' - дополнительно вернуть инфу об операции
-        :param product_id: Идентификатор товара справочника
-        :param item_id:  идентификатор партии товара
-        :param ignore_canceled: не возвращать позиции аннулированных операций
-        :return:
-        """
         if isinstance(op_id, str) and not op_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "op_id" должен быть числом')
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
+            raise AbcpWrongParameterError("op_id", op_id, "должен быть числом или строкой, содержащей число")
+
         if isinstance(ignore_canceled, int):
             if ignore_canceled == 0:
                 ignore_canceled = None
             elif ignore_canceled != 1:
                 raise AbcpWrongParameterError(
-                    'В параметр "ignore_canceled" передеаются значения 1 или True, 0 или False (В данном случае можно не указывать) ')
+                    "ignore_canceled", ignore_canceled, "должен быть 1 (True) или 0 (False)")
         if isinstance(ignore_canceled, bool):
             if ignore_canceled:
                 ignore_canceled = int(ignore_canceled)
             else:
                 ignore_canceled = None
         if isinstance(output, str) and any(x not in ["e", "o"] for x in output):
-            raise AbcpWrongParameterError(f'Параметр "output" принимает флаги "e", "o"')
+            raise AbcpWrongParameterError("output", output, 'должен содержать только флаги "e", "o"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.OrderPickings.GET_GOODS, payload)
 
-    async def create_by_old_pos(self, agreement_id: Union[str, int], account_details_id: Union[str, int],
-                                loc_id: Union[str, int],
-                                pp_ids: Union[List, str, int], op_id: Union[int, str] = None,
-                                status_id: Union[int, str] = None,
-                                done_right_away: Union[int, bool] = None, output: str = None):
+    @process_ts_dates('create_date')
+    @process_ts_lists('pp_ids')
+    async def create_by_old_pos(self, agreement_id: str | int, account_details_id: str | int,
+                                loc_id: str | int,
+                                pp_ids: List | str | int,
+                                create_date: str | datetime = None, op_id: str | int = None,
+                                status_id: str | int = None,
+                                done_right_away: int | bool = None, output: str = None):
         """
-        Создание операции отгрузки по клиентскому заказу
+        Создаёт новую операцию отгрузки на основе созданных позиций старого заказа. Source:
+        https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1
+        .80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8_.D0.BD.D0.B0_.D0.BE.D1.81.D0.BD
+        .D0.BE.D0.B2.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D1.81.D1.82.D0.B0.D1.80.D0.BE.D0.B3.D0.BE_.D0
+        .B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D1.81.D0.BA.D0.BE.D0.BC.D1.83_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D1.83
-
-        :param op_id: Идентификатор операции для добавления позиций. Если не указан - будет создана новая операция отгрузки.
-        :param agreement_id: Идентификатор договора
+        :param agreement_id: Идентификатор договора клиента
         :param account_details_id: Идентификатор реквизитов магазина
-        :param loc_id: Идентификатор места хранения
-        :param pp_ids: список идентификаторов позиций старых заказов для добавления в отгрузку
-        :param status_id: 	[обязательный при указании флага doneRightAway] статус позиции заказа, в который будут переведены указанные позиции в случае успешного добавления в операцию отгрузки. При указании флага doneRightAway статус должен иметь признак списания.
-        :param done_right_away: 1 - сразу завершить операцию после добавления позиций.
-        :param output: расширенный формат вывода. 'e' - загрузка дополнительной информации (договора, реквизиты, клиент), 't' - загрузка информации о тегах, 's' - загрузка суммарной информации о позициях
-        :return:
+        :param loc_id: Идентификатор места хранения [необязательный], если не указано,
+         то используется основное место хранения
+        :param pp_ids: список идентификаторов позиций старого заказа
+        :param create_date: дата создания, если не указана, то используется Текущая
+        :param op_id: идентификатор созданной операции [обязательный] - Если op_id заполнен,
+        то система будет работать в режиме обновления существующей операции
+        (передача позиций без автосоздания операции, с добавлением к существующей)
+        :param status_id: идентификатор статуса новым позициям операции [необязательный], если не указан,
+        то используется id с номером 1
+        :param done_right_away: флаг автоматического завершения операции 1 или 0 [необязательный параметр].
+        При значении 1 позиции операции будут автоматически завершены, если это возможно.
+        :param output: формат вывода, флаг 'e' - загрузка дополнительной информации
+            (договора, места хранения, доставки, упаковки), 't' - загрузка информации о тегах, 's' - суммы по позициям,
+             кол-во позиций, 'r' - загрузка пользовательских дополнительных данных ("reseller_data")
+        :return: Created OrderPicking id
         """
         if isinstance(done_right_away, bool):
             done_right_away = int(done_right_away)
-        if status_id is None and done_right_away == 1:
-            raise AbcpParameterRequired(
-                'При указании параметра done_right_away, status_id является обязательным и должен иметь признак списания')
-        if isinstance(pp_ids, (int, str)):
-            pp_ids = [pp_ids]
-        if isinstance(output, str) and any(x not in ["e", "t", "s"] for x in output):
-            raise AbcpWrongParameterError('Параметр "output" принимает флаги "e", "t", "s"')
+
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, True)
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.CREATE_BY_OLD_POS, payload, post=True)
 
-    async def change_status(self, id: int, operation_status_id: Union[str, int],
-                            positions_status_id: Union[int, str] = None):
+    async def change_status(self, id: int, operation_status_id: str | int,
+                            positions_status_id: str | int = None):
         """
-        Изменение статуса операции отгрузка
+        Меняет статус операции отгрузки и, при необходимости, дочерних позиций этой операции.
 
-        Source:  https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81
+        .D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1
+        .80.D1.83.D0.B7.D0.BA.D0.B8_.D0.B8.2C_.D0.BF.D1.80.D0.B8_.D0.BD.D0.B5.D0.BE.D0.B1.D1.85.D0.BE.D0.B4.D0.B8.D0
+        .BC.D0.BE.D1.81.D1.82.D0.B8.2C_.D0.B4.D0.BE.D1.87.D0.B5.D1.80.D0.BD.D0.B8.D1.85_.D0.BF.D0.BE.D0.B7.D0.B8.D1
+        .86.D0.B8.D0.B9_.D1.8D.D1.82.D0.BE.D0.B9_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8
 
-        :param id: [обязательный] идентификатор операции отгрузка.
-        :param operation_status_id: [обязательный] статус в который требуется перевести отгрузку: 1 - новая, 2 - сборка, 5 - готов к выдаче, 3 - завершена, 4 - аннулирована.
-        :param positions_status_id: [обязательный при смене статуса операции с 5 на 3 и с 3 на 5] идентификатор статуса в который требуется перевести связанные с отгрузкой позиции заказов. При переводе из статуса "готов к выдаче" в статус "завершена" требуется указать статус с признаком "списание товара на складе". При переводе из статуса "завершена" в статус "готов к выдаче" требуется указать статус с признаком "бронирование товара".
-        :return:
+        :param id: Идентификатор операции отгрузки, которой нужно изменить статус
+        :param operation_status_id: Идентификатор нового статуса операции
+        :param positions_status_id: Идентификатор нового статуса для всех позиций операции.
+        :return: OrderPicking
         """
-        if operation_status_id > 5 or operation_status_id < 1:
-            raise AbcpWrongParameterError('Параметр "operation_status_id" может принимать значения от 1 до 5')
-        if positions_status_id is None and operation_status_id in (3, 5):
-            raise AbcpWrongParameterError(
-                f'Параметр "positions_status_id" является обязательным при смене статуса операции на {operation_status_id}')
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, True)
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.CHANGE_STATUS, payload, post=True)
 
-    async def update(self, id: int, number: Union[str, int] = None, creator_id: Union[int, str] = None,
-                     worker_id: Union[int, str] = None,
-                     client_id: Union[int, str] = None,
-                     agreement_id: Union[int, str] = None, account_details_id: Union[int, str] = None,
-                     loc_id: Union[int, str] = None,
+    async def update(self, id: int, number: str | int = None, creator_id: str | int = None,
+                     worker_id: str | int = None,
+                     client_id: str | int = None,
+                     agreement_id: str | int = None, account_details_id: str | int = None,
+                     loc_id: str | int = None,
                      reseller_data: Dict = None):
         """
-        Изменение операции отгрузка
+        Обновление общей информации об операции отгрузка.
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_
+        .D0.BE.D0.B1.D1.89.D0.B5.D0.B9_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D0.B1_.D0
+        .BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0
 
-        :param id: Идентификатор операции отгрузки.
-        :param number: номер операции
+        :param id: Идентификатор операции отгрузки
+        :param number: Номер операции отгрузки
         :param creator_id: Идентификатор сотрудника-создателя
         :param worker_id: Идентификатор сотрудника-исполнителя
         :param client_id: Идентификатор клиента
-        :param agreement_id: Идентификатор договора
+        :param agreement_id: Идентификатор договора клиента
         :param account_details_id: Идентификатор реквизитов магазина
-        :param loc_id: Идентификатор места хранения
-        :param reseller_data: Дополнительная информация в формате dict, которая будет сохранена в операцию отгрузки.
-        :return:
+        :param loc_id: Идентификатор места хранения [необязательный], если не указано,
+         то используется основное место хранения
+        :param reseller_data: Дополнительная информация в формате json, которая будет сохранена в операцию отгрузки
+        :return: OrderPicking
         """
-        payload = generate_payload(exclude=['reseller_data'], **locals())
-        return await self._base.request(_Methods.TsAdmin.OrderPickings.UPDATE, payload, True)
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.OrderPickings.UPDATE, payload, post=True)
 
     async def delete(self, id: int):
         payload = generate_payload(**locals())
@@ -450,19 +560,24 @@ class CustomerComplaints:
                                 "supplierReturnPos"]
         update_fields = ["orderPicking", "agreement", "posInfo"]
 
-    async def get(self, id: int = None, client_id: Union[int, str] = None, creator_id: Union[int, str] = None,
-                  expert_id: Union[int, str] = None,
-                  auto: Union[int, str] = None,
-                  number: int = None, order_picking_id: Union[int, str] = None,
-                  position_statuses: Union[List, int] = None,
-                  position_type: int = None, position_auto: Union[str, int] = None,
-                  date_start: Union[datetime, str] = None,
-                  date_end: Union[datetime, str] = None,
-                  skip: int = None, limit: int = None, fields: Union[List, str] = None):
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('position_statuses')
+    async def get(self, id: int = None, client_id: str | int = None, creator_id: str | int = None,
+                  expert_id: str | int = None,
+                  auto: str | int = None,
+                  number: int = None, order_picking_id: str | int = None,
+                  position_statuses: List | int = None,
+                  position_type: int = None, position_auto: str | int = None,
+                  date_start: str | datetime = None,
+                  date_end: str | datetime = None,
+                  skip: int = None, limit: int = None, fields: List | str = None):
         """
         Получение списка возвратов покупателя
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.BE.D0.B2_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81
+        .D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.BE.D0.B2_.D0.BF.D0.BE.D0.BA.D1
+        .83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
         :param id: Идентификатор операции. При использовании вернётся одна операция, а не список.
         :param client_id: Идентификатор клиента для фильтра операций.
@@ -481,36 +596,35 @@ class CustomerComplaints:
         :param fields:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
         if isinstance(position_type, int) and (position_type < 1 or position_type > 3):
-            raise AbcpWrongParameterError('position_type parameter must be between 1 and 3')
-        if isinstance(position_statuses, list):
-            position_statuses = ','.join(map(str, position_statuses))
+            raise AbcpWrongParameterError("position_type", position_type, "должен быть в диапазоне от 1 до 3")
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.get_fields)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.GET, payload)
 
-    async def get_positions(self, op_id: Union[int, str] = None, order_picking_good_id: Union[int, str] = None,
-                            order_picking_good_ids: Union[List, int] = None,
-                            picking_ids: Union[List, int] = None,
-                            old_co_position_ids: Union[List, int] = None,
-                            client_id: Union[str, int] = None, old_item_id: Union[int, str] = None,
-                            item_id: Union[int, str] = None,
-                            tag_ids: Union[List, int] = None,
-                            loc_id: Union[int, str] = None, status: int = None, type: int = None,
-                            date_start: Union[datetime, str] = None,
-                            date_end: Union[datetime, str] = None,
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('tag_ids', 'picking_ids', 'old_co_position_ids', 'order_picking_good_ids')
+    async def get_positions(self, op_id: str | int = None, order_picking_good_id: str | int = None,
+                            order_picking_good_ids: List | int = None,
+                            picking_ids: List | int = None,
+                            old_co_position_ids: List | int = None,
+                            client_id: str | int = None, old_item_id: str | int = None,
+                            item_id: str | int = None,
+                            tag_ids: List | int = None,
+                            loc_id: str | int = None, status: int = None, type: int = None,
+                            date_start: str | datetime = None,
+                            date_end: str | datetime = None,
                             skip: int = None, limit: int = None,
                             sort: str = None, output: str = None,
-                            fields: Union[List, str] = None):
+                            fields: List | str = None):
         """
         Получение списка позиций операции возврата покупателя
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81
+        .D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.BE.D0.BF.D0.B5.D1.80.D0.B0.D1
+        .86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82
+        .D0.B5.D0.BB.D1.8F
 
         :param op_id: Идентификатор операции.
         :param order_picking_good_id: Идентификатор позиции расхода по выдаче клиенту.
@@ -534,51 +648,40 @@ class CustomerComplaints:
         :return:
         """
         if isinstance(sort, str) and sort not in ('status', 'createDate'):
-            raise AbcpWrongParameterError('Параметр "sort" может принимать одно из значений: "status" или "createDate"')
+            raise AbcpWrongParameterError("sort", sort, 'может принимать значения "status" или "createDate"')
 
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(picking_ids, list):
-            picking_ids = ','.join(map(str, picking_ids))
-        if isinstance(order_picking_good_ids, list):
-            order_picking_good_ids = ','.join(map(str, order_picking_good_ids))
-        if isinstance(old_co_position_ids, list):
-            old_co_position_ids = ','.join(map(str, old_co_position_ids))
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
         if isinstance(status, int) and not 1 <= status <= 8:
-            raise AbcpWrongParameterError('Параметр "status" должен быть в диапазоне от 1 до 8')
+            raise AbcpWrongParameterError("status", status, "должен быть в диапазоне от 1 до 8")
         if isinstance(type, int) and not 1 <= type <= 3:
-            raise AbcpWrongParameterError('Параметр "type" должен быть в диапазоне от 1 до 3')
+            raise AbcpWrongParameterError("type", type, "должен быть в диапазоне от 1 до 3")
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.get_positions_fields)
         payload = generate_payload(exclude=['old_item_id'], **locals())
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
 
-    async def create(self, order_picking_id: Union[str, int], positions: Union[List[Dict], Dict]):
+    @ensure_list_params('positions')
+    async def create(self, order_picking_id: str | int, positions: List[Dict] | Dict):
         """
         Создание возврата покупателя
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B2.D0.BE
+        .D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
         :param order_picking_id: Идентификатор операции отгрузки из которой возвращается товар
         :param positions: Список позиций.
         :return:
         """
-        # Прощай маржинальность :(
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(exclude=['positions'], **locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE, payload, post=True)
 
-    async def create_position(self, op_id: Union[str, int], order_picking_position_id: Union[str, int], quantity: int,
+    async def create_position(self, op_id: str | int, order_picking_position_id: str | int, quantity: int,
                               type: int, comment: str):
         """
         Создание позиции возврата покупателя
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE
+        .D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BE.D0.BA.D1.83.D0
+        .BF.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
         :param op_id: Идентификатор операции возврата
         :param order_picking_position_id: Идентификатор позиции отгрузки
@@ -588,11 +691,13 @@ class CustomerComplaints:
         :return:
         """
         if not 1 <= type <= 3:
-            raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
+            raise AbcpWrongParameterError("type", type, "должен быть в диапазоне от 1 до 3")
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION, payload,
+                                        post=True)
 
-    async def create_position_multiple(self, positions: Union[List[Dict], Dict],
+    @ensure_list_params('positions')
+    async def create_position_multiple(self, positions: List[Dict] | Dict,
                                        customer_complaint_id: int,
                                        customer_complaint: str,
                                        custom_complaint_file: str = None):
@@ -601,10 +706,9 @@ class CustomerComplaints:
         custom_complaint_file = f"{encoded_string}"
         del ccf
         del encoded_string
-        if isinstance(positions, dict):
-            positions = [positions]
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CREATE_POSITION_MULTIPLE, payload,
+                                        post=True)
 
     async def update_position(self, id: int, quantity: int = None, type: int = None, comment: str = None):
         """
@@ -619,11 +723,12 @@ class CustomerComplaints:
         :return:
         """
         if all(x is None for x in [quantity, type, comment]):
-            raise AbcpParameterRequired('Один из параметров [quantity, type, comment] должен быть указан')
+            raise AbcpParameterRequired('Необходим хотя бы один из параметров: quantity, type, comment')
         if isinstance(type, int) and not 1 <= type <= 3:
-            raise AbcpWrongParameterError('Параметр "type" может принимать значения от 1 до 3')
+            raise AbcpWrongParameterError("type", type, "должен быть в диапазоне от 1 до 3")
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_POSITION, payload,
+                                        post=True)
 
     async def change_position_status(self, id: int, status: int):
         """
@@ -636,13 +741,14 @@ class CustomerComplaints:
         :return:
         """
         if not (1 <= status <= 8):
-            raise AbcpWrongParameterError('Параметр "status" может принимать значения от 1 до 8')
+            raise AbcpWrongParameterError("status", status, "должен быть в диапазоне от 1 до 8")
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.CHANGE_STATUS_POSITION, payload,
+                                        post=True)
 
-    async def update(self, id: Union[str, int], number: int = None, expert_id: Union[int, str] = None,
+    async def update(self, id: str | int, number: int = None, expert_id: str | int = None,
                      custom_complaint_file: str = '',
-                     fields: Union[List, str] = None):
+                     fields: List | str = None):
         """
 
         :param id: [обязательный] идентификатор операции возврата покупателя
@@ -651,54 +757,45 @@ class CustomerComplaints:
         :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Если файл не передан, то будет удалён.
         :param fields: Расширенный формат вывода. Набор из следующих строк через запятую:
                         "orderPicking" - операция отгрузки, по которой создан возврат
-                        "agreement" - договор, по которому выполнена отгрузка
-                        "posInfo" - загрузка суммарной информации о позициях
         :return:
         """
-        if os.path.isfile(custom_complaint_file):
-            with open(custom_complaint_file, "rb") as ccf:
-                encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
-            custom_complaint_file = f"{encoded_string}"
-            del ccf
-            del encoded_string
-        else:
-            raise TypeError('Неверно передан путь к файлу')
-        if all(x is None for x in [number, expert_id]):
-            raise AbcpParameterRequired('Один из параметров "number" или "expert_id" должен быть указан')
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.update_fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE, payload, post=True)
 
-    async def update_custom_file(self, id: Union[int, str], custom_complaint_file: str = '',
-                                 fields: Union[List, str] = None):
+    async def update_custom_file(self, id: str | int, custom_complaint_file: str = '',
+                                 fields: List | str = None):
         """
+        Обновление файла акта о браке.
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.84.D0.B0.D0.B9.D0.BB.D0.B0_.D0.B0.D0.BA.D1.82.D0.B0_.D0.BE_.D0.B1.D1.80.D0.B0.D0.BA.D0.B5
 
-        :param id: идентификатор операции возврата покупателя
+        :param id: [обязательный] идентификатор операции возврата покупателя
         :param custom_complaint_file: (Передавать путь к файлу) форма "Заявка на возврат", файл, передавать строкой в формате base64. Если файл не передан, то будет удалён.
-        :param fields: [необязательный] Расширенный формат вывода
+        :param fields: Расширенный формат вывода. Набор из следующих строк через запятую:
+                        "orderPicking" - операция отгрузки, по которой создан возврат
         :return:
         """
-        if os.path.isfile(custom_complaint_file):
+        try:
             with open(custom_complaint_file, "rb") as ccf:
                 encoded_string = base64.b64encode(ccf.read()).decode("utf-8")
-
             custom_complaint_file = f"{encoded_string}"
             del ccf
             del encoded_string
-        else:
-            raise TypeError('Неверно передан путь к файлу')
+        except FileNotFoundError:
+            pass
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.update_fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_CUSTOM_FILE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE_CUSTOM_FILE, payload,
+                                        post=True)
 
 
 class DistributorOwners:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def distributor_owners(self, distributor_id: Union[str, int]):
+    async def distributor_owners(self, distributor_id: str | int):
         """
         Получение привязанного контрагента
 
@@ -719,253 +816,210 @@ class Orders:
     class _FieldsChecker:
         fields = ["deliveries", "agreement", "tags", "posInfo", "amounts"]
 
-    async def create(self, client_id: Union[str, int], number: Union[int, str] = None,
-                     agreement_id: Union[int, str] = None,
-                     create_time: Union[datetime, str] = None, manager_id: Union[int, str] = None,
-                     fields: Union[List, str] = None):
+    @process_ts_dates('create_time')
+    async def create(self, client_id: str | int, number: str | int = None,
+                     agreement_id: str | int = None,
+                     create_time: str | datetime = None, manager_id: str | int = None,
+                     fields: List | str = None):
         """
         Создание заказа
 
         Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
 
         :param client_id: Идентификатор клиента
-        :param number: номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
-        :param agreement_id: Идентификатор соглашения (договора)
-        :param create_time: дата и время создания заказа, если не указан, заполняется автоматически, не может быть из будущего. `str` в формате RFC3339 или datetime object
-        :param manager_id: Идентификатор сотрудника, ответственного за заказ
-        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :param number: Номер заказа
+        :param agreement_id: Идентификатор договора
+        :param create_time: Время создания. `str` в формате RFC3339 или datetime object
+        :param manager_id: Идентификатор менеджера
+        :param fields: расширенный формат вывода
         :return:
         """
-        if isinstance(create_time, datetime):
-            create_time = generate(create_time.replace(tzinfo=pytz.utc))
+
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
-
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.CREATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.Orders.CREATE, payload, post=True)
 
-    async def create_by_cart(self, client_id: Union[str, int], agreement_id: Union[str, int],
-                             positions: Union[List, int, str],
+    @process_ts_dates('create_time', 'delivery_start_time', 'delivery_end_time')
+    @process_ts_lists('positions')
+    async def create_by_cart(self, client_id: str | int, agreement_id: str | int,
+                             positions: List | int | str,
                              delivery_address: str, delivery_person: str, delivery_contact: str,
-                             number: Union[int, str] = None,
-                             create_time: Union[datetime, str] = None, manager_id: Union[int, str] = None,
-                             delivery_method_id: Union[int, str] = None,
+                             number: str | int = None,
+                             create_time: str | datetime = None, manager_id: str | int = None,
+                             delivery_method_id: str | int = None,
                              delivery_comment: str = None, delivery_employee_person: str = None,
                              delivery_employee_contact: str = None,
                              delivery_reseller_comment: str = None,
-                             delivery_start_time: Union[datetime, str] = None,
-                             delivery_end_time: Union[datetime, str] = None,
-                             locale: str = None, fields: Union[List, str] = None
+                             delivery_start_time: str | datetime = None,
+                             delivery_end_time: str | datetime = None,
+                             locale: str = None, fields: List | str = None
                              ):
         """
-        Создание заказа по позициям корзины
+        Создание заказа из корзины
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0_.D0.BF.D0.BE_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D1.8F.D0.BC_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0_.D0.B8.D0.B7_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
 
         :param client_id: Идентификатор клиента
-        :param agreement_id: Идентификатор соглашения (договора)
-        :param positions: список ID позиций корзины
-        :param delivery_address: адрес доставки
-        :param delivery_person: контактное лицо
-        :param delivery_contact: контакт(телефон) получателя
-        :param number: номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
-        :param create_time: дата и время создания заказа, если не указан, заполняется автоматически, не может быть из будущего. `str` в формате RFC3339 или datetime object
-        :param manager_id: Идентификатор сотрудника, ответственного за заказ
-        :param delivery_method_id: 	ID способа доставки
-        :param delivery_comment: комментарий
-        :param delivery_employee_person: контактный сотрудник
-        :param delivery_employee_contact: контакт сотрудника
-        :param delivery_reseller_comment: комментарий от магазина
-        :param delivery_start_time: время начала интервала доставки
-        :param delivery_end_time: время конца интервала доставки
-        :param locale: локаль для сохранения описаний товаров ru_RU
-        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :param agreement_id: Идентификатор договора
+        :param positions: Список идентификаторов позиций корзины, которые следует оформить в заказ. Если не указан, берутся все позиции корзины, принадлежащие текущему соглашению.
+        :param delivery_address: Адрес доставки
+        :param delivery_person: ФИО контактного лица
+        :param delivery_contact: Телефон контактного лица
+        :param number: Номер заказа. Если не указан, будет создан автоматически.
+        :param create_time: Дата и время создания заказа. Если не указаны, будут взяты текущие дата и время. `str` в формате RFC3339 или datetime object
+        :param manager_id: Идентификатор менеджера
+        :param delivery_method_id: Идентификатор способа доставки
+        :param delivery_comment: Комментарий к доставке
+        :param delivery_employee_person: ФИО сотрудника доставки
+        :param delivery_employee_contact: Телефон сотрудника доставки
+        :param delivery_reseller_comment: Дополнительный комментарий
+        :param delivery_start_time: Дата и время начала периода доставки. `str` в формате RFC3339 или datetime object
+        :param delivery_end_time: Дата и время конца периода доставки. `str` в формате RFC3339 или datetime object
+        :param locale: Локаль. Задается в формате language[_territory], например, ru_RU. По умолчанию используется локаль сайта.
+        :param fields: расширенный формат вывода
         :return:
         """
+
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
-        if isinstance(create_time, datetime):
-            create_time = generate(create_time.replace(tzinfo=pytz.utc))
-        if isinstance(delivery_start_time, datetime):
-            delivery_start_time = generate(delivery_start_time.replace(tzinfo=pytz.utc))
-        if isinstance(delivery_end_time, datetime):
-            delivery_end_time = generate(delivery_end_time.replace(tzinfo=pytz.utc))
-        if isinstance(positions, (int, str)):
-            positions = [positions]
-        payload = generate_payload(
-            exclude=['delivery_address', 'delivery_person', 'delivery_contact',
-                     'delivery_comment', 'delivery_method_id', 'delivery_employee_person',
-                     'delivery_employee_contact', 'delivery_reseller_comment', 'delivery_start_time',
-                     'delivery_end_time'],
-            **locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.CREATE_BY_CART, payload, True)
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.Orders.CREATE_BY_CART, payload, post=True)
 
+    @check_limit
+    @process_ts_lists('order_ids', 'product_ids', 'position_statuses')
+    @process_ts_dates('date_start', 'date_end',
+                      'update_date_start', 'update_date_end',
+                      'deadline_date_start', 'deadline_date_end')
     async def orders_list(self, number: int = None,
-                          agreement_id: Union[int, str] = None,
-                          manager_id: Union[int, str] = None,
-                          delivery_id: Union[int, str] = None,
+                          agreement_id: str | int = None,
+                          manager_id: str | int = None,
+                          delivery_id: str | int = None,
                           message: str = None,
-                          date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
-                          update_date_start: Union[datetime, str] = None, update_date_end: Union[datetime, str] = None,
-                          deadline_date_start: Union[datetime, str] = None,
-                          deadline_date_end: Union[datetime, str] = None,
-                          order_ids: Union[List, int] = None,
-                          product_ids: Union[List, int] = None,
-                          position_statuses: Union[List, int] = None,
+                          date_start: str | datetime = None, date_end: str | datetime = None,
+                          update_date_start: str | datetime = None, update_date_end: str | datetime = None,
+                          deadline_date_start: str | datetime = None,
+                          deadline_date_end: str | datetime = None,
+                          order_ids: List | int = None,
+                          product_ids: List | int = None,
+                          position_statuses: List | int = None,
                           skip: int = None,
                           limit: int = None):
         """
-        Получение списка заказов
+        Получение списка заказов клиентов
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
-
-        :param number: номер заказа
-        :param agreement_id: Идентификатор соглашения
-        :param manager_id: Идентификатор менеджера
-        :param delivery_id: Идентификатор доставки
-        :param message: комментарий к заказу или позиции заказа
-        :param date_start: начальная дата диапазона поиска по дате создания заказа(обязательное, если задан dateEnd) `str` в формате RFC3339 или datetime object
-        :param date_end: конечная дата диапазона поиска по дате создания заказа(обязательное, если задан dateStart) `str` в формате RFC3339 или datetime object
-        :param update_date_start: начальная дата диапазона поиска по дате обновления заказа `str` в формате RFC3339 или datetime object
-        :param update_date_end: конечная дата диапазона поиска по дате обновления заказа `str` в формате RFC3339 или datetime object
-        :param deadline_date_start: начальная дата диапазона поиска по дате ожидаемой поставки позиций заказа `str` в формате RFC3339 или datetime object
-        :param deadline_date_end: конечная дата диапазона поиска по дате ожидаемой поставки позиций заказа `str` в формате RFC3339 или datetime object
-        :param order_ids: Идентификаторы заказов через запятую
-        :param product_ids: Идентификаторы карточек товаров через запятую
-        :param position_statuses: статусы позиций заказов через запятую
-        :param skip: количество заказов в ответе, которое нужно пропустить
-        :param limit: максимальное количество заказов, которое должно быть возвращено в ответе
-        :return:
+        :param number: Номер заказа
+        :param agreement_id: Идентификатор договора для фильтрации. Если не указан, будут возвращены заказы по всем договорам
+        :param manager_id: Идентификатор менеджера. Если не указан и менеджер не присвоен, будут возвращены заказы без менеджера
+        :param delivery_id: Идентификатор способа доставки для фильтрации. Если не указан, будут возвращены заказы по всем способам доставки
+        :param message: Текстовый поиск по номеру заказа или комментарию
+        :param date_start: Минимальная дата создания заказа. `str` в формате RFC3339 или datetime object
+        :param date_end: Максимальная дата создания заказа. `str` в формате RFC3339 или datetime object
+        :param update_date_start: Минимальная дата изменения заказа. `str` в формате RFC3339 или datetime object
+        :param update_date_end: Максимальная дата изменения заказа. `str` в формате RFC3339 или datetime object
+        :param deadline_date_start: Минимальная дата поставки. `str` в формате RFC3339 или datetime object
+        :param deadline_date_end: Максимальная дата поставки заказа. `str` в формате RFC3339 или datetime object
+        :param order_ids: Идентификаторы заказов для фильтрации
+        :param product_ids: Идентификаторы товаров для фильтрации
+        :param position_statuses: Статусы заказа для фильтрации
+        :param skip: Количество пропускаемых записей
+        :param limit: Количество получаемых записей
+        :return: List[Order]
         """
-        if isinstance(position_statuses, list):
-            position_statuses = ','.join(map(str, position_statuses))
-        if isinstance(product_ids, list):
-            product_ids = ','.join(map(str, product_ids))
-        if isinstance(order_ids, list):
-            order_ids = ','.join(map(str, order_ids))
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_start, datetime):
-            update_date_start = generate(update_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(update_date_end, datetime):
-            update_date_end = generate(update_date_end.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_start, datetime):
-            deadline_date_start = generate(deadline_date_start.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_date_end, datetime):
-            deadline_date_end = generate(deadline_date_end.replace(tzinfo=pytz.utc))
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.LIST, payload)
 
-    async def get(self, order_id: Union[str, int]):
+    async def get(self, order_id: str | int):
         """
-        Получение одного заказа
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.B4.D0.BD.D0.BE.D0.B3.D0.BE_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
-
-        :param order_id: Идентификатор заказа.
+        Получение конкретного заказа по ID
+        :param order_id: Идентификатор заказа
         :return:
         """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.GET, payload)
 
-    async def refuse(self, order_id: Union[str, int]):
+    async def refuse(self, order_id: str | int):
         """
         Отказ от заказа
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D1.82.D0.BA.D0.B0.D0.B7_.D0.BE.D1.82_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
-
-        :param order_id: Идентификатор заказа.
+        Меняет статус заказа на "Отказ". Товар при этом не списывается со склада.
+        :param order_id: Идентификатор заказа
         :return:
         """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.REFUSE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.Orders.REFUSE, payload, post=True)
 
-    async def update(self, order_id: Union[str, int], number: Union[str, int] = None, client_id: Union[int, str] = None,
-                     agreement_id: Union[int, str] = None,
-                     manager_id: Union[int, str] = None, fields: Union[List, str] = None):
+    async def update(self, order_id: str | int, number: str | int = None, client_id: str | int = None,
+                     agreement_id: str | int = None,
+                     manager_id: str | int = None, fields: List | str = None):
         """
-        Обновление заказа
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
-
-        :param order_id: числовой идентификатор заказа
-        :param number: 	номер заказа клиента, если не указан, то сформируется согласно шаблону номеров заказов, если указан, то проверяется на уникальность
+        Изменение заказа клиента
+        :param order_id: Идентификатор заказа
+        :param number: Номер заказа
         :param client_id: Идентификатор клиента
-        :param agreement_id: Идентификатор соглашения (договора)
-        :param manager_id: Идентификатор сотрудника, ответственного за заказ
-        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        :param agreement_id: Идентификатор договора
+        :param manager_id: Идентификатор менеджера
+        :param fields: расширенный формат вывода
+        :return:
+        """
+        if all(x is None for x in [number, client_id, agreement_id, manager_id]):
+            raise AbcpParameterRequired(
+                'Необходим хотя бы один из параметров: number, client_id, agreement_id, manager_id')
+        if fields is not None:
+            fields = check_fields(fields, self._FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.Orders.UPDATE, payload, post=True)
+
+    @process_ts_lists('merge_orders_ids')
+    async def merge(self, main_order_id: str | int, merge_orders_ids: List | str | int = None,
+                    fields: List | str = None):
+        """
+        Объединение нескольких заказов в один
+        :param main_order_id: Идентификатор основного заказа
+        :param merge_orders_ids: Идентификаторы заказов, которые объединяются с main_order_id
+        :param fields: расширенный формат вывода
         :return:
         """
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.UPDATE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.Orders.MERGE, payload, post=True)
 
-    async def merge(self, main_order_id: Union[str, int], merge_orders_ids: Union[List, str, int] = None,
-                    fields: Union[List, str] = None):
+    @process_ts_lists('position_ids')
+    async def split(self, order_id: str | int, position_ids: List | str | int = None,
+                    fields: List | str = None):
         """
-        Объединение заказов
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D1.8A.D0.B5.D0.B4.D0.B8.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
-
-        :param main_order_id: Идентификатор главного заказа объединения
-        :param merge_orders_ids: массив, идентификаторы остальных заказов объединения
-        :param fields: дополнительная информация
-        :return:
-        """
-        if isinstance(merge_orders_ids, (int, str)):
-            merge_orders_ids = [merge_orders_ids]
-        if fields is not None:
-            fields = check_fields(fields, self._FieldsChecker.fields)
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.MERGE, payload, True)
-
-    async def split(self, order_id: Union[str, int], position_ids: Union[List, str, int] = None,
-                    fields: Union[List, str] = None):
-
-        """
-        Разделение заказа (В документации описан как второй метод объединения заказов)
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D1.8A.D0.B5.D0.B4.D0.B8.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2_2
-
-        :param order_id: Идентификатор заказа разделения
-        :param position_ids: массив, идентификаторы отделяемых позиций заказа
-        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
-        :return:
-        """
-        if isinstance(position_ids, (int, str)):
-            position_ids = [position_ids]
-        if fields is not None:
-            fields = check_fields(fields, self._FieldsChecker.fields)
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.SPLIT, payload, True)
-
-    async def reprice(self, order_id: Union[str, int], new_sum: Union[float, int],
-                      fields: Union[List, str] = None):
-        """
-        Изменение суммы заказа
-
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.83.D0.BC.D0.BC.D1.8B_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0
-
-        :param order_id: Идентификатор заказа клиента
-        :param new_sum: новая сумма заказа
-        :param fields: дополнительная информация ["agreement", "tags", "posInfo", "deliveries", "amounts"]
+        Разделение заказа
+        :param order_id: Идентификатор заказа
+        :param position_ids: Идентификаторы позиций заказа
+        :param fields: расширенный формат вывода
         :return:
         """
         if fields is not None:
             fields = check_fields(fields, self._FieldsChecker.fields)
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Orders.REPRICE, payload, True)
+        return await self._base.request(_Methods.TsAdmin.Orders.SPLIT, payload, post=True)
+
+    async def reprice(self, order_id: str | int, new_sum: int | float,
+                      fields: List | str = None):
+        """
+        Изменение цены заказа
+        :param order_id: Идентификатор заказа
+        :param new_sum: Новая сумма заказа
+        :param fields: расширенный формат вывода
+        :return:
+        """
+        if fields is not None:
+            fields = check_fields(fields, self._FieldsChecker.fields)
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.Orders.REPRICE, payload, post=True)
 
 
 class Messages:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self, order_id: Union[str, int], message: str, employee_id: Union[int, str] = None):
+    async def create(self, order_id: str | int, message: str, employee_id: str | int = None):
         """
         Создание сообщения
 
@@ -979,7 +1033,7 @@ class Messages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.MESSAGES_CREATE, payload, True)
 
-    async def get_one(self, message_id: Union[str, int]):
+    async def get_one(self, message_id: str | int):
         """
         Получение одного сообщения
 
@@ -991,7 +1045,8 @@ class Messages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.MESSAGES_GET_ONE, payload)
 
-    async def get_list(self, order_id: Union[str, int], skip: int = None, limit: int = None):
+    @check_limit
+    async def get_list(self, order_id: str | int, skip: int = None, limit: int = None):
         """
         Получение списка сообщений
 
@@ -1005,7 +1060,7 @@ class Messages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.MESSAGES_LIST, payload)
 
-    async def update(self, message_id: Union[str, int], message: str):
+    async def update(self, message_id: str | int, message: str):
         """
         Редактирование сообщения
 
@@ -1018,7 +1073,7 @@ class Messages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.MESSAGES_UPDATE, payload, True)
 
-    async def delete(self, message_id: Union[str, int]):
+    async def delete(self, message_id: str | int):
         """
         Удаление сообщения
 
@@ -1035,33 +1090,45 @@ class Cart:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self, client_id: Union[str, int], brand: str, number: str, number_fix: Union[str, int],
+    async def create(self, client_id: str | int, brand: str, number: str, number_fix: str | int,
                      quantity: int,
-                     distributor_route_id: Union[str, int], item_key: str, agreement_id: Union[int, str] = None,
-                     item_id: Union[int, str] = None):
+                     distributor_route_id: str | int, item_key: str, agreement_id: str | int = None,
+                     item_id: str | int = None) -> Dict[str, Any]:
         """
-        Добавление позиции в корзину
+        Добавление позиции в корзину клиента администратором
 
-        Source:
+        Добавляет товар в корзину указанного клиента с заданными параметрами.
 
-        :param client_id: идентификатор клиента
-        :param brand: бренд
-        :param number: артикул по стандарту ABCP
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B8_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.83
+
+        :param client_id: Идентификатор клиента
+        :type client_id: :obj:`str` или :obj:`int`
+        :param brand: Бренд товара
+        :type brand: :obj:`str`
+        :param number: Артикул по стандарту ABCP
+        :type number: :obj:`str`
         :param number_fix: Очищенный артикул по стандарту ABCP
-        :param quantity: количество товара
-        :param distributor_route_id: идентификатор маршрута прайс-листа
-        :param item_key: Код товара, полученный поиском search/articles | await api.cp.client.search.articles(602000600, 'Luk')
-        :param agreement_id:идентификатор договора, если не указан, то используется активный договор с клиентом по умолчанию
-        :param item_id: идентификатор партии на складе
-        :return:
+        :type number_fix: :obj:`str` или :obj:`int`
+        :param quantity: Количество товара
+        :type quantity: :obj:`int`
+        :param distributor_route_id: Идентификатор маршрута прайс-листа
+        :type distributor_route_id: :obj:`str` или :obj:`int`
+        :param item_key: Код товара, полученный через поиск search/articles
+        :type item_key: :obj:`str`
+        :param agreement_id: Идентификатор договора, если не указан, то используется активный договор с клиентом по умолчанию
+        :type agreement_id: :obj:`str` или :obj:`int`
+        :param item_id: Идентификатор партии на складе
+        :type item_id: :obj:`str` или :obj:`int`
+        :return: Результат операции добавления в корзину
+        :rtype: Dict[str, Any]
         """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.CREATE, payload, True)
 
-    async def update(self, position_id: Union[str, int], quantity: int,
-                     client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
-                     sell_price: Union[str, float, int] = None,
-                     cl_to_res_rate: Union[str, float, int] = None, cl_sell_price: Union[str, float, int] = None,
+    async def update(self, position_id: str | int, quantity: int,
+                     client_id: str | int = None, guest_id: str | int = None,
+                     sell_price: str | int | float = None,
+                     cl_to_res_rate: str | int | float = None, cl_sell_price: str | int | float = None,
                      availability: int = None, packing: int = None, deadline: int = None, deadline_max: int = None):
         """
         Обновление позиции в корзине
@@ -1082,14 +1149,15 @@ class Cart:
         :return:
         """
         if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
-            raise AbcpWrongParameterError(
-                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.UPDATE, payload, True)
 
-    async def get_list(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
-                       position_ids: Union[List, str] = None,
-                       agreement_id: Union[int, str] = None, skip: int = None, limit: int = None):
+    @check_limit
+    async def get_list(self, client_id: str | int = None, guest_id: str | int = None,
+                       position_ids: List | str = None,
+                       agreement_id: str | int = None, skip: int = None, limit: int = None):
         """
         Получение списка позиций в корзине
 
@@ -1106,13 +1174,13 @@ class Cart:
         if isinstance(position_ids, list):
             position_ids = ','.join(map(str, position_ids))
         if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
-            raise AbcpWrongParameterError(
-                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.GET_LIST, payload)
 
-    async def exist(self, client_id: Union[str, int], agreement_id: Union[str, int], brand: Union[str, int],
-                    number_fix: Union[str, int]):
+    async def exist(self, client_id: str | int, agreement_id: str | int, brand: str | int,
+                    number_fix: str | int):
         """
         Проверка наличия позиции в корзине
 
@@ -1127,8 +1195,8 @@ class Cart:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.EXIST, payload)
 
-    async def summary(self, client_id: Union[int, str] = None, guest_id: Union[int, str] = None,
-                      agreement_id: Union[str, int] = None):
+    async def summary(self, client_id: str | int = None, guest_id: str | int = None,
+                      agreement_id: str | int = None):
         """
         Получение суммарной информации по позициям корзины
 
@@ -1140,16 +1208,16 @@ class Cart:
         :return:
         """
         if all(x is None for x in [client_id, guest_id]):
-            raise AbcpWrongParameterError(
-                'Один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан хотя бы один из параметров: "client_id" или "guest_id"')
         if client_id is not None and guest_id is not None:
-            raise AbcpWrongParameterError(
-                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.SUMMARY, payload)
 
-    async def clear(self, agreement_id: Union[str, int], client_id: Union[int, str] = None,
-                    guest_id: Union[int, str] = None):
+    async def clear(self, agreement_id: str | int, client_id: str | int = None,
+                    guest_id: str | int = None):
         """
         Очистка корзины выбранного договора
 
@@ -1161,16 +1229,17 @@ class Cart:
         :return:
         """
         if all(x is None for x in [client_id, guest_id]):
-            raise AbcpWrongParameterError(
-                'Один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан хотя бы один из параметров: "client_id" или "guest_id"')
         if client_id is not None and guest_id is not None:
-            raise AbcpWrongParameterError(
-                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
+            raise AbcpParameterRequired(
+                'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.CLEAR, payload, True)
 
-    async def delete_positions(self, position_ids: Union[List, str, int],
-                               client_id: Union[int, str] = None, guest_id: Union[int, str] = None):
+    @ensure_list_params('position_ids')
+    async def delete_positions(self, position_ids: List | str | int,
+                               client_id: str | int = None, guest_id: str | int = None):
         """
         Удаление позиций корзины
 
@@ -1182,15 +1251,12 @@ class Cart:
         :return:
         """
         if (client_id is None and guest_id is None) or (client_id is not None and guest_id is not None):
-            raise AbcpWrongParameterError(
-                'Один и только один из параметров должен быть определён. "client_id", "guest_id"')
-        if not isinstance(position_ids, list):
-            position_ids = [position_ids]
-
+            raise AbcpParameterRequired(
+                'Должен быть указан один и только один из параметров: "client_id" или "guest_id"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Cart.DELETE, payload, True)
 
-    async def transfer(self, guest_id: Union[str, int], client_id: Union[str, int]):
+    async def transfer(self, guest_id: str | int, client_id: str | int):
         """
         Передача позиций корзины гостя клиенту
 
@@ -1217,7 +1283,7 @@ class Positions:
                     "supOrder", "supOrderCanceled", "reservation",
                     "orderPicking", "delivery", "finished"]
 
-    async def get(self, position_id: Union[str, int], additional_info: Union[List, str] = None):
+    async def get(self, position_id: str | int, additional_info: List | str = None):
         """
         Получение одной позиции
 
@@ -1235,25 +1301,35 @@ class Positions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.GET, payload)
 
-    async def get_list(self, brand: str = None, message: str = None, agreement_id: Union[int, str] = None,
-                       client_id: Union[int, str] = None,
-                       manager_id: Union[int, str] = None,
+    @check_limit
+    @ensure_list_params('order_picking_good_ids', 'customer_complaint_position_ids',
+                        'product_ids', 'so_position_ids', 'route_ids',
+                        'distributor_ids', 'ids', 'order_ids', 'statuses')
+    @process_ts_lists('order_picking_good_ids', 'tag_ids')
+    @process_cp_dates('date_start', 'date_end',
+                      'update_date_start', 'update_date_end',
+                      'deadline_date_start', 'deadline_date_end',
+                      'order_picking_date_start', 'order_picking_date_end')
+    @convert_bool_params_to_str('no_manager_assigned')
+    async def get_list(self, brand: str = None, message: str = None, agreement_id: str | int = None,
+                       client_id: str | int = None,
+                       manager_id: str | int = None,
                        no_manager_assigned: bool = False,
-                       delivery_id: Union[int, str] = None,
+                       delivery_id: str | int = None,
                        date_start: str = None, date_end: str = None, update_date_start: str = None,
                        update_date_end: str = None,
                        deadline_date_start: str = None, deadline_date_end: str = None,
                        order_picking_date_start: str = None, order_picking_date_end: str = None,
-                       order_picking_good_ids: Union[List, str, int] = None,
-                       customer_complaint_position_ids: Union[List, str, int] = None,
-                       so_position_ids: Union[List, str, int] = None,
-                       route_ids: Union[List, str, int] = None,
-                       distributor_ids: Union[List, str, int] = None,
-                       ids: Union[List, str, int] = None,
-                       order_ids: Union[List, str, int] = None,
-                       product_ids: Union[List, str, int] = None,
-                       statuses: Union[List, str] = None,
-                       tag_ids: Union[List, str, int] = None,
+                       order_picking_good_ids: List | str | int = None,
+                       customer_complaint_position_ids: List | str | int = None,
+                       so_position_ids: List | str | int = None,
+                       route_ids: List | str | int = None,
+                       distributor_ids: List | str | int = None,
+                       ids: List | str | int = None,
+                       order_ids: List | str | int = None,
+                       product_ids: List | str | int = None,
+                       statuses: List | str = None,
+                       tag_ids: List | str | int = None,
                        limit: int = None, skip: int = None):
         """
         Получение списка позиций
@@ -1289,53 +1365,15 @@ class Positions:
         :param skip: смещение (по умолчанию 0)
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = f'{date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(date_end, datetime):
-            date_end = f'{date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(update_date_start, datetime):
-            update_date_start = f'{update_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(update_date_end, datetime):
-            update_date_end = f'{update_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(deadline_date_start, datetime):
-            deadline_date_start = f'{deadline_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(deadline_date_end, datetime):
-            deadline_date_end = f'{deadline_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_date_start, datetime):
-            order_picking_date_start = f'{order_picking_date_start:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_date_end, datetime):
-            order_picking_date_end = f'{order_picking_date_end:%Y-%m-%d %H:%M:%S}'
-        if isinstance(order_picking_good_ids, (int, str)):
-            order_picking_good_ids = [order_picking_good_ids]
-        if isinstance(customer_complaint_position_ids, (int, str)):
-            customer_complaint_position_ids = [customer_complaint_position_ids]
-        if isinstance(product_ids, (int, str)):
-            product_ids = [product_ids]
-        if isinstance(so_position_ids, (int, str)):
-            so_position_ids = [so_position_ids]
-        if isinstance(route_ids, (int, str)):
-            route_ids = [route_ids]
-        if isinstance(distributor_ids, (int, str)):
-            distributor_ids = [distributor_ids]
-        if isinstance(ids, (int, str)):
-            ids = [ids]
-        if isinstance(order_ids, (int, str)):
-            order_ids = [order_ids]
-        if isinstance(statuses, str):
-            statuses = [statuses]
-        if isinstance(tag_ids, list):
-            tag_ids = ','.join(map(str, tag_ids))
         if statuses is not None:
             statuses = check_fields(statuses, self._FieldsChecker.statuses)
-        if isinstance(no_manager_assigned, bool):
-            no_manager_assigned = str(no_manager_assigned)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.GET_LIST, payload)
 
-    async def create(self, order_id: Union[str, int], client_id: Union[str, int], route_id: Union[str, int],
-                     distributor_id: Union[str, int], item_key: str,
-                     quantity: Union[float, int], sell_price: Union[int, float],
-                     brand: Union[str, int], number_fix: str, number: Union[int, str]):
+    async def create(self, order_id: str | int, client_id: str | int, route_id: str | int,
+                     distributor_id: str | int, item_key: str,
+                     quantity: int | float, sell_price: int | float,
+                     brand: str | int, number_fix: str, number: str | int):
         """
         Создание позиции
 
@@ -1357,16 +1395,18 @@ class Positions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.CREATE, payload, True)
 
-    async def update(self, position_id: Union[str, int], route_id: Union[int, str] = None,
-                     distributor_id: Union[int, str] = None,
-                     quantity: Union[int, float] = None,
-                     sell_price: Union[float, int] = None, cl_to_res_rate: Union[float, int] = None,
-                     cl_sell_price: Union[float, int] = None,
-                     price_data_sell_price: Union[float, int] = None,
-                     prepayment_amount: Union[float, int] = None,
-                     deadline_time: Union[datetime, str] = None, deadline_time_max: Union[datetime, str] = None,
+    @process_ts_dates('deadline_time', 'deadline_time_max')
+    @convert_bool_params_to_str('client_refusal')
+    async def update(self, position_id: str | int, route_id: str | int = None,
+                     distributor_id: str | int = None,
+                     quantity: int | float = None,
+                     sell_price: int | float = None, cl_to_res_rate: int | float = None,
+                     cl_sell_price: int | float = None,
+                     price_data_sell_price: int | float = None,
+                     prepayment_amount: int | float = None,
+                     deadline_time: str | datetime = None, deadline_time_max: str | datetime = None,
                      client_refusal: bool = None,
-                     delivery_id: Union[int, str] = None,
+                     delivery_id: str | int = None,
                      status: str = None,
                      ):
         """
@@ -1390,18 +1430,13 @@ class Positions:
         :param status: string, статус позиции, Новый или Предоплата
         :return:
         """
-        if isinstance(deadline_time, datetime):
-            deadline_time = generate(deadline_time.replace(tzinfo=pytz.utc))
-        if isinstance(deadline_time_max, datetime):
-            deadline_time_max = generate(deadline_time_max.replace(tzinfo=pytz.utc))
+
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
-            raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
-        if isinstance(client_refusal, bool):
-            client_refusal = str(client_refusal)
+            raise AbcpWrongParameterError("status", status, 'может принимать значения "new" или "prepayment"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.UPDATE, payload, True)
 
-    async def cancel(self, position_id: Union[str, int]):
+    async def cancel(self, position_id: str | int):
         """
         Аннулирование позиции
 
@@ -1413,7 +1448,8 @@ class Positions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.CANCEL, payload, True)
 
-    async def mass_cancel(self, position_ids: Union[List, int]):
+    @process_ts_lists('position_ids')
+    async def mass_cancel(self, position_ids: List | int):
         """
         Массовое аннулирование позиций
 
@@ -1422,12 +1458,12 @@ class Positions:
         :param position_ids: идентификаторы позиций через запятую
         :return:
         """
-        if isinstance(position_ids, list):
-            position_ids = ','.join(map(str, position_ids))
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
 
-    async def change_status(self, position_ids: Union[List, int], status: str):
+    @process_ts_lists('position_ids')
+    async def change_status(self, position_ids: List | int, status: str):
         """
         Массовая смена статуса позиций
 
@@ -1438,13 +1474,12 @@ class Positions:
         :return:
         """
         if all(status != x for x in ['new', 'prepayment']):
-            raise AbcpWrongParameterError('Параметр "status" может принимать значения "new" или "prepayment"')
-        if isinstance(position_ids, list):
-            position_ids = ','.join(map(str, position_ids))
+            raise AbcpWrongParameterError("status", status, 'может принимать значения "new" или "prepayment"')
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
 
-    async def split(self, position_id: Union[str, int], quantity: Union[int, float]):
+    async def split(self, position_id: str | int, quantity: int | float):
         """
         Разделение позиции
 
@@ -1457,7 +1492,8 @@ class Positions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.SPLIT, payload, True)
 
-    async def merge(self, main_position_id: Union[str, int], merge_positions_ids: Union[List, int]):
+    @process_ts_lists('merge_positions_ids')
+    async def merge(self, main_position_id: str | int, merge_positions_ids: List | int):
         """
         Объединение позиций
 
@@ -1467,8 +1503,7 @@ class Positions:
         :param merge_positions_ids:
         :return:
         """
-        if isinstance(merge_positions_ids, list):
-            merge_positions_ids = ','.join(map(str, merge_positions_ids))
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MERGE, payload, True)
 
@@ -1477,7 +1512,8 @@ class PositionsMessages:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, position_id: Union[str, int], skip: int = None, limit: int = None):
+    @check_limit
+    async def get_list(self, position_id: str | int, skip: int = None, limit: int = None):
         """
         Получение списка сообщений
 
@@ -1491,7 +1527,7 @@ class PositionsMessages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MESSAGES_LIST, payload)
 
-    async def get(self, message_id: Union[str, int]):
+    async def get(self, message_id: str | int):
         """
         Получение одного сообщения
 
@@ -1503,8 +1539,8 @@ class PositionsMessages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MESSAGES_GET, payload)
 
-    async def create(self, position_id: Union[str, int], message: str, employee_id: Union[int, str] = None,
-                     date: Union[str, datetime] = None):
+    async def create(self, position_id: str | int, message: str, employee_id: str | int = None,
+                     date: str | datetime = None):
         """
         Создание сообщения
 
@@ -1521,7 +1557,7 @@ class PositionsMessages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MESSAGES_CREATE, payload, True)
 
-    async def update(self, message_id: Union[str, int], message: str, employee_id: Union[int, str] = None):
+    async def update(self, message_id: str | int, message: str, employee_id: str | int = None):
         """
         Редактирование сообщения
 
@@ -1535,7 +1571,7 @@ class PositionsMessages:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.MESSAGES_UPDATE, payload, True)
 
-    async def delete(self, message_id: Union[str, int]):
+    async def delete(self, message_id: str | int):
         """
         Удаление сообщения
 
@@ -1552,100 +1588,34 @@ class GoodReceipts:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def create(self,
-                     supplier_id: Union[str, int],
-                     positions: Union[List[Dict[str, str]], Dict[str, str]],
-                     sup_number: str = None, sup_shipment_date: Union[str, datetime] = None):
+    class _FieldsChecker:
+        list_fields = ["agreement", "supplier", "creator"]
+
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    async def get_positions(self, creator_id: str | int = None, supplier_id: str | int = None,
+                            agreement_id: str | int = None, status: int = None,
+                            date_start: str | datetime = None, date_end: str | datetime = None,
+                            skip: int = None, limit: int = None, fields: List | str = None):
         """
-        Создаёт приёмку с позициями. Дата создания устанавливается текущая.
+        Получение списка приходных операций
 
-        Место хранения указывается в панели управления в разделе Настройки склада -> общие.
-
-        Source:
-
-        :param supplier_id: Идентификатор поставщика
-        :param positions: список позиций
-        :param sup_number: 	номер отгрузки поставщика
-        :param sup_shipment_date: дата и время отгрузки поставщика. `str` в формате %Y-%m-%d %H:%M:%S или datetime object
-        :return: id `obj`
-        """
-        if isinstance(sup_shipment_date, datetime):
-            sup_shipment_date = f'{sup_shipment_date:%Y-%m-%d %H:%M:%S}'
-        if isinstance(positions, dict):
-            positions = [positions]
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.GoodReceipts.CREATE, payload, True)
-
-    async def get(self, limit: int = None, skip: int = None,
-                  output: str = None,
-                  auto: str = None,
-                  creator_id: Union[str, int] = None, worker_id: Union[str, int] = None,
-                  agreement_id: str = None, statuses: Union[List, int] = None,
-                  number: str = None,
-                  date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
-                  sup_number: str = None):
-        """
-        Получение списка операций приёмки
-
-        Source:
-
-
-        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
-        :param skip: количество операций в ответе, которое нужно пропустить
-        :param output: формат вывода, флаг 'd' - загрузка удалённых операций, 'e' - загрузка дополнительной информации (договора), 's' - суммы по позициям, кол-во позиций
-        :param auto: автоопределяемое поле (поиск по частичному номеру операции или идентификатору, если задано число)
         :param creator_id: идентификатор сотрудника-создателя
-        :param worker_id: идентификатор сотрудника-исполнителя
+        :param supplier_id: идентификатор поставщика
         :param agreement_id: идентификатор договора
-        :param statuses: статусы (1 - новая, 2 - в работе, 3 - завершена) List[1, 2, 3] or `int` 2
-        :param number: номер операций
-        :param date_start: начальная дата диапазона поиска  `str` в формате RFC3339 или datetime object
-        :param date_end: конечная  дата диапазона поиска  `str` в формате RFC3339 или datetime object
-        :param sup_number: номер отгрузки поставщика
-        :return:
-        """
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
-        if isinstance(output, str) and not all(x in 'des' for x in output):
-            raise AbcpWrongParameterError('Параметр "output" должен состоять из  ["d", "e", "s"]')
-        if isinstance(statuses, int) and not 1 <= statuses <= 3:
-            raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
-        if isinstance(statuses, list):
-            if all(1 <= x <= 3 for x in statuses):
-                statuses = ','.join(map(str, statuses))
-            else:
-                raise AbcpWrongParameterError('Параметр "statuses" принимет значения от 1 до 3')
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-        payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.GoodReceipts.GET, payload)
-
-    async def get_positions(self, op_id: Union[str, int], limit: int = None, skip: int = None,
-                            output: str = None, product_id: Union[int, str] = None, auto: str = None):
-        """
-        Получение списка позиций приёмки
-
-        Source:
-
-        :param op_id: идентификатор операции
-        :param limit: максимальное количество операций, которое должно быть возвращено в ответе. Максимально возможное значение 1000. Если не указан будет установлено максимально возможное значение.
-        :param skip: количество операций в ответе, которое нужно пропустить
-        :param output: формат вывода, 'e' - загрузка дополнительной информации (справочные товары)
-        :param product_id: идентификатор товара справочника
-        :param auto: автоопределяемое поле
-        :return:
+        :param status: статус операции
+        :param date_start: начальная дата диапазона поиска
+        :param date_end: конечная дата диапазона поиска
+        :param skip: количество операций, которое нужно пропустить
+        :param limit: максимальное количество операций в ответе
+        :param fields: дополнительные поля для вывода
+        :return: список приходных операций
         """
 
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError('Параметр "limit" должен быть в диапазоне от 1 до 1000')
-        if isinstance(output, str) and output != 'e':
-            raise AbcpWrongParameterError('Параметр "output" принимает только значение "e"')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.GET_POSITIONS, payload)
 
-    async def update(self, id: int, sup_number: Union[str, int] = None, sup_shipment_date: Union[str, datetime] = None):
+    async def update(self, id: int, sup_number: str | int = None, sup_shipment_date: str | datetime = None):
         """
         Операция изменения приёмки
 
@@ -1673,7 +1643,7 @@ class GoodReceipts:
         :return:
         """
         if not 1 <= status <= 3:
-            raise AbcpWrongParameterError('Параметр "status" принимает значения от 1 до 3')
+            raise AbcpWrongParameterError("status", status, "должен быть в диапазоне от 1 до 3")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.CHANGE_STATUS, payload, True)
 
@@ -1689,15 +1659,15 @@ class GoodReceipts:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.DELETE, payload, True)
 
-    async def create_position(self, op_id: Union[str, int], loc_id: Union[str, int], product_id: Union[str, int],
-                              brand: Union[str, int], number: Union[int, str],
-                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+    async def create_position(self, op_id: str | int, loc_id: str | int, product_id: str | int,
+                              brand: str | int, number: str | int,
+                              quantity: int | float, sup_buy_price: int | float,
                               manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
-                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              return_period: int = None, barcodes: List | str | int = None,
                               comment: str = None,
-                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              descr: str = None, expected_quantity: int | float = None,
                               so_position_id: str = None,
-                              old_order_position_id: Union[int, str] = None):
+                              old_order_position_id: str | int = None):
         """
         Операция создания позиции приёмки
 
@@ -1725,7 +1695,8 @@ class GoodReceipts:
         if isinstance(barcodes, list):
             barcodes = ' '.join(barcodes)
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
-            raise AbcpWrongParameterError('Параметр manufacturer_country должен состоять из 3 английских букв')
+            raise AbcpWrongParameterError("manufacturer_country", manufacturer_country,
+                                          "должен состоять из 3 английских букв")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.CREATE_POSITION, payload, True)
 
@@ -1754,13 +1725,13 @@ class GoodReceipts:
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.GET_POSITION, payload)
 
     async def update_position(self, id: int, brand: str, number: str,
-                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+                              quantity: int | float, sup_buy_price: int | float,
                               manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
-                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              return_period: int = None, barcodes: List | str | int = None,
                               comment: str = None,
-                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              descr: str = None, expected_quantity: int | float = None,
                               so_position_id: str = None,
-                              old_order_position_id: Union[int, str] = None):
+                              old_order_position_id: str | int = None):
         """
         Операция изменения позиции приёмки
 
@@ -1786,7 +1757,8 @@ class GoodReceipts:
         if isinstance(barcodes, list):
             barcodes = ' '.join(map(str, barcodes))
         if isinstance(manufacturer_country, str) and len(manufacturer_country) != 3:
-            raise AbcpWrongParameterError('Параметр manufacturer_country должен состоять из 3 английских букв')
+            raise AbcpWrongParameterError("manufacturer_country", manufacturer_country,
+                                          "должен состоять из 3 английских букв")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.UPDATE_POSITION, payload, True)
 
@@ -1795,15 +1767,15 @@ class Tags:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def list(self, ids: Union[str, List[str], List[int]] = None):
+    @process_ts_lists('ids')
+    async def list(self, ids: List | str = None):
         """
         Операция получения списка тегов
 
         :param ids: Идентификаторы тегов через запятую
         :return: dict
         """
-        if isinstance(ids, list):
-            ids = ','.join(map(str, ids))
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Tags.LIST, payload)
 
@@ -1822,12 +1794,15 @@ class Tags:
                 color = f'#{color}'
             except ValueError as exc:
                 raise AbcpWrongParameterError(
-                    'The "color" must be a hexadecimal string. It is possible to specify both with and without "#"') from exc
+                    "color",
+                    color,
+                    "It is possible to specify both with and without \"#\""
+                )
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Tags.CREATE, payload, True)
 
-    async def delete(self, id: Union[str, int]):
+    async def delete(self, id: str | int):
         """
         Операция удаления тега
 
@@ -1836,7 +1811,7 @@ class Tags:
         :return:
         """
         if isinstance(id, str) and not id.isdigit():
-            raise AbcpWrongParameterError('Параметр "id" должен быть числом')
+            raise AbcpWrongParameterError("id", id, "должен быть числом или строкой, содержащей число")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Tags.DELETE, payload, True)
 
@@ -1845,11 +1820,12 @@ class TagsRelationships:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def list(self, object_ids: Union[str, List[str], List[int]] = None,
-                   object_type: Union[str, int] = None,
-                   group_by_object_id: Union[bool, int] = None,
-                   with_all_tags: Union[bool, int] = None,
-                   tags_ids: Union[str, List[str], List[int]] = None):
+    @process_ts_lists('object_ids', 'tags_ids')
+    async def list(self, object_ids: List | str = None,
+                   object_type: str | int = None,
+                   group_by_object_id: int | bool = None,
+                   with_all_tags: int | bool = None,
+                   tags_ids: List | str = None):
 
         """
 
@@ -1860,32 +1836,30 @@ class TagsRelationships:
         :param tags_ids: Необязателен. Идентификаторы тегов через запятую
         :return:
         """
-        if isinstance(object_ids, list):
-            object_ids = ','.join(map(str, object_ids))
 
-        if isinstance(object_type, str) and object_type.isdigit():
+        if (isinstance(object_type, str) and object_type.isdigit()) or isinstance(object_type, int):
             if not 1 <= int(object_type) <= 13:
-                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
-        if isinstance(object_type, int) and not 1 <= object_type <= 13:
-            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+                raise AbcpWrongParameterError("object_type",
+                                              object_type,
+                                              "must be in range 1-13"
+                                              )
         if isinstance(group_by_object_id, bool):
             group_by_object_id = int(group_by_object_id)
         if isinstance(group_by_object_id, int) and not 0 <= group_by_object_id <= 1:
-            raise AbcpWrongParameterError('"group_by_object_id" must be in range 0-1 or use a Boolean value')
+            raise AbcpWrongParameterError("group_by_object_id", group_by_object_id,
+                                          "must be in range 0-1 or use a Boolean value")
 
         if isinstance(with_all_tags, bool):
             with_all_tags = int(with_all_tags)
         if isinstance(with_all_tags, int) and not 0 <= with_all_tags <= 1:
-            raise AbcpWrongParameterError('"with_all_tags" must be in range 0-1 or use a Boolean value')
+            raise AbcpWrongParameterError("with_all_tags", with_all_tags, "must be in range 0-1 or use a Boolean value")
         if with_all_tags is not None and tags_ids is None:
             raise AbcpParameterRequired('The "with_all_tags" parameter must be used with the "tags_ids" parameter')
 
-        if isinstance(tags_ids, list):
-            tags_ids = ','.join(map(str, tags_ids))
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.TagsRelationships.LIST, payload)
 
-    async def create(self, tag_id: Union[str, int], object_id: Union[str, int], object_type: Union[str, int]):
+    async def create(self, tag_id: str | int, object_id: str | int, object_type: str | int):
         """
         Операция создания связи тега
 
@@ -1895,21 +1869,22 @@ class TagsRelationships:
         :return:
         """
         if isinstance(tag_id, str) and not tag_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "tag_id" должен быть числом')
+            raise AbcpWrongParameterError("tag_id", tag_id, "должен быть числом или строкой, содержащей число")
 
         if isinstance(object_id, str) and not object_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "object_id" должен быть числом')
+            raise AbcpWrongParameterError("object_id", object_id, "должен быть числом или строкой, содержащей число")
 
-        if isinstance(object_type, str) and object_type.isdigit():
+        if (isinstance(object_type, str) and object_type.isdigit()) or isinstance(object_type, int):
             if not 1 <= int(object_type) <= 13:
-                raise AbcpWrongParameterError('"object_type" must be in range 1-13')
-        if isinstance(object_type, int) and not 1 <= object_type <= 13:
-            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+                raise AbcpWrongParameterError("object_type",
+                                              object_type,
+                                              "must be in range 1-13"
+                                              )
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.TagsRelationships.CREATE, payload, True)
 
-    async def delete(self, tag_id: Union[str, int], object_id: Union[str, int], object_type: Union[str, int]):
+    async def delete(self, tag_id: str | int, object_id: str | int, object_type: str | int):
         """
         Операция удаления связи тега
 
@@ -1920,15 +1895,18 @@ class TagsRelationships:
         """
 
         if isinstance(tag_id, str) and not tag_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "tag_id" должен быть числом')
+            raise AbcpWrongParameterError("tag_id", tag_id, "должен быть числом или строкой, содержащей число")
 
         if isinstance(object_id, str) and not object_id.isdigit():
-            raise AbcpWrongParameterError('Параметр "object_id" должен быть числом')
+            raise AbcpWrongParameterError("object_id", object_id, "должен быть числом или строкой, содержащей число")
 
         if isinstance(object_type, str) and object_type.isdigit():
             object_type = int(object_type)
         if isinstance(object_type, int) and not 1 <= object_type <= 13:
-            raise AbcpWrongParameterError('"object_type" must be in range 1-13')
+            raise AbcpWrongParameterError("object_type",
+                                          object_type,
+                                          "must be in range 1-13"
+                                          )
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.TagsRelationships.DELETE, payload, True)
 
@@ -1941,16 +1919,19 @@ class Payments:
     class _Status:
         status = ["new", "inProcess", "accepted", "rejected", "canceled"]
 
+    @check_limit
+    @process_ts_dates('date_start', 'date_end')
+    @process_ts_lists('payment_method_ids', 'tag_ids')
     async def get_list(self,
-                       contractor_id: Union[str, int] = None, agreement_id: Union[str, int] = None,
-                       amount_start: Union[float, int, str] = None, amount_end: Union[float, int, str] = None,
-                       status: Union[List[str], str] = None,
+                       contractor_id: str | int = None, agreement_id: str | int = None,
+                       amount_start: str | int | float = None, amount_end: str | int | float = None,
+                       status: List[str] | str = None,
                        number: str = None,
-                       requisite_id: Union[str, int] = None,
+                       requisite_id: str | int = None,
                        skip: int = None, limit: int = None,
-                       payment_type: Union[List[str], str] = None, payment_method_ids: Union[List[int], int] = None,
-                       date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
-                       fields: Union[List[str], str] = None):
+                       payment_type: List[str] | str = None, payment_method_ids: List | int = None,
+                       date_start: str | datetime = None, date_end: str | datetime = None,
+                       fields: List[str] | str = None):
         """
 
         :param contractor_id:
@@ -1969,28 +1950,24 @@ class Payments:
         :param fields:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
         if isinstance(status, list):
             if any(x not in self._Status.status for x in status):
                 raise AbcpWrongParameterError(
-                    f'Неверный список статусов: {status} Допустимые статусы {self._Status.status}')
+                    "status",
+                    status,
+                    f'Допустимые статусы {self._Status.status}')
             status = ','.join(status)
-        if isinstance(payment_method_ids, list):
-            payment_method_ids = ','.join(map(str, payment_method_ids))
-        if isinstance(payment_type, list):
-            payment_type = ','.join(payment_type)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Payments.GET_LIST, payload)
 
+    @process_ts_dates('date')
+    @process_ts_lists('fields')
     async def create(self,
                      payment_type: str, payment_method_id: int,
                      agreement_id: int, author_id: int,
-                     amount: Union[float, int, str], date: Union[datetime, str],
-                     contractor_id: int = None, commission: Union[float, int] = None,
-                     comment: str = None, fields: Union[List[str], str] = None):
+                     amount: str | int | float, date: str | datetime,
+                     contractor_id: int = None, commission: int | float = None,
+                     comment: str = None, fields: List[str] | str = None):
         """
 
         :param payment_type:
@@ -2005,13 +1982,37 @@ class Payments:
         :param fields:
         :return:
         """
-        if isinstance(date, datetime):
-            date = generate(date.replace(tzinfo=pytz.utc))
-        if isinstance(fields, list):
-            fields = ','.join(fields)
-
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Payments.CREATE, payload)
+
+    @process_ts_dates('date')
+    @process_ts_lists('fields')
+    async def update(self,
+                     payment_id: int | float,
+                     agreement_id: int = None,
+                     amount: int | float = None,
+                     date: str | datetime = None,
+                     status: str = None,
+                     payment_order: str = None,
+                     commission: int | float = None,
+                     comment: str = None,
+                     fields: List[str] | str = None):
+        """
+        Обновление платежа
+
+        :param payment_id: Идентификатор платежа
+        :param agreement_id: Идентификатор договора
+        :param amount: Сумма платежа
+        :param date: Дата платежа
+        :param status: Статус платежа
+        :param payment_order: Номер платежного поручения
+        :param commission: Комиссия
+        :param comment: Комментарий
+        :param fields: Дополнительные поля для вывода
+        :return: Результат операции обновления
+        """
+        payload = generate_payload(**locals())
+        return await self._base.request(_Methods.TsAdmin.Payments.UPDATE, payload, post=True)
 
 
 class PaymentMethods:
@@ -2023,13 +2024,13 @@ class PaymentMethods:
         allow_change_param = ["yes", "no", "paymentInterfaceOnly", "editOnly"]
 
     async def get_list(self,
-                       payment_type: Optional[str] = None,
-                       allow_change_payment: Optional[str] = None,
-                       state: Optional[str] = None):
+                       payment_type: str | None = None,
+                       allow_change_payment: str | None = None,
+                       state: str | None = None):
         """
         Получение списка способов оплаты
 
-        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BF.D0.BE.D1.81.D0.BE.D0.B1.D0.BE.D0.B2_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D1.8B
+        Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.81.D0.BF.D0.BE.D1.81.D0.BE.D0.B2_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82.D1.8B
 
         :param payment_type: Тип оплаты
         :param allow_change_payment: Вариант доступности изменения платежа
@@ -2037,8 +2038,10 @@ class PaymentMethods:
         :return:
         """
         if isinstance(allow_change_payment, str) and allow_change_payment not in self._Fields.allow_change_param:
-            raise AbcpWrongParameterError(f'Неверное значение параметра "allow_change_payment" {allow_change_payment}.'
-                                          f'Допустимые значения {self._Fields.allow_change_param}')
+            raise AbcpWrongParameterError(
+                "allow_change_payment",
+                allow_change_payment,
+                f'Неверное значение параметра, допустимые значения {self._Fields.allow_change_param}')
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.PaymentMethods.METHODS_LIST, payload)
@@ -2048,14 +2051,17 @@ class Agreements:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
-                       contractor_requisite_ids: Union[int, str, List[int]] = None,
-                       shop_requisite_ids: Union[int, str, List[int]] = None,
+    @process_ts_dates('date_start', 'date_end')
+    @ensure_list_params('contractor_ids', 'contractor_requisite_ids', 'shop_requisite_ids')
+    @convert_bool_params_to_str('is_active', 'is_delete', 'is_default')
+    async def get_list(self, contractor_ids: List | int | str = None,
+                       contractor_requisite_ids: List | int | str = None,
+                       shop_requisite_ids: List | int | str = None,
                        is_active: bool = None, is_delete: bool = None, is_default: bool = None,
                        agreement_type: int = None, relation_type: int = None,
                        number: str = None, currency: str = None,
-                       date_start: Union[datetime, str] = None, date_end: Union[datetime, str] = None,
-                       credit_limit: Union[float, int] = None,
+                       date_start: str | datetime = None, date_end: str | datetime = None,
+                       credit_limit: int | float = None,
                        limit: int = None, skip: int = None):
         """
 
@@ -2076,56 +2082,273 @@ class Agreements:
         :param skip:
         :return:
         """
-        if isinstance(date_start, datetime):
-            date_start = generate(date_start.replace(tzinfo=pytz.utc))
-        if isinstance(date_end, datetime):
-            date_end = generate(date_end.replace(tzinfo=pytz.utc))
-
-        if isinstance(contractor_ids, int) or isinstance(contractor_ids, str):
-            contractor_ids = [contractor_ids]
-        if isinstance(contractor_requisite_ids, int) or isinstance(contractor_requisite_ids, str):
-            contractor_requisite_ids = [contractor_requisite_ids]
-        if isinstance(shop_requisite_ids, int) or isinstance(shop_requisite_ids, str):
-            shop_requisite_ids = [shop_requisite_ids]
-        if isinstance(is_active, bool):
-            is_active = str(is_active)
-        if isinstance(is_delete, bool):
-            is_delete = str(is_delete)
-        if isinstance(is_default, bool):
-            is_default = str(is_default)
-
 
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.Agreements.get_list, payload)
+        return await self._base.request(_Methods.TsAdmin.Agreements.GET_LIST, payload)
 
 
 class LegalPersons:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, ids: Union[str, List[str]] = None, contractor_id: Optional[int] = None,
-                       form: Optional[int] = None, org_type: Optional[int] = None,
-                       agreement_with_individuals_required: Optional[int] = None,
-                       with_tax_systems: Optional[int] = None,
-                       limit: Optional[int] = None, offset: Optional[int] = None):
-        if isinstance(ids, list):
-            ids = ','.join(map(str, ids))
+    @check_limit
+    @process_ts_lists('ids')
+    async def get_list(self, ids: List | int | str = None, contractor_id: int | None = None,
+                       form: int | None = None, org_type: int | None = None,
+                       agreement_with_individuals_required: int | None = None,
+                       with_tax_systems: int | None = None,
+                       limit: int | None = None, offset: int | None = None):
+        """
+
+        :param ids:
+        :param contractor_id:
+        :param form:
+        :param org_type:
+        :param agreement_with_individuals_required:
+        :param with_tax_systems:
+        :param limit:
+        :param offset:
+        :return:
+        """
         payload = generate_payload(**locals())
-        return await self._base.request(_Methods.TsAdmin.LegalPersons.get_list, payload)
+        return await self._base.request(_Methods.TsAdmin.LegalPersons.GET_LIST, payload)
+
 
 class SupplierOrders:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def orders_list(self, orders_ids, distributor_ids, supplier_ids, send_statuses,
-                          create_date_start, create_date_end,
-                          send_date_start, send_date_end,
-                          client_order_id, client_order_number: str,
-                          limit: Union[int, str], skip: Union[int, str]):
-        pass
+    @check_limit
+    @process_ts_dates('create_date_start', 'create_date_end', 'send_date_start', 'send_date_end')
+    @process_ts_lists('orders_ids', 'distributor_ids', 'supplier_ids', 'send_statuses')
+    async def orders_list(self, orders_ids: List | int | str = None,
+                          distributor_ids: List | int | str = None,
+                          supplier_ids: List | int | str = None,
+                          send_statuses: List | int | str = None,
+                          create_date_start: str | datetime = None,
+                          create_date_end: str | datetime = None,
+                          send_date_start: str | datetime = None,
+                          send_date_end: str | datetime = None,
+                          client_order_id: str | int = None,
+                          client_order_number: str = None,
+                          limit: str | int = None,
+                          skip: str | int = None):
+        """
+        Получение списка заказов поставщикам
 
-    async def positions_list(self, statuses, order_id, distributor_ids, supplier_ids,
-                             position_ids, gr_position_ids, client_order_id, client_order_number,
-                             without_order, with_order, additional_info,
-                             limit: Union[int, str], skip: Union[int, str]):
-        pass
+        :param orders_ids: список идентификаторов заказов
+        :param distributor_ids: список идентификаторов прайс-листов
+        :param supplier_ids: список идентификаторов поставщиков
+        :param send_statuses: список статусов отправки
+        :param create_date_start: начальная дата диапазона поиска по дате создания
+        :param create_date_end: конечная дата диапазона поиска по дате создания
+        :param send_date_start: начальная дата диапазона поиска по дате отправки
+        :param send_date_end: конечная дата диапазона поиска по дате отправки
+        :param client_order_id: идентификатор заказа клиента
+        :param client_order_number: номер заказа клиента
+        :param limit: максимальное количество заказов в ответе
+        :param skip: количество заказов, которое нужно пропустить
+        :return: список заказов поставщикам
+        """
+        payload = generate_payload(**locals())
+
+        if isinstance(client_order_id, str) and not client_order_id.isdigit():
+            raise AbcpWrongParameterError("client_order_id", client_order_id,
+                                          "должен быть числом или строкой, содержащей число")
+
+        return await self._base.request(_Methods.TsAdmin.SupplierOrders.ORDERS_LIST, payload, post=True)
+
+    @check_limit
+    @process_ts_dates('deadline_date_start', 'deadline_date_end')
+    @process_ts_lists('statuses', 'distributor_ids', 'supplier_ids', 'position_ids', 'gr_position_ids')
+    async def positions_list(self, statuses: List | str | int = None,
+                             order_id: str | int = None,
+                             distributor_ids: List | str | int = None,
+                             supplier_ids: List | str | int = None,
+                             position_ids: List | str | int = None,
+                             gr_position_ids: List | str | int = None,
+                             client_order_id: str | int = None,
+                             client_order_number: str = None,
+                             without_order: bool = None,
+                             with_order: bool = None,
+                             additional_info: List | str = None,
+                             limit: str | int = None,
+                             skip: str | int = None):
+        """
+        Получение списка позиций заказов поставщикам
+
+        :param statuses: список статусов
+        :param order_id: идентификатор заказа
+        :param distributor_ids: список идентификаторов прайс-листов
+        :param supplier_ids: список идентификаторов поставщиков
+        :param position_ids: список идентификаторов позиций
+        :param gr_position_ids: список идентификаторов позиций приходных операций
+        :param client_order_id: идентификатор заказа клиента
+        :param client_order_number: номер заказа клиента
+        :param without_order: флаг без заказа
+        :param with_order: флаг с заказом
+        :param additional_info: дополнительная информация
+        :param limit: максимальное количество позиций в ответе
+        :param skip: количество позиций, которое нужно пропустить
+        :return: список позиций заказов поставщикам
+        """
+        payload = generate_payload(**locals())
+
+        if isinstance(client_order_id, str) and not client_order_id.isdigit():
+            raise AbcpWrongParameterError(
+                "client_order_id",
+                client_order_id,
+                "должен быть числом или строкой, содержащей число"
+            )
+
+        if isinstance(without_order, bool):
+            payload['without_order'] = '1' if without_order else '0'
+        if isinstance(with_order, bool):
+            payload['with_order'] = '1' if with_order else '0'
+
+        if additional_info is not None:
+            payload["additional_info"] = check_fields(additional_info, ["items", "goodsReceipt"])
+
+        return await self._base.request(_Methods.TsAdmin.SupplierOrders.POSITIONS_LIST, payload, post=True)
+
+
+class TsAdminApi:
+    """
+    Администратор для TS API ABCP (API 2.0)
+
+    Предоставляет доступ к API 2.0 для администраторов.
+    """
+
+    def __init__(self, base: BaseAbcp):
+        """
+        Инициализация API TS ABCP для администратора
+
+        :param base: Объект с базовой конфигурацией API
+        :type base: BaseAbcp
+        """
+        if not isinstance(base, BaseAbcp):
+            raise AbcpWrongParameterError("base", base, "должен быть экземпляром BaseAbcp")
+        self._base = base
+        self._order_pickings: OrderPickings | None = None
+        self._customer_complaints: CustomerComplaints | None = None
+        self._supplier_returns: SupplierReturns | None = None
+        self._distributor_owners: DistributorOwners | None = None
+        self._orders: Orders | None = None
+        self._cart: Cart | None = None
+        self._positions: Positions | None = None
+        self._good_receipts: GoodReceipts | None = None
+        self._tags: Tags | None = None
+        self._tags_relationships: TagsRelationships | None = None
+        self._payments: Payments | None = None
+        self._payment_methods: PaymentMethods | None = None
+        self._agreements: Agreements | None = None
+        self._legal_persons: LegalPersons | None = None
+        self._supplier_orders: SupplierOrders | None = None
+
+    @property
+    def order_pickings(self) -> OrderPickings:
+        """
+        Получить доступ к API для операций отгрузки
+
+        :return: Объект для работы с API отгрузок
+        :rtype: OrderPickings
+        """
+        if self._order_pickings is None:
+            self._order_pickings = OrderPickings(self._base)
+        return self._order_pickings
+
+    @property
+    def customer_complaints(self) -> CustomerComplaints:
+        """
+        Получить доступ к API для операций рекламаций
+
+        :return: Объект для работы с API рекламаций
+        :rtype: CustomerComplaints
+        """
+        if self._customer_complaints is None:
+            self._customer_complaints = CustomerComplaints(self._base)
+        return self._customer_complaints
+
+    @property
+    def supplier_returns(self) -> SupplierReturns:
+        """
+        Получить доступ к API для операций возврата поставщику
+
+        :return: Объект для работы с API возвратов поставщику
+        :rtype: SupplierReturns
+        """
+        if self._supplier_returns is None:
+            self._supplier_returns = SupplierReturns(self._base)
+        return self._supplier_returns
+
+    @property
+    def distributor_owners(self) -> DistributorOwners:
+        if self._distributor_owners is None:
+            self._distributor_owners = DistributorOwners(self._base)
+        return self._distributor_owners
+
+    @property
+    def orders(self) -> Orders:
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def cart(self) -> Cart:
+        if self._cart is None:
+            self._cart = Cart(self._base)
+        return self._cart
+
+    @property
+    def positions(self) -> Positions:
+        if self._positions is None:
+            self._positions = Positions(self._base)
+        return self._positions
+
+    @property
+    def good_receipts(self) -> GoodReceipts:
+        if self._good_receipts is None:
+            self._good_receipts = GoodReceipts(self._base)
+        return self._good_receipts
+
+    @property
+    def tags(self) -> Tags:
+        if self._tags is None:
+            self._tags = Tags(self._base)
+        return self._tags
+
+    @property
+    def tags_relationships(self) -> TagsRelationships:
+        if self._tags_relationships is None:
+            self._tags_relationships = TagsRelationships(self._base)
+        return self._tags_relationships
+
+    @property
+    def payments(self) -> Payments:
+        if self._payments is None:
+            self._payments = Payments(self._base)
+        return self._payments
+
+    @property
+    def payment_methods(self) -> PaymentMethods:
+        if self._payment_methods is None:
+            self._payment_methods = PaymentMethods(self._base)
+        return self._payment_methods
+
+    @property
+    def agreements(self) -> Agreements:
+        if self._agreements is None:
+            self._agreements = Agreements(self._base)
+        return self._agreements
+
+    @property
+    def legal_persons(self) -> LegalPersons:
+        if self._legal_persons is None:
+            self._legal_persons = LegalPersons(self._base)
+        return self._legal_persons
+
+    @property
+    def supplier_orders(self) -> SupplierOrders:
+        if self._supplier_orders is None:
+            self._supplier_orders = SupplierOrders(self._base)
+        return self._supplier_orders

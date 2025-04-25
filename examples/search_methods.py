@@ -19,11 +19,11 @@ async def search_articles():
                                                disable_online_filtering=True,
                                                with_out_analogs=True
                                                )
-    logger.info(data)
+    logger.info(f'{data}')
     await api.close()
 
 
-async def search_bach():
+async def search_batch():
     list_to_search = [{'brand': 'LuK', 'number': '602000600'}, {'brand': 'Mahle', 'number': 'OX8236D'}]
     data = await api.cp.client.search.batch(list_to_search)
     logger.info(data)
@@ -40,11 +40,4 @@ async def advices_batch():
 
 
 if __name__ == '__main__':
-    # Необходимо только в Windows для избежания RuntimeError
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(advices_batch())
-    finally:
-        loop.run_until_complete(api.close())
+    asyncio.run(search_batch())

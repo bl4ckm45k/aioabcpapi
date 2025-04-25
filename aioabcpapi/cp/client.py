@@ -1,39 +1,23 @@
 import logging
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import NotEnoughRights, AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
+from ..utils.fields_checker import check_limit, process_cp_dates, ensure_list_params, convert_bool_params
 from ..utils.payload import generate_payload
 
 logger = logging.getLogger('Cp.Client')
-
-
-class ClientApi:
-    def __init__(self, base: BaseAbcp):
-        """
-        Класс содержит методы клиентского интерфейса
-
-        https://www.abcp.ru/wiki/API.ABCP.Client
-        """
-        self._base = base
-        self.search = Search(base)
-        self.basket = Basket(base)
-        self.orders = Orders(base)
-        self.user = User(base)
-        self.garage = Garage(base)
-        self.car_tree = CarTree(base)
-        self.form = Form(base)
-        self.articles = Articles(base)
 
 
 class Search:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def brands(self, number: Union[str, int],
-                     use_online_stocks: Union[bool, int] = 0,
-                     locale: Optional[str] = None):
+    @convert_bool_params('use_online_stocks')
+    async def brands(self, number: str | int,
+                     use_online_stocks: bool | int = 0,
+                     locale: str | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83
         Осуществляет поиск по номеру детали и возвращает массив найденных брендов, имеющих деталь с искомым номером.
@@ -46,52 +30,52 @@ class Search:
         :type locale: str
         :return:
         """
-        if isinstance(use_online_stocks, bool):
-            use_online_stocks = int(use_online_stocks)
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.BRANDS, payload)
 
+    @convert_bool_params('use_online_stocks', 'disable_online_filtering', 'with_out_analogs')
     async def articles(self,
-                       number: Union[str, int],
-                       brand: Union[str, int],
-                       use_online_stocks: Union[bool, int] = 0,
-                       disable_online_filtering: Union[bool, int] = 0,
-                       with_out_analogs: Union[bool, int] = 1,
-                       profile_id: Union[int, str] = None):
+                       number: str | int,
+                       brand: str | int,
+                       use_online_stocks: int | bool = 0,
+                       disable_online_filtering: int | bool = 0,
+                       with_out_analogs: int | bool = 1,
+                       profile_id: str | int = None) -> List[Dict[str, Any]]:
         """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B4.D0.B5.D1.82.D0.B0.D0.BB.D0.B8_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83_.D0.B8_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D1.83
+        Поиск детали по номеру и бренду.
+        
         Осуществляет поиск по номеру детали и бренду. Возвращает массив найденных деталей.
         Так как один и тот же производитель может иметь несколько общепринятых наименований (например, GM и General Motors),
         система постарается это учесть, используя собственную базу синонимов брендов.
 
+        Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B4.D0.B5.D1.82.D0.B0.D0.BB.D0.B8_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83_.D0.B8_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D1.83
+
         :param number: Искомый номер детали
-        :type number: :obj:`str or int`
+        :type number: :obj:`str` или :obj:`int`
         :param brand: Фильтр по имени производителя
-        :type brand: str or int
+        :type brand: :obj:`str` или :obj:`int`
         :param use_online_stocks: Флаг "использовать online-склады". Может принимать значения 0 или 1 (по умолчанию - 0)
-        :type use_online_stocks: str or int
+        :type use_online_stocks: :obj:`bool`, :obj:`str` или :obj:`int`
         :param disable_online_filtering: Флаг "отключить фильтры online поставщиков". Может принимать значения 0 или 1 (по умолчанию - 0)
-        :type disable_online_filtering: str or int
+        :type disable_online_filtering: :obj:`bool`, :obj:`str` или :obj:`int`
         :param with_out_analogs: Флаг "исключить поиск по аналогам". По умолчанию - 0.
-        :type with_out_analogs: str or int
+        :type with_out_analogs: :obj:`bool`, :obj:`str` или :obj:`int`
         :param profile_id: При передаче этого параметра, поисковая выдача api-администратора формируется как для клиента с переданным профилем. Работает только под API-администратором.
-        :type profile_id: str or int
-        :return:
+        :type profile_id: :obj:`str` или :obj:`int`
+        :return: Список найденных деталей
+        :rtype: List[Dict[str, Any]]
+        :raises NotEnoughRights: Если использован profile_id не API-администратором
         """
         if not self._base.admin and profile_id is not None:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
-        if isinstance(use_online_stocks, bool):
-            use_online_stocks = int(use_online_stocks)
-        if isinstance(disable_online_filtering, bool):
-            disable_online_filtering = int(disable_online_filtering)
-        if isinstance(with_out_analogs, bool):
-            with_out_analogs = int(with_out_analogs)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ARTICLES, payload)
 
-    async def batch(self, search: Union[List[Dict], Dict], profile_id: Union[int, str] = None):
+    @ensure_list_params('search')
+    async def batch(self, search: List[Dict] | Dict, profile_id: str | int = None):
         """
-        Source https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.B0.D0.BA.D0.B5.D1.82.D0.BD.D1.8B.D0.B9_.D0.B7.D0.B0.D0.BF.D1.80.D0.BE.D1.81_.D0.B1.D0.B5.D0.B7_.D1.83.D1.87.D0.B5.D1.82.D0.B0_.D0.B0.D0.BD.D0.B0.D0.BB.D0.BE.D0.B3.D0.BE.D0.B2
+        Source https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.B0.D0.BA.D0.B5.D1.82.D0.BD.D1.8B.D0.B9_.D0.B7.D0.B0.D0.BF.D1.80.D0.BE.D1.81_.D0.B1.D0.B5.D0.B7_.D1.83.D1.87.D0.B5.D1.82.D0.B0_.D0.B0.D0.BD.D0.B0.D0.B3.D0.BE.D0.B2
         Осуществляет поиск по номеру производителя и бренду детали. Возвращает массив найденных деталей.
         Внимание! Данная операция не выполняет поиск по online-складам.
 
@@ -102,10 +86,8 @@ class Search:
         :type profile_id: str or int
         :return:
         """
-        if not self._base.admin and profile_id is not None:
+        if not self._base.admin and profile_id:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
-        if isinstance(search, dict):
-            search = [search]
         payload = generate_payload(exclude=['search'], **locals())
         # It can work with GET and POST, but the documentation specifies POST
         return await self._base.request(_Methods.Client.Search.BATCH, payload, True)
@@ -120,7 +102,7 @@ class Search:
         """
         return await self._base.request(_Methods.Client.Search.HISTORY)
 
-    async def tips(self, number: Union[str, int], locale: Optional[str]):
+    async def tips(self, number: str | int, locale: str | None):
         """Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B4.D1.81.D0.BA.D0.B0.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D0.BF.D0.BE.D0.B8.D1.81.D0.BA.D1.83
         Возвращает по части номера массив подходящих пар бренд - номер
 
@@ -134,7 +116,7 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.TIPS, payload)
 
-    async def advices(self, brand: Union[str, int], number: Union[str, int], limit: Optional[int] = 5):
+    async def advices(self, brand: str | int, number: str | int, limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D1.81.D0.BE.D0.BF.D1.83.D1.82.D1.81.D1.82.D0.B2.D1.83.D1.8E.D1.89.D0.B8.D1.85_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2
         Функция реализует механизм "с этим товаром покупают" на основе статистики покупки комплектов товаров.
@@ -145,9 +127,9 @@ class Search:
 
 
         :param brand: Имя производителя
-        :type brand: :obj:`Union[str, int]`
+        :type brand: :obj:`str | int`
         :param number: Номер детали
-        :type number: :obj:`Union[str, int]`
+        :type number: :obj:`str | int`
         :param limit: необязательный параметр, ограничивающий выдачу
         :type limit :obj:`int`
         :return:
@@ -156,7 +138,8 @@ class Search:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ADVICES, payload)
 
-    async def advices_batch(self, articles: Union[List[Dict], Dict], limit: Optional[int] = 5):
+    @ensure_list_params('articles')
+    async def advices_batch(self, articles: List[Dict] | Dict, limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9C.D0.B5.D1.85.D0.B0.D0.BD.D0.B8.D0.B7.D0.BC_.22.D0.A1_.D1.8D.D1.82.D0.B8.D0.BC_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.BC_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.8E.D1.82.22
         Функция реализует механизм "с этим товаром покупают" по нескольким товарам.
@@ -168,10 +151,8 @@ class Search:
         :param limit:
         :return:
         """
-        if isinstance(articles, dict):
-            articles = [articles]
         payload = generate_payload(exclude=['articles'], **locals())
-        return await self._base.request(_Methods.Client.Search.ADVICES_BATCH, payload, True, json=True)
+        return await self._base.request(_Methods.Client.Search.ADVICES_BATCH, payload, post=True, json=True)
 
 
 class Basket:
@@ -188,33 +169,35 @@ class Basket:
         """
         return await self._base.request(_Methods.Client.Basket.BASKETS_LIST)
 
-    async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: Union[int, str] = None):
+    @ensure_list_params('basket_positions')
+    async def add(self, basket_positions: List[Dict] | Dict, basket_id: str | int = None) -> Dict[str, Any]:
         """
-        Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.83._.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.B0_.D0.B8.D0.B7_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
-
+        Добавление товаров в корзину
+        
         Осуществляет подготовку к отправке заказа на товары по номеру производителя, бренду и коду поставки или по коду детали.
         Возвращает статус добавления товара в корзину по каждой позиции.
-        При добавлении brand - number - itemKey - supplierCode позиции,
-        которая уже была ранее добавлена в корзину, значение quantity будет прибавлено к существующему.
-        Удаление позиции - при добавлении brand - number - itemKey - supplierCode позиции,
-        которая уже была ранее добавлена в корзину, со значением quantity равным 0, позиция будет удалена из корзины.
-        Для изменения количества рекомендуется удалять позицию и ее добавлять заново с требуемым количеством.
+        
+        При добавлении brand-number-itemKey-supplierCode позиции, которая уже была ранее добавлена в корзину,
+        значение quantity будет прибавлено к существующему.
+        
+        Удаление позиции - при добавлении brand-number-itemKey-supplierCode позиции со значением quantity равным 0,
+        позиция будет удалена из корзины.
 
+        Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.83._.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.B0_.D0.B8.D0.B7_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
 
-
-        :param basket_positions: Набор добавляемых деталей в формате brand - number - itemKey - supplierCode или code с указанием добавляемого количества в поле quantity и комментария к позиции в поле comment
-        :type basket_positions: :obj:`list` or :obj:`dict
-        :param basket_id: Необязательный параметр - идентификатор корзины при использовании мультикорзины
-        :type basket_id: :obj:`str` or :obj:`int`
-        :return: dict
+        :param basket_positions: Набор добавляемых деталей в формате brand-number-itemKey-supplierCode или code
+            с указанием добавляемого количества в поле quantity и комментария к позиции в поле comment
+        :type basket_positions: :obj:`List[Dict]` или :obj:`Dict`
+        :param basket_id: Идентификатор корзины при использовании мультикорзины (необязательный параметр)
+        :type basket_id: :obj:`str` или :obj:`int`
+        :return: Результат добавления товаров в корзину
+        :rtype: Dict[str, Any]
         """
-        if isinstance(basket_positions, dict):
-            basket_positions = [basket_positions]
         payload = generate_payload(**locals())
 
         return await self._base.request(_Methods.Client.Basket.BASKET_ADD, payload, True)
 
-    async def clear(self, basket_id: Union[int, str] = None):
+    async def clear(self, basket_id: str | int = None):
         """
         Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D1.87.D0.B8.D1.81.D1.82.D0.BA.D0.B0_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B
 
@@ -222,13 +205,13 @@ class Basket:
 
 
         :param basket_id: Необязательный параметр - идентификатор корзины при использовании мультикорзины
-        :type basket_id: :obj:`Union[str, int]`
+        :type basket_id: :obj:`str | int`
         :return:
         """
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Basket.BASKET_CLEAR, payload, True)
 
-    async def content(self, basket_id: Union[int, str] = None):
+    async def content(self, basket_id: str | int = None):
 
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.B2_.D0.B2_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D0.B5
@@ -240,7 +223,7 @@ class Basket:
 
 
         :param basket_id: Необязательный параметр - идентификатор корзины при использовании мультикорзины
-        :type basket_id: :obj:`Union[str, int]`
+        :type basket_id: :obj:`str | int`
         :return:
         """
         payload = generate_payload(**locals())
@@ -278,7 +261,7 @@ class Basket:
         """
         return await self._base.request(_Methods.Client.Basket.SHIPMENT_METHOD)
 
-    async def shipment_offices(self, offices_type: Optional[str] = None):
+    async def shipment_offices(self, offices_type: str | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BE.D1.84.D0.B8.D1.81.D0.BE.D0.B2_.D1.81.D0.B0.D0.BC.D0.BE.D0.B2.D1.8B.D0.B2.D0.BE.D0.B7.D0.B0
 
@@ -310,7 +293,7 @@ class Basket:
         return await self._base.request(_Methods.Client.Basket.SHIPMENT_ADDRESS)
 
     async def shipment_dates(self, min_deadline_time: int, max_deadline_time: int,
-                             shipment_address: Union[str, int] = None):
+                             shipment_address: str | int = None):
         """
         Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B4.D0.B0.D1.82_.D0.BE.D1.82.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B8
 
@@ -334,7 +317,7 @@ class Basket:
 
     async def add_shipment_address(self, address: str):
         """
-        Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B4.D1.80.D0.B5.D1.81.D0.B0_.D0.B4.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D0.BA.D0.B8
+        Source:https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B4.D1.80.D0.B5.D1.81.D0.B0_.D0.B4.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D0.BA.D0.B8
         Добавление адреса доставки
         Для текущего покупателя добавляет "адрес доставки" и возвращает его идентификатор используемый в методе Отправка корзины в заказ
 
@@ -398,6 +381,7 @@ class Orders:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @process_cp_dates('shipment_date')
     async def order_by_basket(self,
                               payment_method: str = None,
                               shipment_method: str = None,
@@ -408,7 +392,7 @@ class Orders:
                               basket_id: str = None,
                               whole_order_only: int = None,
                               position_ids: List = None,
-                              client_order_number: Union[str, int] = None):
+                              client_order_number: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D1.82.D0.BF.D1.80.D0.B0.D0.B2.D0.BA.D0.B0_.D0.BA.D0.BE.D1.80.D0.B7.D0.B8.D0.BD.D1.8B_.D0.B2_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7
         Отправка корзины в заказ
@@ -442,7 +426,7 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Basket.BASKET_ORDER, payload, True)
 
-    async def order_instant(self, positions: Union[List[Dict], Dict],
+    async def order_instant(self, positions: List[Dict] | Dict,
                             payment_method: str = None, shipment_method: str = None,
                             shipment_address: str = None, shipment_office: str = None, shipment_date: str = None,
                             comment: str = None, basket_id: str = None, whole_order_only: int = 0,
@@ -491,7 +475,8 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.ORDERS_INSTANT, payload, True)
 
-    async def orders_list(self, orders: Union[List, str, int]):
+    @ensure_list_params('orders')
+    async def orders_list(self, orders: List | str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2_.D1.81.D0.BE_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0.D0.BC.D0.B8
 
@@ -500,12 +485,12 @@ class Orders:
         :type orders: :obj:`list` or :obj:`str`
         :return:
         """
-        if not isinstance(orders, list):
-            orders = [orders]
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.GET_ORDERS_LIST, payload)
 
-    async def get_orders(self, format: str = None, skip: Optional[int] = None, limit: Optional[int] = None):
+    @check_limit
+    async def get_orders(self, format: str = None, skip: int | None = None, limit: int | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2
         Получение списка заказов
@@ -518,9 +503,7 @@ class Orders:
         :return:
         """
         if isinstance(format, str) and format != 'p':
-            raise AbcpWrongParameterError('Параметр format может принимать только значение "p"')
-        if isinstance(limit, int) and not 1 <= limit <= 1000:
-            raise AbcpWrongParameterError('Параметр limit может быть в диапазоне от 1 до 1000')
+            raise AbcpWrongParameterError("format", format, 'может принимать только значение "p"')
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Orders.GET_ORDERS, payload)
@@ -544,31 +527,31 @@ class User:
         self._base = base
 
     async def register(self,
-                       market_type: Union[str, int],
+                       market_type: str | int,
                        name: str, second_name: str, surname: str,
                        password: str, mobile: str,
-                       office: Union[str, int], email: str,
-                       icq: Union[str, int] = None, skype: str = None,
-                       region_id: Union[int, str] = None,
-                       business: Union[str, int] = None,
+                       office: str | int, email: str,
+                       icq: str | int = None, skype: str = None,
+                       region_id: str | int = None,
+                       business: str | int = None,
                        organization_name: str = None,
                        organization_form: str = None,
                        organization_official_name: str = None,
-                       inn: Union[str, int] = None,
-                       kpp: Union[str, int] = None,
-                       ogrn: Union[str, int] = None,
-                       organization_official_address: Union[str, int] = None,
+                       inn: str | int = None,
+                       kpp: str | int = None,
+                       ogrn: str | int = None,
+                       organization_official_address: str | int = None,
                        bank_name: str = None,
-                       bik: Union[str, int] = None,
-                       correspondent_account: Union[str, int] = None,
-                       organization_account: Union[str, int] = None,
+                       bik: str | int = None,
+                       correspondent_account: str | int = None,
+                       organization_account: str | int = None,
                        delivery_address: str = None,
                        comment: str = None,
-                       send_registration_email: Union[str, int] = None,
+                       send_registration_email: str | int = None,
                        member_of_club: str = None,
                        birth_date: str = None,
-                       filial_id: Union[int, str] = None,
-                       profile_id: Union[int, str] = None,
+                       filial_id: str | int = None,
+                       profile_id: str | int = None,
                        ):
 
         """
@@ -613,7 +596,7 @@ class User:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.User.REGISTER, payload, True)
 
-    async def activate(self, user_code: int, activation_code: Union[str, int]):
+    async def activate(self, user_code: int, activation_code: str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.90.D0.BA.D1.82.D0.B8.D0.B2.D0.B0.D1.86.D0.B8.D1.8F_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
 
@@ -665,7 +648,7 @@ class Garage:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def get_list(self, user_id: Union[int, str] = None):
+    async def get_list(self, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
         Получение списка автомобилей в гараже
@@ -674,11 +657,11 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         return await self._base.request(_Methods.Client.Garage.USER_GARAGE)
 
-    async def get_car(self, car_id: int, user_id: Union[int, str] = None):
+    async def get_car(self, car_id: int, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BE.D0.B1_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
         Получение информации об автомобиле в гараже
@@ -690,7 +673,7 @@ class Garage:
         :param car_id: Идентификатор автомобиля в гараже
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_CAR, payload)
@@ -699,14 +682,14 @@ class Garage:
                   comment: str = None, year: str = None, vin: str = None,
                   frame: str = None,
                   mileage: str = None,
-                  manufacturer_id: Union[int, str] = None,
-                  model_id: Union[int, str] = None,
-                  modification_id: Union[int, str] = None,
+                  manufacturer_id: str | int = None,
+                  model_id: str | int = None,
+                  modification_id: str | int = None,
                   vehicle_reg_plate: str = None,
-                  user_id: Union[int, str] = None):
+                  user_id: str | int = None):
 
         """
-        Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6
+        Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.BE.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6
 
 
 
@@ -723,7 +706,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
 
@@ -733,11 +716,11 @@ class Garage:
                      comment: str = None, year: str = None, vin: str = None,
                      frame: str = None,
                      mileage: str = None,
-                     manufacturer_id: Union[int, str] = None,
-                     model_id: Union[int, str] = None,
-                     modification_id: Union[int, str] = None,
+                     manufacturer_id: str | int = None,
+                     model_id: str | int = None,
+                     modification_id: str | int = None,
                      vehicle_reg_plate: str = None,
-                     user_id: Union[int, str] = None):
+                     user_id: str | int = None):
 
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B2_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B5
@@ -760,12 +743,12 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_UPDATE, payload, True)
 
-    async def delete(self, car_id: int, user_id: Union[int, str] = None):
+    async def delete(self, car_id: int, user_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.A3.D0.B4.D0.B0.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D1.8F_.D0.B8.D0.B7_.D0.B3.D0.B0.D1.80.D0.B0.D0.B6.D0.B0
         Удаление автомобиля из гаража
@@ -775,7 +758,7 @@ class Garage:
         :param user_id: Указывается API администратором
         :return:
         """
-        if user_id is not None and not self._base.admin:
+        if user_id and not self._base.admin:
             raise AbcpAPIError('Параметр "user_id" может быть передан только API администратором')
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Garage.GARAGE_DELETE, payload, True)
@@ -785,7 +768,7 @@ class CarTree:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
-    async def years(self, manufacturer_id: Union[int, str] = None):
+    async def years(self, manufacturer_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.94.D0.B5.D1.80.D0.B5.D0.B2.D0.BE_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
         Получение списка годов дерева автомобилей
@@ -811,7 +794,7 @@ class CarTree:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.CarTree.CAR_TREE_MANUFACTURERS, payload)
 
-    async def models(self, manufacturer_id: Union[int, str] = None, year: Union[int, str] = None):
+    async def models(self, manufacturer_id: str | int = None, year: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.BE.D0.B4.D0.B5.D0.BB.D0.B5.D0.B9_.D0.B4.D0.B5.D1.80.D0.B5.D0.B2.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
 
@@ -823,8 +806,8 @@ class CarTree:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.CarTree.CAR_TREE_MODELS, payload)
 
-    async def modifications(self, manufacturer_id: Union[int, str] = None, model_id: Union[int, str] = None,
-                            year: Union[int, str] = None):
+    async def modifications(self, manufacturer_id: str | int = None, model_id: str | int = None,
+                            year: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BC.D0.BE.D0.B4.D0.B8.D1.84.D0.B8.D0.BA.D0.B0.D1.86.D0.B8.D0.B9_.D0.B4.D0.B5.D1.80.D0.B5.D0.B2.D0.B0_.D0.B0.D0.B2.D1.82.D0.BE.D0.BC.D0.BE.D0.B1.D0.B8.D0.BB.D0.B5.D0.B9
 
@@ -855,8 +838,9 @@ class Form:
         :return:
         """
         if name not in ['registration_wholesale', 'registration_retail']:
-            raise AbcpWrongParameterError(
-                "Name parameter must be one of: 'registration_wholesale', 'registration_retail'")
+            raise AbcpWrongParameterError("name",
+                                          name,
+                                          "must be one of: 'registration_wholesale', 'registration_retail'")
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Form.FIELDS, payload)
 
@@ -876,22 +860,144 @@ class Articles:
         """
         return await self._base.request(_Methods.Client.Articles.BRANDS)
 
-    async def info(self, brand: Union[int, str], number: Union[str, int],
-                   format: str, source: Union[List, str],
+    @ensure_list_params('source')
+    async def info(self, brand: str | int, number: str | int,
+                   format: str, source: List | str,
                    cross_image: int = None,
                    with_original: str = None,
                    locale: str = None):
         if not self._base.admin:
             raise AbcpAPIError('Операция доступна только администратору API')
         if isinstance(format, str) and format not in 'bnpchmti':
-            raise AbcpWrongParameterError('Параметр "format" может содержать только символы: b, n, p, c, h, m, t, i')
-        if isinstance(source, str):
-            source = [source]
-        if isinstance(cross_image, int) and 'i' not in format:
-            raise AbcpWrongParameterError('')
+            raise AbcpWrongParameterError("format",
+                                          format,
+                                          'может содержать только символы: b, n, p, c, h, m, t, i')
+
         if isinstance(source, list) and not all(x in ['standard', 'common', 'common_cat'] for x in source):
-            raise AbcpWrongParameterError(
-                'Параметр "source" может содержать следующие флаги: standard, common, common_cat')
+            raise AbcpWrongParameterError("source",
+                                          source,
+                                          'может содержать следующие флаги: standard, common, common_cat')
 
         payload = generate_payload(exclude=['cross_image', 'with_original'], **locals())
         return await self._base.request(_Methods.Client.Articles.INFO, payload)
+
+
+class ClientApi:
+    """
+    API для клиента ABCP
+    
+    Предоставляет доступ ко всем методам API для клиента.
+    """
+
+    def __init__(self, base: BaseAbcp):
+        """
+        Инициализация API клиента
+        
+        :param base: Объект с базовой конфигурацией API
+        :type base: BaseAbcp
+        """
+        self._base = base
+        self._search = None
+        self._basket = None
+        self._orders = None
+        self._user = None
+        self._garage = None
+        self._car_tree = None
+        self._form = None
+        self._articles = None
+
+    @property
+    def search(self) -> Search:
+        """
+        Доступ к методам поиска
+        
+        :return: Объект с методами поиска
+        :rtype: Search
+        """
+        if self._search is None:
+            self._search = Search(self._base)
+        return self._search
+
+    @property
+    def basket(self) -> Basket:
+        """
+        Доступ к методам работы с корзиной
+        
+        :return: Объект с методами корзины
+        :rtype: Basket
+        """
+        if self._basket is None:
+            self._basket = Basket(self._base)
+        return self._basket
+
+    @property
+    def orders(self) -> Orders:
+        """
+        Доступ к методам работы с заказами
+        
+        :return: Объект с методами заказов
+        :rtype: Orders
+        """
+        if self._orders is None:
+            self._orders = Orders(self._base)
+        return self._orders
+
+    @property
+    def user(self) -> User:
+        """
+        Доступ к методам работы с пользователем
+        
+        :return: Объект с методами пользователя
+        :rtype: User
+        """
+        if self._user is None:
+            self._user = User(self._base)
+        return self._user
+
+    @property
+    def garage(self) -> Garage:
+        """
+        Доступ к методам работы с гаражом
+        
+        :return: Объект с методами гаража
+        :rtype: Garage
+        """
+        if self._garage is None:
+            self._garage = Garage(self._base)
+        return self._garage
+
+    @property
+    def car_tree(self) -> CarTree:
+        """
+        Доступ к методам работы с деревом автомобилей
+        
+        :return: Объект с методами дерева автомобилей
+        :rtype: CarTree
+        """
+        if self._car_tree is None:
+            self._car_tree = CarTree(self._base)
+        return self._car_tree
+
+    @property
+    def form(self) -> Form:
+        """
+        Доступ к методам работы с формами
+        
+        :return: Объект с методами форм
+        :rtype: Form
+        """
+        if self._form is None:
+            self._form = Form(self._base)
+        return self._form
+
+    @property
+    def articles(self) -> Articles:
+        """
+        Доступ к методам работы с артикулами
+        
+        :return: Объект с методами артикулов
+        :rtype: Articles
+        """
+        if self._articles is None:
+            self._articles = Articles(self._base)
+        return self._articles
