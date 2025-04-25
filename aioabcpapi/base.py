@@ -2,7 +2,7 @@ import asyncio
 import logging
 import ssl
 from types import TracebackType
-from typing import Dict, List, Optional, Union, Type, Any, TypeVar
+from typing import Dict, List, Optional, Type, Any, TypeVar
 
 import aiohttp
 import certifi
@@ -25,9 +25,9 @@ class BaseAbcp:
             host: str,
             login: str,
             password: str,
-            loop: Optional[Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]] = None,
+            loop: asyncio.BaseEventLoop | asyncio.AbstractEventLoop | None = None,
             connections_limit: int | None = None,
-            timeout: Optional[Union[int, float, aiohttp.ClientTimeout]] = None,
+            timeout: int | float | aiohttp.ClientTimeout = 30,
             retry_attempts: int = 3,
             retry_delay: float = 0.3,
     ):
@@ -111,6 +111,7 @@ class BaseAbcp:
         """
         if self._session is None or self._session.closed:
             self._session = await self._get_new_session()
+            return self._session
 
         loop = getattr(self._session, "_loop", None)
         if loop and not loop.is_running():
@@ -138,9 +139,9 @@ class BaseAbcp:
 
     async def __aexit__(
             self,
-            exc_type: Optional[Type[BaseException]],
-            exc_val: Optional[BaseException],
-            exc_tb: Optional[TracebackType]
+            exc_type: Type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: TracebackType | None
     ) -> None:
         """
         Выходная точка асинхронного контекстного менеджера
@@ -149,7 +150,7 @@ class BaseAbcp:
         """
         await self.close()
 
-    def __payload_check(self, payload: Optional[Union[Dict[str, Any], FormData]]) -> Union[Dict[str, Any], FormData]:
+    def __payload_check(self, payload: Dict[str, Any] | FormData | None) -> Dict[str, Any] | FormData:
         """
         Проверяет и дополняет payload учетными данными
         
@@ -173,11 +174,11 @@ class BaseAbcp:
     async def request(
             self,
             method: str,
-            payload: Optional[Union[Dict[str, Any], FormData]] = None,
+            payload: Dict[str, Any] | FormData | None = None,
             post: bool = False,
             retry: int | None = None,
             **kwargs
-    ) -> Union[List, Dict, bool]:
+    ) -> List | Dict | bool:
         """
         Выполняет запрос к API ABCP с автоматическими повторными попытками при сетевых ошибках.
 
@@ -191,7 +192,7 @@ class BaseAbcp:
         :param retry: Количество повторных попыток (если не указано, используется self.retry_attempts)
         :param kwargs: Дополнительные параметры для передачи в aiohttp.request
         :return: Результат запроса
-        :rtype: Union[List, Dict, bool]
+        :rtype: List | Dict | bool
         :raises: :obj:`exceptions.AbcpBaseException` и его подклассы
         """
         if not self.admin and isinstance(method, (_Methods.Admin, _Methods.TsAdmin)):
@@ -225,10 +226,7 @@ class BaseAbcp:
                 )
             except AbcpBaseException as e:
                 # Не повторяем запрос при ошибках бизнес-логики или авторизации
-                if not isinstance(e, NotEnoughRights):
-                    raise
-                last_exception = e
-                raise
+                raise e
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_exception = e
                 logger.warning(

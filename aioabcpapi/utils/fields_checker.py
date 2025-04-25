@@ -86,6 +86,19 @@ def convert_bool_params(*bool_params):
     return decorator
 
 
+def convert_bool_params_to_str(*bool_params):
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            for param in bool_params:
+                if param in kwargs and isinstance(kwargs[param], bool):
+                    kwargs[param] = str(kwargs[param]).lower()
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def validate_numeric_params(*numeric_params):
     def decorator(func):
         async def wrapper(*args, **kwargs):

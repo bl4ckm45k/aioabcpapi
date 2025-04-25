@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Dict, Union, List, Any
+from typing import Dict, List, Any
 
 import aiohttp
 
@@ -89,11 +89,11 @@ async def make_request(
         session: aiohttp.ClientSession,
         host: str,
         method: str,
-        data: Union[Dict[str, Any], aiohttp.FormData],
+        data: Dict[str, Any] | aiohttp.FormData,
         headers: Dict[str, str],
         http_method: str = "GET",
         **kwargs
-) -> Union[Dict[str, Any], List[Dict[str, Any]], bool]:
+) -> Dict[str, Any] | List[Dict[str, Any]] | bool:
     """
     Универсальная функция для выполнения запросов к API.
     

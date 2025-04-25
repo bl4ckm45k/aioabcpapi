@@ -1,18 +1,20 @@
 import asyncio
-from datetime import datetime, timedelta
-
-from aioabcpapi import Abcp
+from loader import api
 
 
-async def search_and_add_to_basket():
+# from aioabcpapi import Abcp
+
+# api = Abcp('host', 'login', 'password')
+
+async def async_context_manager():
     """
     Пример использования библиотеки ABCP API
     Поиск товаров и добавление в корзину
+
+    Использование через контекстный менеджер - сессия закроется автоматически
     """
-    host, login, password = 'id33333', 'api@id33333', 'md5hash'
-    
-    # Использование через контекстный менеджер - сессия закроется автоматически
-    async with Abcp(host, login, password) as api:
+
+    async with api:
         # Поиск товаров
         search_result = await api.cp.client.search.articles(
             number='602000600',
@@ -21,21 +23,23 @@ async def search_and_add_to_basket():
             disable_online_filtering=True,
             with_out_analogs=True
         )
-        
-        print(f"Найдено {len(search_result)} товаров")
-        
-        # Фильтрация и обработка результатов
-        for item in search_result:
-            price = float(item['price'])
-            print(f"Артикул: {item['article']}, Бренд: {item['brand']}, Цена: {price}")
-            
-            if price < 3000:
-                print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
-                # Отключаем поставщика с подозрительно низкой ценой
-                await api.cp.admin.distributors.edit_status(item['distributorId'], False)
-            elif price < 37000:
-                # Добавляем товар в корзину
-                await api.cp.client.basket.add(
+
+        print(f"Найдено товаров: {len(search_result)}")
+        sorted_search_result = sorted(search_result, key=lambda x: x['price'])
+    # Фильтрация и обработка результатов
+    for item in sorted_search_result:
+        price = float(item['price'])
+        print(f"Артикул: {item['numberFix']}, Бренд: {item['brand']}, Цена: {price}")
+        if price < 3000:
+            print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
+            # Отключаем поставщика с подозрительно низкой ценой
+            async with api:
+                result = await api.cp.admin.distributors.edit_status(item['distributorId'], False)
+                print(f"Результат отключения поставщика: {result}")
+        elif price < 45000:
+            # Добавляем товар в корзину
+            async with api:
+                result = await api.cp.client.basket.add(
                     basket_positions={
                         'number': item['article'],
                         'brand': item['brand'],
@@ -45,47 +49,56 @@ async def search_and_add_to_basket():
                         'comment': "РРЦ никто не любит"
                     }
                 )
-                print(f"Товар добавлен в корзину: {item['article']} {item['brand']}")
+
+                print(f"Результат добавляение в корзину: {result}")
 
 
-async def get_recent_orders():
+async def wo_async_context_manager():
     """
-    Пример получения недавних заказов
-    с использованием параметров даты
+    Пример использования библиотеки ABCP API
+    Поиск товаров и добавление в корзину
+
+    Использование без контекстного менеджера - закрывайте сессию самостоятельно
     """
-    host, login, password = 'id33333', 'api@id33333', 'md5hash'
-    
-    # Создание экземпляра API с настройками таймаута и ретраев
-    api = Abcp(
-        host=host, 
-        login=login, 
-        password=password,
-        timeout=30,  # 30 секунд таймаут
-        retry_attempts=5,  # 5 попыток при ошибках
-        retry_delay=0.5  # Задержка между попытками 0.5 секунды
+
+    # Поиск товаров
+    search_result = await api.cp.client.search.articles(
+        number='602000600',
+        brand='LuK',
+        use_online_stocks=True,
+        disable_online_filtering=True,
+        with_out_analogs=True
     )
-    
-    try:
-        # Получаем заказы за последние 7 дней
-        date_from = datetime.now() - timedelta(days=7)
-        date_to = datetime.now()
-        
-        orders = await api.cp.client.garage.get_orders(
-            date_from=date_from,
-            date_to=date_to,
-            limit=10
-        )
-        
-        print(f"Заказы за последние 7 дней: {len(orders)}")
-        for order in orders:
-            print(f"Заказ №{order['orderId']} от {order['createDate']} - {order['statusName']}")
-    
-    finally:
-        # Важно всегда закрывать сессию, если не используете контекстный менеджер
-        await api.close()
 
+    print(f"Найдено товаров: {len(search_result)}")
+    sorted_search_result = sorted(search_result, key=lambda x: x['price'])
+    # Фильтрация и обработка результатов
+    for item in sorted_search_result:
+        price = float(item['price'])
+        print(f"Артикул: {item['numberFix']}, Бренд: {item['brand']}, Цена: {price}")
+        if price < 3000:
+            print('Похоже на ошибку в прайсе. Отключаем поставщика временно.')
+            # Отключаем поставщика с подозрительно низкой ценой
+            result = await api.cp.admin.distributors.edit_status(item['distributorId'], False)
+            print(f"Результат отключения поставщика: {result}")
+        elif price < 45000:
+            # Добавляем товар в корзину
+            result = await api.cp.client.basket.add(
+                basket_positions={
+                    'number': item['article'],
+                    'brand': item['brand'],
+                    'supplierCode': item['supplierCode'],
+                    'itemKey': item['itemKey'],
+                    'quantity': 1,
+                    'comment': "РРЦ никто не любит"
+                }
+            )
+
+            print(f"Результат добавляение в корзину: {result}")
+
+    await api.close()
 
 if __name__ == '__main__':
     # Запуск примеров
-    asyncio.run(search_and_add_to_basket())
-    asyncio.run(get_recent_orders())
+    asyncio.run(async_context_manager())
+    asyncio.run(wo_async_context_manager())

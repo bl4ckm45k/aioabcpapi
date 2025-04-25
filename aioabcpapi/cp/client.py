@@ -1,10 +1,10 @@
 import logging
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import NotEnoughRights, AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
-from ..utils.fields_checker import check_limit, process_cp_dates, ensure_list_params
+from ..utils.fields_checker import check_limit, process_cp_dates, ensure_list_params, convert_bool_params
 from ..utils.payload import generate_payload
 
 logger = logging.getLogger('Cp.Client')
@@ -14,8 +14,9 @@ class Search:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @convert_bool_params('use_online_stocks')
     async def brands(self, number: str | int,
-                     use_online_stocks: Union[bool, int] = 0,
+                     use_online_stocks: bool | int = 0,
                      locale: str | None = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.B8.D1.81.D0.BA_.D0.B1.D1.80.D0.B5.D0.BD.D0.B4.D0.BE.D0.B2_.D0.BF.D0.BE_.D0.BD.D0.BE.D0.BC.D0.B5.D1.80.D1.83
@@ -29,17 +30,17 @@ class Search:
         :type locale: str
         :return:
         """
-        if isinstance(use_online_stocks, bool):
-            use_online_stocks = int(use_online_stocks)
+
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.BRANDS, payload)
 
+    @convert_bool_params('use_online_stocks', 'disable_online_filtering', 'with_out_analogs')
     async def articles(self,
                        number: str | int,
                        brand: str | int,
-                       use_online_stocks: Union[bool, int] = 0,
-                       disable_online_filtering: Union[bool, int] = 0,
-                       with_out_analogs: Union[bool, int] = 1,
+                       use_online_stocks: int | bool = 0,
+                       disable_online_filtering: int | bool = 0,
+                       with_out_analogs: int | bool = 1,
                        profile_id: str | int = None) -> List[Dict[str, Any]]:
         """
         Поиск детали по номеру и бренду.
@@ -68,17 +69,11 @@ class Search:
         """
         if not self._base.admin and profile_id is not None:
             raise NotEnoughRights('Только API Администор может указывать Профиль пользователя')
-        if isinstance(use_online_stocks, bool):
-            use_online_stocks = int(use_online_stocks)
-        if isinstance(disable_online_filtering, bool):
-            disable_online_filtering = int(disable_online_filtering)
-        if isinstance(with_out_analogs, bool):
-            with_out_analogs = int(with_out_analogs)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Search.ARTICLES, payload)
 
     @ensure_list_params('search')
-    async def batch(self, search: Union[List[Dict], Dict], profile_id: str | int = None):
+    async def batch(self, search: List[Dict] | Dict, profile_id: str | int = None):
         """
         Source https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.B0.D0.BA.D0.B5.D1.82.D0.BD.D1.8B.D0.B9_.D0.B7.D0.B0.D0.BF.D1.80.D0.BE.D1.81_.D0.B1.D0.B5.D0.B7_.D1.83.D1.87.D0.B5.D1.82.D0.B0_.D0.B0.D0.BD.D0.B0.D0.B3.D0.BE.D0.B2
         Осуществляет поиск по номеру производителя и бренду детали. Возвращает массив найденных деталей.
@@ -144,7 +139,7 @@ class Search:
         return await self._base.request(_Methods.Client.Search.ADVICES, payload)
 
     @ensure_list_params('articles')
-    async def advices_batch(self, articles: Union[List[Dict], Dict], limit: int | None = 5):
+    async def advices_batch(self, articles: List[Dict] | Dict, limit: int | None = 5):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9C.D0.B5.D1.85.D0.B0.D0.BD.D0.B8.D0.B7.D0.BC_.22.D0.A1_.D1.8D.D1.82.D0.B8.D0.BC_.D1.82.D0.BE.D0.B2.D0.B0.D1.80.D0.BE.D0.BC_.D0.BF.D0.BE.D0.BA.D1.83.D0.BF.D0.B0.D1.8E.D1.82.22
         Функция реализует механизм "с этим товаром покупают" по нескольким товарам.
@@ -175,7 +170,7 @@ class Basket:
         return await self._base.request(_Methods.Client.Basket.BASKETS_LIST)
 
     @ensure_list_params('basket_positions')
-    async def add(self, basket_positions: Union[List[Dict], Dict], basket_id: str | int = None) -> Dict[str, Any]:
+    async def add(self, basket_positions: List[Dict] | Dict, basket_id: str | int = None) -> Dict[str, Any]:
         """
         Добавление товаров в корзину
         
@@ -431,7 +426,7 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Client.Basket.BASKET_ORDER, payload, True)
 
-    async def order_instant(self, positions: Union[List[Dict], Dict],
+    async def order_instant(self, positions: List[Dict] | Dict,
                             payment_method: str = None, shipment_method: str = None,
                             shipment_address: str = None, shipment_office: str = None, shipment_date: str = None,
                             comment: str = None, basket_id: str = None, whole_order_only: int = 0,
@@ -481,7 +476,7 @@ class Orders:
         return await self._base.request(_Methods.Client.Orders.ORDERS_INSTANT, payload, True)
 
     @ensure_list_params('orders')
-    async def orders_list(self, orders: Union[List, str, int]):
+    async def orders_list(self, orders: List | str | int):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Client#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.B7.D0.B8.D1.86.D0.B8.D0.B9_.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.BE.D0.B2_.D1.81.D0.BE_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0.D0.BC.D0.B8
 
@@ -867,7 +862,7 @@ class Articles:
 
     @ensure_list_params('source')
     async def info(self, brand: str | int, number: str | int,
-                   format: str, source: Union[List, str],
+                   format: str, source: List | str,
                    cross_image: int = None,
                    with_original: str = None,
                    locale: str = None):

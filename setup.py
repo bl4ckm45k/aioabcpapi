@@ -28,7 +28,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/bl4ckm45k/aioabcpapi",
     license="MIT",
-    packages=find_packages(),
+    packages=['aioabcpapi', 'aioabcpapi/cp', 'aioabcpapi/ts', 'aioabcpapi/utils'],
     install_requires=requirements,
     classifiers=[
         'Programming Language :: Python :: 3.8',

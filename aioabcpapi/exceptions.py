@@ -1,4 +1,4 @@
-from typing import Optional, Any, Dict, Union
+from typing import Any, Dict
 
 
 class AbcpBaseException(Exception):
@@ -53,7 +53,7 @@ class AbcpAPIError(AbcpBaseException):
     """Исключение, возникающее при ошибках API ABCP."""
 
     def __init__(self, message: str | None = None, error_code: str | None = None,
-                 status_code: int | None = None, data: Optional[Dict[str, Any]] = None):
+                 status_code: int | None = None, data: Dict[str, Any] | None = None):
         self.error_code = error_code
         self.status_code = status_code
         self.data = data
@@ -79,7 +79,7 @@ class AbcpParameterRequired(AbcpBaseException):
 class AbcpWrongParameterError(AbcpBaseException):
     """Исключение, возникающее при неверном значении параметра."""
 
-    def __init__(self, parameter: str, value: Any, expected: Optional[Union[type, str]] = None):
+    def __init__(self, parameter: str, value: Any, expected: type | str | None = None):
         message = f"Неверное значение параметра '{parameter}': {value}"
         if expected:
             message += f", ожидается: {expected}"

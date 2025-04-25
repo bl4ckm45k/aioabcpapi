@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 from io import BufferedReader
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpAPIError, AbcpParameterRequired, AbcpWrongParameterError
 from ..utils.fields_checker import check_limit, process_cp_dates, validate_numeric_params, ensure_list_params, \
-    convert_bool_params
+    convert_bool_params, convert_bool_params_to_str
 from ..utils.payload import generate_payload, generate_payload_filter, generate_payload_payments, \
     generate_payload_online_order, generate_file_payload
 
@@ -165,7 +165,7 @@ class Orders:
             user_id: str | int = None,
             date: str | datetime = None,
             comment: str = None,
-            order_positions: Union[List[Dict], Dict] = None,
+            order_positions: List[Dict] | Dict = None,
             delivery_type_id: str | int = None,
             delivery_office_id: str | int = None,
             basket_id: str | int = None,
@@ -173,7 +173,7 @@ class Orders:
             guest_order_mobile: str = None,
             guest_order_email: str = None,
             shipment_date: str | datetime = None,
-            delivery_cost: Union[str, int, float] = None,
+            delivery_cost: str | int | float = None,
             delivery_address_id: str | int = None,
             delivery_address: str = None,
             manager_id: str | int = None,
@@ -265,7 +265,7 @@ class Orders:
     @ensure_list_params('position_ids')
     async def get_online_order_params(
             self,
-            position_ids: Union[List, str, int]
+            position_ids: List | str | int
 
     ):
         """
@@ -296,8 +296,8 @@ class Orders:
     @ensure_list_params('positions', 'order_params')
     async def send_online_order(
             self,
-            order_params: Union[List[Dict], Dict],
-            positions: Union[List[Dict], Dict],
+            order_params: List[Dict] | Dict,
+            positions: List[Dict] | Dict,
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D1.82.D0.BF.D1.80.D0.B0.D0.B2.D0.BA.D0.B0_online-.D0.B7.D0.B0.D0.BA.D0.B0.D0.B7.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D1.83
@@ -323,8 +323,8 @@ class Finance:
     async def update_balance(
             self,
             user_id: str | int,
-            balance: Union[float, int, str],
-            in_stop_list: Union[bool, str] = None
+            balance: str | int | float,
+            in_stop_list: str | bool = None
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.B1.D0.B0.D0.BD.D0.B0.D0.BD.D1.81.D0.B0_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D0.B0
@@ -351,7 +351,7 @@ class Finance:
     async def update_credit_limit(
             self,
             user_id: str | int,
-            credit_limit: Union[float, int, str]
+            credit_limit: str | int | float
 
     ):
         """
@@ -373,11 +373,11 @@ class Finance:
     async def update_finance_info(
             self,
             user_id: str | int,
-            balance: Union[float, int, str] = None,
+            balance: str | int | float = None,
             credit_limit: float = None,
-            in_stop_list: Union[bool, str] = None,
+            in_stop_list: str | bool = None,
             pay_delay: str | int = None,
-            overdue_saldo: Union[float, int, str] = None
+            overdue_saldo: str | int | float = None
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.84.D0.B8.D0.BD.D0.B0.D0.BD.D1.81.D0.BE.D0.B2.D0.BE.D0.B9_.D0.B8.D0.BD.D1.84.D0.BE.D1.80.D0.BC.D0.B0.D1.86.D0.B8.D0.B8_.D0.BA.D0.BB.D0.B8.D0.B5.D0.BD.D1.82.D0.B0
@@ -443,8 +443,8 @@ class Finance:
     @ensure_list_params('payment_numbers', 'order_ids')
     async def get_payment_links(
             self,
-            payment_numbers: Union[List, str, int] = None,
-            order_ids: Union[List, str, int] = None,
+            payment_numbers: List | str | int = None,
+            order_ids: List | str | int = None,
             user_id: str | int = None,
             date_time_start: str | datetime = None,
             date_time_end: str | datetime = None,
@@ -483,10 +483,10 @@ class Finance:
             self,
             date_start: str | datetime = None,
             date_end: str | datetime = None,
-            customer_ids: Union[List, int] = None,
+            customer_ids: List | int = None,
             payment_method_id: str | int = None,
-            status_ids: Union[List, str, int] = None,
-            order_ids: Union[List, str, int] = None
+            status_ids: List | str | int = None,
+            order_ids: List | str | int = None
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_online_.D0.BF.D0.BB.D0.B0.D1.82.D0.B5.D0.B6.D0.B5.D0.B9
@@ -516,8 +516,8 @@ class Finance:
     @ensure_list_params('payments')
     async def add_multiple_payments(
             self,
-            payments: Union[List[Dict], Dict] = None,
-            link_payments: Union[bool, int] = 0
+            payments: List[Dict] | Dict = None,
+            link_payments: int | bool = 0
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82
@@ -525,7 +525,7 @@ class Finance:
 
 
         :param payments: Массив с оплатами
-        :type payments: Union[List[Dict], Dict]
+        :type payments: List[Dict] | Dict
         :param link_payments: Идентификатор платежной системы. Получить можно из cp/users/profiles или в панели управления.
         :type link_payments: str or int
         """
@@ -539,12 +539,12 @@ class Finance:
             self,
             user_id: int,
             payment_type_id: int,
-            amount: Union[float, int],
+            amount: int | float,
             create_date_time: str | datetime = None,
             payment_number: str | int = None,
             comment: str | None = None,
             editor_id: str | int = None,
-            link_payments: Union[bool, int] = False
+            link_payments: int | bool = False
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.94.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.BB.D0.B0.D1.82
@@ -600,7 +600,7 @@ class Finance:
             self,
             payment_id: str | int,
             order_id: str | int,
-            amount: Union[str, int, float]
+            amount: str | int | float
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D1.8F_.D0.BF.D1.80.D0.B8.D0.B2.D1.8F.D0.B7.D0.BA.D0.B8_.D0.BF.D0.BE_.D1.80.D0.B0.D0.BD.D0.B5.D0.B5_.D0.B4.D0.BE.D0.B1.D0.B0.D0.B2.D0.BB.D0.B5.D0.BD.D0.BD.D0.BE.D0.BC.D1.83_.D0.BF.D0.BB.D0.B0.D1.82.D0.B5.D0.B6.D1.83
@@ -623,7 +623,7 @@ class Finance:
     async def refund_payment(
             self,
             refund_payment_id: str | int,
-            refund_amount: Union[str, int, float]
+            refund_amount: str | int | float
     ):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9E.D0.BF.D0.B5.D1.80.D0.B0.D1.86.D0.B8.D1.8F_.D0.B2.D0.BE.D0.B7.D0.B2.D1.80.D0.B0.D1.82.D0.B0_.D0.BF.D0.BB.D0.B0.D1.82.D0.B5.D0.B6.D0.B0
@@ -639,7 +639,7 @@ class Finance:
         return await self._base.request(_Methods.Admin.Finance.REFUND_PAYMENT, payload, True)
 
     @convert_bool_params('delete_link')
-    async def delete_payment(self, payment_id: int, delete_link: Union[int, bool] = 0):
+    async def delete_payment(self, payment_id: int, delete_link: int | bool = 0):
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Finance.DELETE_PAYMENT, payload, True)
 
@@ -708,8 +708,8 @@ class Finance:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Finance.GET_RECEIPTS, payload)
 
-    async def get_payments_methods(self, only_enabled: Union[bool, str] = None,
-                                   only_disabled: Union[bool, str] = None,
+    async def get_payments_methods(self, only_enabled: str | bool = None,
+                                   only_disabled: str | bool = None,
                                    payment_method_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BD.D0.B0.D1.81.D1.82.D1.80.D0.BE.D0.B5.D0.BA_.D0.BF.D0.BB.D0.B0.D1.82.D1.91.D0.B6.D0.BD.D1.8B.D1.85_.D1.81.D0.B8.D1.81.D1.82.D0.B5.D0.BC
@@ -746,7 +746,7 @@ class Users:
             date_updated_end: str | datetime = None,
             state: str | int = None,
             customer_status: str | int = None,
-            customers_ids: Union[List, str, int] = None,
+            customers_ids: List | str | int = None,
             market_type: str | int = None,
             phone: str | int = None,
             enable_sms: str | bool = None,
@@ -829,7 +829,7 @@ class Users:
             bank_name: str = None, bik: str | int = None,
             correspondent_account: str | int = None, organization_account: str | int = None,
             delivery_address: str = None, comment: str = None, profile_id: str = None,
-            pickup_state: Union[int, bool] = None
+            pickup_state: int | bool = None
     ):
         """Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D0.BB.D1.8C.D0.B7.D0.BE.D0.B2.D0.B0.D1.82.D0.B5.D0.BB.D1.8F
         Принимает параметры для регистрации пользователя. Осуществляет регистрацию нового пользователя в системе.
@@ -919,8 +919,8 @@ class Users:
             comment: str = None,
             price_up: str | int = None,
             payment_methods: str = None,
-            matrix_price_ups: Union[List[Dict], Dict] = None,
-            distributors_price_ups: Union[List[Dict], Dict] = None,
+            matrix_price_ups: List[Dict] | Dict = None,
+            distributors_price_ups: List[Dict] | Dict = None,
 
     ):
 
@@ -967,22 +967,22 @@ class Users:
             surname: str = None, password: str = None,
             birth_date: str | datetime = None, city: str = None,
             mobile: str | int = None, icq: str = None,
-            skype: str = None, enable_sms: Union[bool, str] = None,
-            enable_whatsapp: Union[bool, str] = None,
+            skype: str = None, enable_sms: str | bool = None,
+            enable_whatsapp: str | bool = None,
             state: str | int = None,
             profile_id: str | int = None, organization_name: str = None,
             organization_form: str = None, organization_official_name: str = None,
             inn: str | int = None, kpp: str | int = None, ogrn: str | int = None,
             bank_name: str = None, bik: str | int = None,
             correspondent_account: str | int = None, organization_account: str | int = None,
-            delivery_address: Union[List[Dict], Dict] = None, baskets: Union[List[Dict], Dict] = None,
-            baskets_delivery_address: Union[List[Dict], Dict] = None, comment: str = None,
+            delivery_address: List[Dict] | Dict = None, baskets: List[Dict] | Dict = None,
+            baskets_delivery_address: List[Dict] | Dict = None, comment: str = None,
             manager_comment: str = None, manager_id: str | int = None,
             user_code: str | int = None, client_service_employee_id: str | int = None,
             client_service_employee2_id: str | int = None, client_service_employee3_id: str | int = None,
-            client_service_employee4_id: str | int = None, office: Union[List[Dict], Dict] = None,
+            client_service_employee4_id: str | int = None, office: List[Dict] | Dict = None,
             info: str = None, safe_mode: str | int = None,
-            pickup_state: Union[int, bool] = None,
+            pickup_state: int | bool = None,
 
     ):
 
@@ -1074,7 +1074,7 @@ class Users:
         return await self._base.request(f"{_Methods.Admin.Users.GET_USER_SHIPMENT_ADDRESS_ZONE}{id}")
 
     @ensure_list_params('zones')
-    async def update_shipment_zones(self, zones: Union[List[Dict], Dict]):
+    async def update_shipment_zones(self, zones: List[Dict] | Dict):
         """
         Сохранение зон адресов доставки. Универсальный метод добавления и обновления зон адресов доставки.
 
@@ -1140,7 +1140,7 @@ class Users:
         return await self._base.request(_Methods.Admin.Users.GET_USERS_CARS, payload)
 
     @ensure_list_params('user_ids')
-    async def get_sms_settings(self, user_ids: Union[List, int, str]):
+    async def get_sms_settings(self, user_ids: List | int | str):
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Users.SMS_SETTINGS, payload)
 
@@ -1223,7 +1223,7 @@ class Distributors:
         self._base = base
 
     @convert_bool_params('distributors4mc')
-    async def get(self, distributors4mc: Union[str, int, bool] = None):
+    async def get(self, distributors4mc: str | int | bool = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.BB.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D0.BF.D0.B8.D1.81.D0.BA.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2
         Возвращает список всех поставщиков, подключенных в ПУ/Поставщики.
@@ -1236,7 +1236,7 @@ class Distributors:
         return await self._base.request(_Methods.Admin.Distributors.GET_DISTRIBUTORS_LIST, payload)
 
     @convert_bool_params('status')
-    async def edit_status(self, distributor_id: str | int, status: Union[int, bool]):
+    async def edit_status(self, distributor_id: str | int, status: int | bool):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
         Изменение статуса поставщика
@@ -1283,9 +1283,9 @@ class Distributors:
                          description: str = None,
                          enable_color: str | bool = None, color: str = None,
                          is_abnormal_color_enabled: str | bool = None, abnormal_color: str = None,
-                         no_return: Union[bool, str] = None,
-                         supplier_code_enabled_list: Union[List, List, str, int] = None,
-                         supplier_code_disabled_list: Union[List, List, str, int] = None,
+                         no_return: str | bool = None,
+                         supplier_code_enabled_list: List | str | int = None,
+                         supplier_code_disabled_list: List | str | int = None,
                          normal_time_display_only: str | int = None,
                          disable_order_abnormal_time: str | int = None,
                          not_use_online_supplier_deadline: str | int = None,
@@ -1363,7 +1363,7 @@ class Distributors:
         return await self._base.request(_Methods.Admin.Distributors.UPDATE_ROUTE, payload, True)
 
     @convert_bool_params('status')
-    async def edit_route_status(self, route_id: str | int, status: Union[int, bool]):
+    async def edit_route_status(self, route_id: str | int, status: int | bool):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.98.D0.B7.D0.BC.D0.B5.D0.BD.D0.B5.D0.BD.D0.B8.D0.B5_.D1.81.D1.82.D0.B0.D1.82.D1.83.D1.81.D0.B0_.D0.BC.D0.B0.D1.80.D1.88.D1.80.D1.83.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
 
@@ -1394,7 +1394,7 @@ class Distributors:
 
     @ensure_list_params('distributors')
     async def connect_to_office(self, office_id: str | int,
-                                distributors: Union[List[Dict], Dict] = None):
+                                distributors: List[Dict] | Dict = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.9F.D0.BE.D0.B4.D0.BA.D0.BB.D1.8E.D1.87.D0.B5.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.BE.D0.B2_.D0.BA_.D0.BE.D1.84.D0.B8.D1.81.D1.83
 
@@ -1425,7 +1425,7 @@ class Distributors:
         return await self._base.request(_Methods.Admin.Distributors.GET_OFFICE_SUPPLIERS, payload)
 
     async def pricelist_update(self, distributor_id: str | int,
-                               upload_file: Union[str, BufferedReader],
+                               upload_file: str | BufferedReader,
                                file_type_id: str | int = None):
         """
         Source: https://www.abcp.ru/wiki/API.ABCP.Admin#.D0.97.D0.B0.D0.B3.D1.80.D1.83.D0.B7.D0.BA.D0.B0_.D0.BF.D1.80.D0.B0.D0.B9.D1.81-.D0.BB.D0.B8.D1.81.D1.82.D0.B0_.D0.BF.D0.BE.D1.81.D1.82.D0.B0.D0.B2.D1.89.D0.B8.D0.BA.D0.B0
@@ -1464,7 +1464,7 @@ class Catalog:
 
     @ensure_list_params('properties')
     async def search(self, goods_group: str,
-                     properties: Union[List[Dict[str, str]], Dict[str, str]],
+                     properties: List[Dict[str, str]] | Dict[str, str],
                      skip: int | None = None, limit: int | None = None,
                      locale: str | None = None):
         """
@@ -1480,7 +1480,7 @@ class Catalog:
         return await self._base.request(_Methods.Admin.Catalog.SEARCH, payload, True)
 
     @ensure_list_params('articles_catalog')
-    async def info_batch(self, articles_catalog: Union[List[Dict[str, str]], Dict[str, str]], locale: str = 'ru_RU'):
+    async def info_batch(self, articles_catalog: List[Dict[str, str]] | Dict[str, str], locale: str = 'ru_RU'):
         payload = generate_payload(exclude=['articles_catalog'], **locals())
         return await self._base.request(_Methods.Admin.Catalog.INFO_BATCH, payload, True)
 
@@ -1489,13 +1489,14 @@ class UsersCatalog:
     def __init__(self, base: BaseAbcp):
         self._base = base
 
+    @convert_bool_params_to_str('default_attributes_hide', 'article_only')
     async def upload(self, catalog_id: str | int,
-                     file: Union[str, BufferedReader],
+                     file: str | BufferedReader,
                      delete_old_mode: int = 0,
                      default_attributes_hide: str | bool = 'false',
                      article_only: str | bool = 'false',
                      image_upload_mode: int = 0,
-                     image_archive: Union[str, BufferedReader] = None):
+                     image_archive: str | BufferedReader = None):
         """
 
         :param catalog_id:
@@ -1510,12 +1511,6 @@ class UsersCatalog:
         if not 0 <= delete_old_mode <= 2:
             raise AbcpWrongParameterError(
                 "delete_old_mode", delete_old_mode, 'Параметр должен быть в диапазоне от 0 до 2')
-
-        if isinstance(default_attributes_hide, bool):
-            default_attributes_hide = str(default_attributes_hide).lower()
-
-        if isinstance(article_only, bool):
-            article_only = str(article_only).lower()
 
         if image_upload_mode == 1 and image_archive is None:
             raise AbcpWrongParameterError(
@@ -1542,7 +1537,7 @@ class Payment:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.Admin.Payment.TOKEN, payload)
 
-    async def top_balance_link(self, client_id: str | int, amount: Union[float, int, str]):
+    async def top_balance_link(self, client_id: str | int, amount: str | int | float):
         """
 
         :param client_id: Идентификатор клиента
@@ -1567,16 +1562,16 @@ class AdminApi:
         if not isinstance(base, BaseAbcp):
             raise AbcpWrongParameterError("base", base, "BaseAbcp instance")
         self._base = base
-        self._orders: Optional[Orders] = None
-        self._finance: Optional[Finance] = None
-        self._users: Optional[Users] = None
-        self._staff: Optional[Staff] = None
-        self._statuses: Optional[Statuses] = None
-        self._distributors: Optional[Distributors] = None
-        self._catalog: Optional[Catalog] = None
-        self._articles: Optional[Articles] = None
-        self._users_catalog: Optional[UsersCatalog] = None
-        self._payment: Optional[Payment] = None
+        self._orders: Orders | None = None
+        self._finance: Finance | None = None
+        self._users: Users | None = None
+        self._staff: Staff | None = None
+        self._statuses: Statuses | None = None
+        self._distributors: Distributors | None = None
+        self._catalog: Catalog | None = None
+        self._articles: Articles | None = None
+        self._users_catalog: UsersCatalog | None = None
+        self._payment: Payment | None = None
 
     @property
     def orders(self) -> Orders:

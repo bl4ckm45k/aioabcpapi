@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union, List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
@@ -13,7 +13,7 @@ class GoodReceipts:
         self._base = base
 
     async def create(self, code: str | int,
-                     positions: Union[List[Dict[str, str]], Dict[str, str]],
+                     positions: List[Dict[str, str]] | Dict[str, str],
                      sup_number: str = None, sup_shipment_date: str | datetime = None):
         """
         Операция создания приёмки
@@ -39,7 +39,7 @@ class GoodReceipts:
                   output: str = None,
                   auto: str = None,
                   creator_id: str | int = None, worker_id: str | int = None,
-                  agreement_id: str | int = None, statuses: Union[List, str, int] = None,
+                  agreement_id: str | int = None, statuses: List | str | int = None,
                   number: str = None,
                   date_start: str | datetime = None, date_end: str | datetime = None,
                   sup_number: str = None):
@@ -107,9 +107,9 @@ class OrderPickings:
                   output: str = None, auto: str | int = None,
                   creator_id: str | int = None, worker_id: str | int = None,
                   agreement_id: str | int = None,
-                  status: Union[List, str, int] = None, number: str = None,
+                  status: List | str | int = None, number: str = None,
                   date_start: str | datetime = None, date_end: str | datetime = None,
-                  co_old_pos_ids: Union[List, str, int] = None):
+                  co_old_pos_ids: List | str | int = None):
         """
         Получение списка операций отгрузки (расход)
 
@@ -143,7 +143,7 @@ class OrderPickings:
     @check_limit
     async def get_positions(self, op_id: str | int, limit: int = None, skip: int = None, output: str = None,
                             product_id: str | int = None,
-                            item_id: str | int = None, ignore_canceled: Union[int, bool] = None):
+                            item_id: str | int = None, ignore_canceled: int | bool = None):
         """
         Получение списка позиций товаров отгрузки
 
@@ -188,11 +188,11 @@ class CustomerComplaints:
     @process_ts_lists('position_statuses', 'tag_ids')
     async def get(self, auto: str | int = None, creator_id: str | int = None,
                   expert_id: str | int = None,
-                  order_picking_id: str | int = None, position_statuses: Union[List, str, int] = None,
-                  tag_ids: Union[List, str, int] = None, position_auto: str = None,
+                  order_picking_id: str | int = None, position_statuses: List | str | int = None,
+                  tag_ids: List | str | int = None, position_auto: str = None,
                   number: str = None, date_start: str | datetime = None, date_end: str | datetime = None,
                   skip: int = None, limit: int = None,
-                  output: str = None, fields: Union[List, str] = None):
+                  output: str = None, fields: List | str = None):
         """
         Получение списка операций рекламаций
 
@@ -227,15 +227,15 @@ class CustomerComplaints:
     @process_ts_lists('order_picking_good_ids', 'picking_ids', 'old_co_position_ids')
     async def get_positions(self, op_id: str | int,
                             order_picking_good_id: str | int = None,
-                            order_picking_good_ids: Union[List, str, int] = None,
-                            picking_ids: Union[List, str, int] = None,
-                            old_co_position_ids: Union[List, str, int] = None,
+                            order_picking_good_ids: List | str | int = None,
+                            picking_ids: List | str | int = None,
+                            old_co_position_ids: List | str | int = None,
                             old_item_id: str | int = None,
                             item_id: str | int = None, loc_id: str | int = None,
                             status: int = None, date_start: str | datetime = None,
                             date_end: str | datetime = None,
                             type: str | int = None, skip: int = None, limit: int = None,
-                            output: str = None, fields: Union[List, str] = None
+                            output: str = None, fields: List | str = None
                             ):
         """
         Получение списка позиций рекламаций
@@ -268,7 +268,7 @@ class CustomerComplaints:
 
         return await self._base.request(_Methods.TsClient.CustomerComplaints.GET_POSITIONS, payload)
 
-    async def create(self, order_picking_id: str | int, positions: Union[List[Dict], Dict]):
+    async def create(self, order_picking_id: str | int, positions: List[Dict] | Dict):
         """
         Создание рекламации
 
@@ -284,7 +284,7 @@ class CustomerComplaints:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsClient.CustomerComplaints.CREATE, payload, post=True)
 
-    async def create_position_multiple(self, positions: Union[List[Dict], Dict],
+    async def create_position_multiple(self, positions: List[Dict] | Dict,
                                        customer_complaint_id: int,
                                        customer_complaint: str,
                                        custom_complaint_file: str = None):
@@ -338,7 +338,7 @@ class Orders:
     async def create_by_cart(self, delivery_address: str, delivery_person: str, delivery_contact: str,
                              delivery_comment: str = None, delivery_method_id: str | int = None,
                              number: str | int = None, create_time: str | datetime = None,
-                             positions: Union[List, str, int] = None):
+                             positions: List | str | int = None):
         """
         Создание заказа по содержимому корзины
 
@@ -370,9 +370,9 @@ class Orders:
                        update_date_start: str | datetime = None, update_date_end: str | datetime = None,
                        deadline_date_start: str | datetime = None,
                        deadline_date_end: str | datetime = None,
-                       order_ids: Union[List, str, int] = None,
-                       product_ids: Union[List, str, int] = None,
-                       position_statuses: Union[List, str, int] = None, limit: int = None,
+                       order_ids: List | str | int = None,
+                       product_ids: List | str | int = None,
+                       position_statuses: List | str | int = None, limit: int = None,
                        skip: int = None):
         """
         Получение списка заказов
@@ -464,7 +464,7 @@ class Cart:
 
     @check_limit
     @process_ts_lists('position_ids')
-    async def get_list(self, position_ids: Union[List, str, int] = None, agreement_id: str | int = None,
+    async def get_list(self, position_ids: List | str | int = None, agreement_id: str | int = None,
                        limit: int = None,
                        skip: int = None) -> List[Dict[str, Any]]:
         """
@@ -521,7 +521,7 @@ class Cart:
         return await self._base.request(_Methods.TsClient.Cart.CLEAR, payload, post=True)
 
     @process_ts_lists('position_ids')
-    async def delete_positions(self, position_ids: Union[List, str, int]):
+    async def delete_positions(self, position_ids: List | str | int):
         """
         Удаление позиций из корзины
 
@@ -545,7 +545,7 @@ class Positions:
                     "ordered", "refused", "confirm",
                     "done", "closed"]
 
-    async def get_position(self, position_id: str | int, additional_info: Union[List, str] = None):
+    async def get_position(self, position_id: str | int, additional_info: List | str = None):
         """
         Получение позиции
 
@@ -574,13 +574,13 @@ class Positions:
                        date_start: str | datetime = None, date_end: str | datetime = None,
                        update_date_start: str | datetime = None, update_date_end: str | datetime = None,
                        deadline_date_start: str | datetime = None, deadline_date_end: str | datetime = None,
-                       route_ids: Union[List, str, int] = None,
-                       distributor_ids: Union[List, str, int] = None, ids: Union[List, str, int] = None,
-                       order_ids: Union[List, str, int] = None, product_ids: Union[List, str, int] = None,
-                       statuses: Union[List, str] = None,
-                       tag_ids: Union[List, str, int] = None,
+                       route_ids: List | str | int = None,
+                       distributor_ids: List | str | int = None, ids: List | str | int = None,
+                       order_ids: List | str | int = None, product_ids: List | str | int = None,
+                       statuses: List | str = None,
+                       tag_ids: List | str | int = None,
                        limit: int = None, skip: int = None,
-                       additional_info: Union[List, str] = None):
+                       additional_info: List | str = None):
         """
         Получение списка позиций заказов
 
@@ -616,7 +616,7 @@ class Positions:
 
         return await self._base.request(_Methods.TsClient.Positions.GET_LIST, payload)
 
-    async def cancel(self, position_id: str | int, additional_info: Union[List, str] = None):
+    async def cancel(self, position_id: str | int, additional_info: List | str = None):
         """
         Отказ от позиции заказа
 
@@ -634,7 +634,7 @@ class Positions:
         return await self._base.request(_Methods.TsClient.Positions.CANCEL, payload, post=True)
 
     @process_ts_lists('position_ids')
-    async def mass_cancel(self, position_ids: Union[List, str, int], additional_info: Union[List, str] = None):
+    async def mass_cancel(self, position_ids: List | str | int, additional_info: List | str = None):
         """
         Массовый отказ от позиций заказов
 
@@ -659,14 +659,14 @@ class Agreements:
     @check_limit
     @process_ts_dates('date_start', 'date_end')
     @process_ts_lists('contractor_ids', 'contractor_requisite_ids', 'shop_requisite_ids')
-    async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
-                       contractor_requisite_ids: Union[int, str, List[int]] = None,
-                       shop_requisite_ids: Union[int, str, List[int]] = None,
+    async def get_list(self, contractor_ids: List | int | str = None,
+                       contractor_requisite_ids: List | int | str = None,
+                       shop_requisite_ids: List | int | str = None,
                        is_active: bool = None, is_delete: bool = None, is_default: bool = None,
                        agreement_type: int = None, relation_type: int = None,
                        number: str = None, currency: str = None,
                        date_start: str | datetime = None, date_end: str | datetime = None,
-                       credit_limit: Union[float, int] = None,
+                       credit_limit: int | float = None,
                        limit: int = None, skip: int = None):
         """
         Получение списка договоров
@@ -712,13 +712,13 @@ class TsClientApi:
         if not isinstance(base, BaseAbcp):
             raise AbcpWrongParameterError("base", base, "должен быть экземпляром BaseAbcp")
         self._base = base
-        self._good_receipts: Optional[GoodReceipts] = None
-        self._order_pickings = None
-        self._customer_complaints = None
-        self._orders = None
-        self._cart = None
-        self._positions = None
-        self._agreements = None
+        self._good_receipts: GoodReceipts | None = None
+        self._order_pickings: OrderPickings | None = None
+        self._customer_complaints: CustomerComplaints | None = None
+        self._orders: Orders | None = None
+        self._cart: Cart | None = None
+        self._positions: Positions | None = None
+        self._agreements: Agreements | None = None
 
     @property
     def good_receipts(self) -> GoodReceipts:

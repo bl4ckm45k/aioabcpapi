@@ -1,8 +1,8 @@
 from typing import Optional, AsyncContextManager
 
-from aioabcpapi import BaseAbcp
-from aioabcpapi.cp.base import CpApi
-from aioabcpapi.ts.base import TsApi
+from .base import BaseAbcp
+from .cp.base import CpApi
+from .ts.base import TsApi
 
 
 class Abcp(AsyncContextManager):
@@ -55,7 +55,7 @@ class Abcp(AsyncContextManager):
         :return: None
         """
         return await self._base.close()
-        
+
     async def __aenter__(self) -> 'Abcp':
         """
         Асинхронный контекстный менеджер - вход
@@ -63,7 +63,7 @@ class Abcp(AsyncContextManager):
         :return: Экземпляр Abcp
         """
         return self
-        
+
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         Асинхронный контекстный менеджер - выход

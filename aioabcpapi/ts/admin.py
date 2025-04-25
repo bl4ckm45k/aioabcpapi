@@ -1,13 +1,13 @@
 import base64
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Union, List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 from ..api import _Methods
 from ..base import BaseAbcp
 from ..exceptions import AbcpWrongParameterError, AbcpParameterRequired
 from ..utils.fields_checker import check_fields, check_limit, process_ts_lists, process_ts_dates, ensure_list_params, \
-    process_cp_dates
+    process_cp_dates, convert_bool_params_to_str
 from ..utils.payload import generate_payload
 
 
@@ -23,12 +23,12 @@ class SupplierReturnsOperations:
     @process_ts_dates('date_start', 'date_end')
     async def get_list(self, creator_id: str | int = None, supplier_id: str | int = None,
                        goods_receipt_id: str | int = None,
-                       agreement_ids: Union[List[int], int, str] = None,
-                       tag_ids: Union[List[int], int, str] = None,
-                       sbis_statuses: Union[List[str], str] = None,
+                       agreement_ids: List[int] | int | str = None,
+                       tag_ids: List[int] | int | str = None,
+                       sbis_statuses: List[str] | str = None,
                        date_start: str | datetime = None,
                        date_end: str | datetime = None,
-                       skip: int = None, limit: int = None, fields: Union[List, str] = None
+                       skip: int = None, limit: int = None, fields: List | str = None
                        ):
         """
         Получение списка операций возврата поставщику
@@ -58,9 +58,9 @@ class SupplierReturnsOperations:
     @process_ts_dates('date_start', 'date_end')
     async def get_sum(self, creator_id: str | int = None, supplier_id: str | int = None,
                       goods_receipt_id: str | int = None,
-                      agreement_ids: Union[List[int], int, str] = None,
-                      tag_ids: Union[List[int], int, str] = None,
-                      sbis_statuses: Union[List[str], str] = None,
+                      agreement_ids: List[int] | int | str = None,
+                      tag_ids: List[int] | int | str = None,
+                      sbis_statuses: List[str] | str = None,
                       date_start: str | datetime = None,
                       date_end: str | datetime = None,
                       skip: int = None, limit: int = None
@@ -108,7 +108,7 @@ class SupplierReturnsOperations:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Operations.CREATE, payload, post=True)
 
-    async def update(self, id: str | int, number: str = None, fields: Union[List, str] = None):
+    async def update(self, id: str | int, number: str = None, fields: List | str = None):
         """
         Обновление операции возврата поставщику
 
@@ -147,15 +147,15 @@ class SupplierReturnsPositions:
     @process_ts_lists('goods_receipt_pos_ids', 'item_ids', 'goods_receipt_ids')
     @process_ts_dates('date_start', 'date_end')
     async def get_list(self, op_id: str | int = None, status: int = None, type: int = None,
-                       goods_receipt_pos_ids: Union[List[str], str] = None,
-                       item_ids: Union[List[str], str] = None,
+                       goods_receipt_pos_ids: List[str] | str = None,
+                       item_ids: List[str] | str = None,
                        supplier_id: str = None,
-                       goods_receipt_ids: Union[List[str], str] = None,
+                       goods_receipt_ids: List[str] | str = None,
                        date_start: str | datetime = None,
                        date_end: str | datetime = None,
                        skip: int = None,
                        limit: int = None,
-                       fields: Union[List[str], str] = None):
+                       fields: List[str] | str = None):
         """
         Получение списка позиций возврата поставщику
 
@@ -184,15 +184,15 @@ class SupplierReturnsPositions:
     @process_ts_lists('goods_receipt_pos_ids', 'item_ids', 'goods_receipt_ids')
     @process_ts_dates('date_start', 'date_end')
     async def get_sum(self, op_id: str | int = None, status: int = None, type: int = None,
-                      goods_receipt_pos_ids: Union[List[str], str] = None,
-                      item_ids: Union[List[str], str] = None,
+                      goods_receipt_pos_ids: List[str] | str = None,
+                      item_ids: List[str] | str = None,
                       supplier_id: str = None,
-                      goods_receipt_ids: Union[List[str], str] = None,
+                      goods_receipt_ids: List[str] | str = None,
                       date_start: str | datetime = None,
                       date_end: str | datetime = None,
                       skip: int = None,
                       limit: int = None,
-                      fields: Union[List[str], str] = None):
+                      fields: List[str] | str = None):
         """
         Получение суммы позиций возврата поставщику
 
@@ -236,7 +236,7 @@ class SupplierReturnsPositions:
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.GET, payload)
 
     @ensure_list_params('poses_data')
-    async def create_multiple(self, op_id: str | int, poses_data: Union[List[Dict], Dict]):
+    async def create_multiple(self, op_id: str | int, poses_data: List[Dict] | Dict):
         """
         Создание позиций возврата поставщику
 
@@ -248,8 +248,8 @@ class SupplierReturnsPositions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.CREATE_MULTIPLE, payload, post=True)
 
-    async def split(self, id: str | int, quantity: Union[int, float],
-                    fields: Union[List[str], str] = None):
+    async def split(self, id: str | int, quantity: int | float,
+                    fields: List[str] | str = None):
         """
         Разделение позиции возврата поставщику
 
@@ -266,8 +266,8 @@ class SupplierReturnsPositions:
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.SPLIT, payload, post=True)
 
     async def update(self, id: str | int, type: int = None, loc_id: str | int = None,
-                     quantity: Union[int, float] = None, comment: str = None,
-                     fields: Union[List[str], str] = None):
+                     quantity: int | float = None, comment: str = None,
+                     fields: List[str] | str = None):
         """
         Обновление позиции возврата поставщику
 
@@ -286,7 +286,7 @@ class SupplierReturnsPositions:
 
         return await self._base.request(_Methods.TsAdmin.SupplierReturns.Positions.UPDATE, payload, post=True)
 
-    async def change_status(self, id: str | int, status: int, fields: Union[List[str], str] = None):
+    async def change_status(self, id: str | int, status: int, fields: List[str] | str = None):
         """
         Изменение статуса позиции возврата поставщику
 
@@ -346,9 +346,9 @@ class SupplierReturnsPositionsAttr:
 class SupplierReturns:
     def __init__(self, base: BaseAbcp):
         self._base = base
-        self._operations: Optional[SupplierReturnsOperations] = None
-        self._positions: Optional[SupplierReturnsPositions] = None
-        self._positions_attr: Optional[SupplierReturnsPositionsAttr] = None
+        self._operations: SupplierReturnsOperations | None = None
+        self._positions: SupplierReturnsPositions | None = None
+        self._positions_attr: SupplierReturnsPositionsAttr | None = None
 
     @property
     def operations(self) -> SupplierReturnsOperations:
@@ -394,7 +394,7 @@ class OrderPickings:
     @process_ts_dates('date', 'execution_date')
     @ensure_list_params('positions')
     async def fast_get_out(self, client_id: str | int, supplier_id: str | int,
-                           positions: Union[List[Dict], Dict], distributor_id: str | int = None,
+                           positions: List[Dict] | Dict, distributor_id: str | int = None,
                            route_id: str | int = None, location_id: str | int = None,
                            order_picking_reseller_data: Dict = None,
                            number: str | int = None, date: str | datetime = None,
@@ -427,9 +427,9 @@ class OrderPickings:
                   skip: int = None,
                   output: str = None, auto: str = None, creator_id: str | int = None,
                   worker_id: str | int = None,
-                  agreement_id: str | int = None, statuses: Union[List, str, int] = None,
+                  agreement_id: str | int = None, statuses: List | str | int = None,
                   number: int = None, date_start: str | datetime = None, date_end: str | datetime = None,
-                  co_old_pos_ids: Union[List, str, int] = None):
+                  co_old_pos_ids: List | str | int = None):
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.OrderPickings.GET, payload, post=True)
@@ -437,7 +437,7 @@ class OrderPickings:
     @check_limit
     async def get_goods(self, op_id: str | int, limit: int = None, skip: int = None,
                         output: str = None, product_id: str | int = None, item_id: str | int = None,
-                        ignore_canceled: Union[int, bool] = None):
+                        ignore_canceled: int | bool = None):
 
         if isinstance(op_id, str) and not op_id.isdigit():
             raise AbcpWrongParameterError("op_id", op_id, "должен быть числом или строкой, содержащей число")
@@ -462,10 +462,10 @@ class OrderPickings:
     @process_ts_lists('pp_ids')
     async def create_by_old_pos(self, agreement_id: str | int, account_details_id: str | int,
                                 loc_id: str | int,
-                                pp_ids: Union[List, str, int],
+                                pp_ids: List | str | int,
                                 create_date: str | datetime = None, op_id: str | int = None,
                                 status_id: str | int = None,
-                                done_right_away: Union[int, bool] = None, output: str = None):
+                                done_right_away: int | bool = None, output: str = None):
         """
         Создаёт новую операцию отгрузки на основе созданных позиций старого заказа. Source:
         https://www.abcp.ru/wiki/API.TS.Admin#.D0.A1.D0.BE.D0.B7.D0.B4.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BE.D0.BF.D0.B5.D1
@@ -567,11 +567,11 @@ class CustomerComplaints:
                   expert_id: str | int = None,
                   auto: str | int = None,
                   number: int = None, order_picking_id: str | int = None,
-                  position_statuses: Union[List, int] = None,
+                  position_statuses: List | int = None,
                   position_type: int = None, position_auto: str | int = None,
                   date_start: str | datetime = None,
                   date_end: str | datetime = None,
-                  skip: int = None, limit: int = None, fields: Union[List, str] = None):
+                  skip: int = None, limit: int = None, fields: List | str = None):
         """
         Получение списка возвратов покупателя
 
@@ -606,18 +606,18 @@ class CustomerComplaints:
     @process_ts_dates('date_start', 'date_end')
     @process_ts_lists('tag_ids', 'picking_ids', 'old_co_position_ids', 'order_picking_good_ids')
     async def get_positions(self, op_id: str | int = None, order_picking_good_id: str | int = None,
-                            order_picking_good_ids: Union[List, int] = None,
-                            picking_ids: Union[List, int] = None,
-                            old_co_position_ids: Union[List, int] = None,
+                            order_picking_good_ids: List | int = None,
+                            picking_ids: List | int = None,
+                            old_co_position_ids: List | int = None,
                             client_id: str | int = None, old_item_id: str | int = None,
                             item_id: str | int = None,
-                            tag_ids: Union[List, int] = None,
+                            tag_ids: List | int = None,
                             loc_id: str | int = None, status: int = None, type: int = None,
                             date_start: str | datetime = None,
                             date_end: str | datetime = None,
                             skip: int = None, limit: int = None,
                             sort: str = None, output: str = None,
-                            fields: Union[List, str] = None):
+                            fields: List | str = None):
         """
         Получение списка позиций операции возврата покупателя
 
@@ -660,7 +660,7 @@ class CustomerComplaints:
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.GET_POSITIONS, payload)
 
     @ensure_list_params('positions')
-    async def create(self, order_picking_id: str | int, positions: Union[List[Dict], Dict]):
+    async def create(self, order_picking_id: str | int, positions: List[Dict] | Dict):
         """
         Создание возврата покупателя
 
@@ -697,7 +697,7 @@ class CustomerComplaints:
                                         post=True)
 
     @ensure_list_params('positions')
-    async def create_position_multiple(self, positions: Union[List[Dict], Dict],
+    async def create_position_multiple(self, positions: List[Dict] | Dict,
                                        customer_complaint_id: int,
                                        customer_complaint: str,
                                        custom_complaint_file: str = None):
@@ -748,7 +748,7 @@ class CustomerComplaints:
 
     async def update(self, id: str | int, number: int = None, expert_id: str | int = None,
                      custom_complaint_file: str = '',
-                     fields: Union[List, str] = None):
+                     fields: List | str = None):
         """
 
         :param id: [обязательный] идентификатор операции возврата покупателя
@@ -765,7 +765,7 @@ class CustomerComplaints:
         return await self._base.request(_Methods.TsAdmin.CustomerComplaints.UPDATE, payload, post=True)
 
     async def update_custom_file(self, id: str | int, custom_complaint_file: str = '',
-                                 fields: Union[List, str] = None):
+                                 fields: List | str = None):
         """
         Обновление файла акта о браке.
         Source: https://www.abcp.ru/wiki/API.TS.Admin#.D0.9E.D0.B1.D0.BD.D0.BE.D0.B2.D0.BB.D0.B5.D0.BD.D0.B8.D0.B5_.D1.84.D0.B0.D0.B9.D0.BB.D0.B0_.D0.B0.D0.BA.D1.82.D0.B0_.D0.BE_.D0.B1.D1.80.D0.B0.D0.BA.D0.B5
@@ -820,7 +820,7 @@ class Orders:
     async def create(self, client_id: str | int, number: str | int = None,
                      agreement_id: str | int = None,
                      create_time: str | datetime = None, manager_id: str | int = None,
-                     fields: Union[List, str] = None):
+                     fields: List | str = None):
         """
         Создание заказа
 
@@ -843,7 +843,7 @@ class Orders:
     @process_ts_dates('create_time', 'delivery_start_time', 'delivery_end_time')
     @process_ts_lists('positions')
     async def create_by_cart(self, client_id: str | int, agreement_id: str | int,
-                             positions: Union[List, int, str],
+                             positions: List | int | str,
                              delivery_address: str, delivery_person: str, delivery_contact: str,
                              number: str | int = None,
                              create_time: str | datetime = None, manager_id: str | int = None,
@@ -853,7 +853,7 @@ class Orders:
                              delivery_reseller_comment: str = None,
                              delivery_start_time: str | datetime = None,
                              delivery_end_time: str | datetime = None,
-                             locale: str = None, fields: Union[List, str] = None
+                             locale: str = None, fields: List | str = None
                              ):
         """
         Создание заказа из корзины
@@ -900,9 +900,9 @@ class Orders:
                           update_date_start: str | datetime = None, update_date_end: str | datetime = None,
                           deadline_date_start: str | datetime = None,
                           deadline_date_end: str | datetime = None,
-                          order_ids: Union[List, int] = None,
-                          product_ids: Union[List, int] = None,
-                          position_statuses: Union[List, int] = None,
+                          order_ids: List | int = None,
+                          product_ids: List | int = None,
+                          position_statuses: List | int = None,
                           skip: int = None,
                           limit: int = None):
         """
@@ -951,7 +951,7 @@ class Orders:
 
     async def update(self, order_id: str | int, number: str | int = None, client_id: str | int = None,
                      agreement_id: str | int = None,
-                     manager_id: str | int = None, fields: Union[List, str] = None):
+                     manager_id: str | int = None, fields: List | str = None):
         """
         Изменение заказа клиента
         :param order_id: Идентификатор заказа
@@ -971,8 +971,8 @@ class Orders:
         return await self._base.request(_Methods.TsAdmin.Orders.UPDATE, payload, post=True)
 
     @process_ts_lists('merge_orders_ids')
-    async def merge(self, main_order_id: str | int, merge_orders_ids: Union[List, str, int] = None,
-                    fields: Union[List, str] = None):
+    async def merge(self, main_order_id: str | int, merge_orders_ids: List | str | int = None,
+                    fields: List | str = None):
         """
         Объединение нескольких заказов в один
         :param main_order_id: Идентификатор основного заказа
@@ -986,8 +986,8 @@ class Orders:
         return await self._base.request(_Methods.TsAdmin.Orders.MERGE, payload, post=True)
 
     @process_ts_lists('position_ids')
-    async def split(self, order_id: str | int, position_ids: Union[List, str, int] = None,
-                    fields: Union[List, str] = None):
+    async def split(self, order_id: str | int, position_ids: List | str | int = None,
+                    fields: List | str = None):
         """
         Разделение заказа
         :param order_id: Идентификатор заказа
@@ -1000,8 +1000,8 @@ class Orders:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Orders.SPLIT, payload, post=True)
 
-    async def reprice(self, order_id: str | int, new_sum: Union[float, int],
-                      fields: Union[List, str] = None):
+    async def reprice(self, order_id: str | int, new_sum: int | float,
+                      fields: List | str = None):
         """
         Изменение цены заказа
         :param order_id: Идентификатор заказа
@@ -1127,8 +1127,8 @@ class Cart:
 
     async def update(self, position_id: str | int, quantity: int,
                      client_id: str | int = None, guest_id: str | int = None,
-                     sell_price: Union[str, float, int] = None,
-                     cl_to_res_rate: Union[str, float, int] = None, cl_sell_price: Union[str, float, int] = None,
+                     sell_price: str | int | float = None,
+                     cl_to_res_rate: str | int | float = None, cl_sell_price: str | int | float = None,
                      availability: int = None, packing: int = None, deadline: int = None, deadline_max: int = None):
         """
         Обновление позиции в корзине
@@ -1156,7 +1156,7 @@ class Cart:
 
     @check_limit
     async def get_list(self, client_id: str | int = None, guest_id: str | int = None,
-                       position_ids: Union[List, str] = None,
+                       position_ids: List | str = None,
                        agreement_id: str | int = None, skip: int = None, limit: int = None):
         """
         Получение списка позиций в корзине
@@ -1238,7 +1238,7 @@ class Cart:
         return await self._base.request(_Methods.TsAdmin.Cart.CLEAR, payload, True)
 
     @ensure_list_params('position_ids')
-    async def delete_positions(self, position_ids: Union[List, str, int],
+    async def delete_positions(self, position_ids: List | str | int,
                                client_id: str | int = None, guest_id: str | int = None):
         """
         Удаление позиций корзины
@@ -1283,7 +1283,7 @@ class Positions:
                     "supOrder", "supOrderCanceled", "reservation",
                     "orderPicking", "delivery", "finished"]
 
-    async def get(self, position_id: str | int, additional_info: Union[List, str] = None):
+    async def get(self, position_id: str | int, additional_info: List | str = None):
         """
         Получение одной позиции
 
@@ -1310,6 +1310,7 @@ class Positions:
                       'update_date_start', 'update_date_end',
                       'deadline_date_start', 'deadline_date_end',
                       'order_picking_date_start', 'order_picking_date_end')
+    @convert_bool_params_to_str('no_manager_assigned')
     async def get_list(self, brand: str = None, message: str = None, agreement_id: str | int = None,
                        client_id: str | int = None,
                        manager_id: str | int = None,
@@ -1319,16 +1320,16 @@ class Positions:
                        update_date_end: str = None,
                        deadline_date_start: str = None, deadline_date_end: str = None,
                        order_picking_date_start: str = None, order_picking_date_end: str = None,
-                       order_picking_good_ids: Union[List, str, int] = None,
-                       customer_complaint_position_ids: Union[List, str, int] = None,
-                       so_position_ids: Union[List, str, int] = None,
-                       route_ids: Union[List, str, int] = None,
-                       distributor_ids: Union[List, str, int] = None,
-                       ids: Union[List, str, int] = None,
-                       order_ids: Union[List, str, int] = None,
-                       product_ids: Union[List, str, int] = None,
-                       statuses: Union[List, str] = None,
-                       tag_ids: Union[List, str, int] = None,
+                       order_picking_good_ids: List | str | int = None,
+                       customer_complaint_position_ids: List | str | int = None,
+                       so_position_ids: List | str | int = None,
+                       route_ids: List | str | int = None,
+                       distributor_ids: List | str | int = None,
+                       ids: List | str | int = None,
+                       order_ids: List | str | int = None,
+                       product_ids: List | str | int = None,
+                       statuses: List | str = None,
+                       tag_ids: List | str | int = None,
                        limit: int = None, skip: int = None):
         """
         Получение списка позиций
@@ -1366,14 +1367,12 @@ class Positions:
         """
         if statuses is not None:
             statuses = check_fields(statuses, self._FieldsChecker.statuses)
-        if isinstance(no_manager_assigned, bool):
-            no_manager_assigned = str(no_manager_assigned)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.GET_LIST, payload)
 
     async def create(self, order_id: str | int, client_id: str | int, route_id: str | int,
                      distributor_id: str | int, item_key: str,
-                     quantity: Union[float, int], sell_price: Union[int, float],
+                     quantity: int | float, sell_price: int | float,
                      brand: str | int, number_fix: str, number: str | int):
         """
         Создание позиции
@@ -1397,13 +1396,14 @@ class Positions:
         return await self._base.request(_Methods.TsAdmin.Positions.CREATE, payload, True)
 
     @process_ts_dates('deadline_time', 'deadline_time_max')
+    @convert_bool_params_to_str('client_refusal')
     async def update(self, position_id: str | int, route_id: str | int = None,
                      distributor_id: str | int = None,
-                     quantity: Union[int, float] = None,
-                     sell_price: Union[float, int] = None, cl_to_res_rate: Union[float, int] = None,
-                     cl_sell_price: Union[float, int] = None,
-                     price_data_sell_price: Union[float, int] = None,
-                     prepayment_amount: Union[float, int] = None,
+                     quantity: int | float = None,
+                     sell_price: int | float = None, cl_to_res_rate: int | float = None,
+                     cl_sell_price: int | float = None,
+                     price_data_sell_price: int | float = None,
+                     prepayment_amount: int | float = None,
                      deadline_time: str | datetime = None, deadline_time_max: str | datetime = None,
                      client_refusal: bool = None,
                      delivery_id: str | int = None,
@@ -1433,8 +1433,6 @@ class Positions:
 
         if isinstance(status, str) and all(status != x for x in ['new', 'prepayment']):
             raise AbcpWrongParameterError("status", status, 'может принимать значения "new" или "prepayment"')
-        if isinstance(client_refusal, bool):
-            client_refusal = str(client_refusal)
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.UPDATE, payload, True)
 
@@ -1451,7 +1449,7 @@ class Positions:
         return await self._base.request(_Methods.TsAdmin.Positions.CANCEL, payload, True)
 
     @process_ts_lists('position_ids')
-    async def mass_cancel(self, position_ids: Union[List, int]):
+    async def mass_cancel(self, position_ids: List | int):
         """
         Массовое аннулирование позиций
 
@@ -1465,7 +1463,7 @@ class Positions:
         return await self._base.request(_Methods.TsAdmin.Positions.MASS_CANCEL, payload, True)
 
     @process_ts_lists('position_ids')
-    async def change_status(self, position_ids: Union[List, int], status: str):
+    async def change_status(self, position_ids: List | int, status: str):
         """
         Массовая смена статуса позиций
 
@@ -1481,7 +1479,7 @@ class Positions:
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Positions.CHANGE_STATUS, payload, True)
 
-    async def split(self, position_id: str | int, quantity: Union[int, float]):
+    async def split(self, position_id: str | int, quantity: int | float):
         """
         Разделение позиции
 
@@ -1495,7 +1493,7 @@ class Positions:
         return await self._base.request(_Methods.TsAdmin.Positions.SPLIT, payload, True)
 
     @process_ts_lists('merge_positions_ids')
-    async def merge(self, main_position_id: str | int, merge_positions_ids: Union[List, int]):
+    async def merge(self, main_position_id: str | int, merge_positions_ids: List | int):
         """
         Объединение позиций
 
@@ -1598,7 +1596,7 @@ class GoodReceipts:
     async def get_positions(self, creator_id: str | int = None, supplier_id: str | int = None,
                             agreement_id: str | int = None, status: int = None,
                             date_start: str | datetime = None, date_end: str | datetime = None,
-                            skip: int = None, limit: int = None, fields: Union[List, str] = None):
+                            skip: int = None, limit: int = None, fields: List | str = None):
         """
         Получение списка приходных операций
 
@@ -1663,11 +1661,11 @@ class GoodReceipts:
 
     async def create_position(self, op_id: str | int, loc_id: str | int, product_id: str | int,
                               brand: str | int, number: str | int,
-                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+                              quantity: int | float, sup_buy_price: int | float,
                               manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
-                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              return_period: int = None, barcodes: List | str | int = None,
                               comment: str = None,
-                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              descr: str = None, expected_quantity: int | float = None,
                               so_position_id: str = None,
                               old_order_position_id: str | int = None):
         """
@@ -1727,11 +1725,11 @@ class GoodReceipts:
         return await self._base.request(_Methods.TsAdmin.GoodReceipts.GET_POSITION, payload)
 
     async def update_position(self, id: int, brand: str, number: str,
-                              quantity: Union[float, int], sup_buy_price: Union[float, int],
+                              quantity: int | float, sup_buy_price: int | float,
                               manufacturer_country: str = None, gtd: str = None, warranty_period: int = None,
-                              return_period: int = None, barcodes: Union[List, List, str, int] = None,
+                              return_period: int = None, barcodes: List | str | int = None,
                               comment: str = None,
-                              descr: str = None, expected_quantity: Union[float, int] = None,
+                              descr: str = None, expected_quantity: int | float = None,
                               so_position_id: str = None,
                               old_order_position_id: str | int = None):
         """
@@ -1770,7 +1768,7 @@ class Tags:
         self._base = base
 
     @process_ts_lists('ids')
-    async def list(self, ids: Union[str, List[str], List[int]] = None):
+    async def list(self, ids: List | str = None):
         """
         Операция получения списка тегов
 
@@ -1823,11 +1821,11 @@ class TagsRelationships:
         self._base = base
 
     @process_ts_lists('object_ids', 'tags_ids')
-    async def list(self, object_ids: Union[str, List[str], List[int]] = None,
+    async def list(self, object_ids: List | str = None,
                    object_type: str | int = None,
-                   group_by_object_id: Union[bool, int] = None,
-                   with_all_tags: Union[bool, int] = None,
-                   tags_ids: Union[str, List[str], List[int]] = None):
+                   group_by_object_id: int | bool = None,
+                   with_all_tags: int | bool = None,
+                   tags_ids: List | str = None):
 
         """
 
@@ -1926,14 +1924,14 @@ class Payments:
     @process_ts_lists('payment_method_ids', 'tag_ids')
     async def get_list(self,
                        contractor_id: str | int = None, agreement_id: str | int = None,
-                       amount_start: Union[float, int, str] = None, amount_end: Union[float, int, str] = None,
-                       status: Union[List[str], str] = None,
+                       amount_start: str | int | float = None, amount_end: str | int | float = None,
+                       status: List[str] | str = None,
                        number: str = None,
                        requisite_id: str | int = None,
                        skip: int = None, limit: int = None,
-                       payment_type: Union[List[str], str] = None, payment_method_ids: Union[List[int], int] = None,
+                       payment_type: List[str] | str = None, payment_method_ids: List | int = None,
                        date_start: str | datetime = None, date_end: str | datetime = None,
-                       fields: Union[List[str], str] = None):
+                       fields: List[str] | str = None):
         """
 
         :param contractor_id:
@@ -1967,9 +1965,9 @@ class Payments:
     async def create(self,
                      payment_type: str, payment_method_id: int,
                      agreement_id: int, author_id: int,
-                     amount: Union[float, int, str], date: str | datetime,
-                     contractor_id: int = None, commission: Union[float, int] = None,
-                     comment: str = None, fields: Union[List[str], str] = None):
+                     amount: str | int | float, date: str | datetime,
+                     contractor_id: int = None, commission: int | float = None,
+                     comment: str = None, fields: List[str] | str = None):
         """
 
         :param payment_type:
@@ -1990,15 +1988,15 @@ class Payments:
     @process_ts_dates('date')
     @process_ts_lists('fields')
     async def update(self,
-                     payment_id: Union[int, float],
+                     payment_id: int | float,
                      agreement_id: int = None,
-                     amount: Union[float, int] = None,
+                     amount: int | float = None,
                      date: str | datetime = None,
                      status: str = None,
                      payment_order: str = None,
-                     commission: Union[float, int] = None,
+                     commission: int | float = None,
                      comment: str = None,
-                     fields: Union[List[str], str] = None):
+                     fields: List[str] | str = None):
         """
         Обновление платежа
 
@@ -2055,14 +2053,15 @@ class Agreements:
 
     @process_ts_dates('date_start', 'date_end')
     @ensure_list_params('contractor_ids', 'contractor_requisite_ids', 'shop_requisite_ids')
-    async def get_list(self, contractor_ids: Union[int, str, List[int]] = None,
-                       contractor_requisite_ids: Union[int, str, List[int]] = None,
-                       shop_requisite_ids: Union[int, str, List[int]] = None,
+    @convert_bool_params_to_str('is_active', 'is_delete', 'is_default')
+    async def get_list(self, contractor_ids: List | int | str = None,
+                       contractor_requisite_ids: List | int | str = None,
+                       shop_requisite_ids: List | int | str = None,
                        is_active: bool = None, is_delete: bool = None, is_default: bool = None,
                        agreement_type: int = None, relation_type: int = None,
                        number: str = None, currency: str = None,
                        date_start: str | datetime = None, date_end: str | datetime = None,
-                       credit_limit: Union[float, int] = None,
+                       credit_limit: int | float = None,
                        limit: int = None, skip: int = None):
         """
 
@@ -2083,12 +2082,6 @@ class Agreements:
         :param skip:
         :return:
         """
-        if isinstance(is_active, bool):
-            is_active = str(is_active)
-        if isinstance(is_delete, bool):
-            is_delete = str(is_delete)
-        if isinstance(is_default, bool):
-            is_default = str(is_default)
 
         payload = generate_payload(**locals())
         return await self._base.request(_Methods.TsAdmin.Agreements.GET_LIST, payload)
@@ -2100,7 +2093,7 @@ class LegalPersons:
 
     @check_limit
     @process_ts_lists('ids')
-    async def get_list(self, ids: Union[str, int, List[str], List[int]] = None, contractor_id: int | None = None,
+    async def get_list(self, ids: List | int | str = None, contractor_id: int | None = None,
                        form: int | None = None, org_type: int | None = None,
                        agreement_with_individuals_required: int | None = None,
                        with_tax_systems: int | None = None,
@@ -2128,10 +2121,10 @@ class SupplierOrders:
     @check_limit
     @process_ts_dates('create_date_start', 'create_date_end', 'send_date_start', 'send_date_end')
     @process_ts_lists('orders_ids', 'distributor_ids', 'supplier_ids', 'send_statuses')
-    async def orders_list(self, orders_ids: Union[int, str, List[int], List[str]] = None,
-                          distributor_ids: Union[int, str, List[int], List[str]] = None,
-                          supplier_ids: Union[int, str, List[int], List[str]] = None,
-                          send_statuses: Union[int, str, List[int], List[str]] = None,
+    async def orders_list(self, orders_ids: List | int | str = None,
+                          distributor_ids: List | int | str = None,
+                          supplier_ids: List | int | str = None,
+                          send_statuses: List | int | str = None,
                           create_date_start: str | datetime = None,
                           create_date_end: str | datetime = None,
                           send_date_start: str | datetime = None,
@@ -2168,17 +2161,17 @@ class SupplierOrders:
     @check_limit
     @process_ts_dates('deadline_date_start', 'deadline_date_end')
     @process_ts_lists('statuses', 'distributor_ids', 'supplier_ids', 'position_ids', 'gr_position_ids')
-    async def positions_list(self, statuses: Union[List, str, int] = None,
+    async def positions_list(self, statuses: List | str | int = None,
                              order_id: str | int = None,
-                             distributor_ids: Union[List, str, int] = None,
-                             supplier_ids: Union[List, str, int] = None,
-                             position_ids: Union[List, str, int] = None,
-                             gr_position_ids: Union[List, str, int] = None,
+                             distributor_ids: List | str | int = None,
+                             supplier_ids: List | str | int = None,
+                             position_ids: List | str | int = None,
+                             gr_position_ids: List | str | int = None,
                              client_order_id: str | int = None,
                              client_order_number: str = None,
                              without_order: bool = None,
                              with_order: bool = None,
-                             additional_info: Union[List, str] = None,
+                             additional_info: List | str = None,
                              limit: str | int = None,
                              skip: str | int = None):
         """
@@ -2236,21 +2229,21 @@ class TsAdminApi:
         if not isinstance(base, BaseAbcp):
             raise AbcpWrongParameterError("base", base, "должен быть экземпляром BaseAbcp")
         self._base = base
-        self._order_pickings = None
-        self._customer_complaints = None
-        self._supplier_returns = None
-        self._distributor_owners = None
-        self._orders = None
-        self._cart = None
-        self._positions = None
-        self._good_receipts = None
-        self._tags = None
-        self._tags_relationships = None
-        self._payments = None
-        self._payment_methods = None
-        self._agreements = None
-        self._legal_persons = None
-        self._supplier_orders = None
+        self._order_pickings: OrderPickings | None = None
+        self._customer_complaints: CustomerComplaints | None = None
+        self._supplier_returns: SupplierReturns | None = None
+        self._distributor_owners: DistributorOwners | None = None
+        self._orders: Orders | None = None
+        self._cart: Cart | None = None
+        self._positions: Positions | None = None
+        self._good_receipts: GoodReceipts | None = None
+        self._tags: Tags | None = None
+        self._tags_relationships: TagsRelationships | None = None
+        self._payments: Payments | None = None
+        self._payment_methods: PaymentMethods | None = None
+        self._agreements: Agreements | None = None
+        self._legal_persons: LegalPersons | None = None
+        self._supplier_orders: SupplierOrders | None = None
 
     @property
     def order_pickings(self) -> OrderPickings:
